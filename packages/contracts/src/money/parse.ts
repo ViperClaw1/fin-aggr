@@ -3,9 +3,10 @@ import { Cents } from './cents';
 import { MoneyParseError } from './errors';
 import { Rate } from './rate';
 
-const USD = /^(-)?\$?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/;
-const USD_TOO_PRECISE = /^-?\$?[\d,]+\.\d{3,}$/;
+const USD = /^(-)?\$?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?$/;
 const DECIMAL = /^(\d+)(?:\.(\d+))?$/;
+// A rate-shaped number without redundant leading zeros: "01" and "00.5" are malformed.
+const RATE_LIKE = /^(?:0|[1-9]\d*)(?:\.(\d+))?$/;
 const MAX_CENTS = BigInt(Number.MAX_SAFE_INTEGER);
 
 /** Integer digit string → number; exact because the caller checked the safe range. */
@@ -18,14 +19,16 @@ function digitsToInt(digits: string): number {
 const stripLeadingZeros = (s: string): string => s.replace(/^0+(?=\d)/, '');
 const stripTrailingZeros = (s: string): string => s.replace(/0+$/, '');
 
-/** "1,234.56" → 123456. Accepts an optional leading "-" and "$"; at most two decimals. */
+/**
+ * "1,234.56" → 123456. Accepts an optional leading "-" and "$". Decimals past the second
+ * must be zeros ("1.500" → 150); any other third decimal is `too_many_decimals`, never rounded.
+ */
 export function parseCents(input: string): Cents {
-  const text = input.trim();
-  if (USD_TOO_PRECISE.test(text)) throw new MoneyParseError('too_many_decimals', input);
-  const match = USD.exec(text);
+  const match = USD.exec(input.trim());
   if (!match) throw new MoneyParseError('invalid_format', input);
   const [, sign, whole = '', fraction = ''] = match;
-  const digits = stripLeadingZeros(whole.replaceAll(',', '') + fraction.padEnd(2, '0'));
+  if (/[1-9]/.test(fraction.slice(2))) throw new MoneyParseError('too_many_decimals', input);
+  const digits = stripLeadingZeros(whole.replaceAll(',', '') + fraction.slice(0, 2).padEnd(2, '0'));
   if (BigInt(digits) > MAX_CENTS) throw new MoneyParseError('out_of_range', input);
   const value = digitsToInt(digits);
   return Cents.parse(sign === '-' && value !== 0 ? -value : value);
@@ -36,9 +39,9 @@ export function parseRate(fraction: string): Rate {
   const text = fraction.trim();
   const parsed = Rate.safeParse(text);
   if (parsed.success) return parsed.data;
-  const match = DECIMAL.exec(text);
+  const match = RATE_LIKE.exec(text);
   if (!match) throw new MoneyParseError('invalid_format', fraction);
-  if ((match[2] ?? '').length > 8) throw new MoneyParseError('too_many_decimals', fraction);
+  if ((match[1] ?? '').length > 8) throw new MoneyParseError('too_many_decimals', fraction);
   throw new MoneyParseError('out_of_range', fraction);
 }
 

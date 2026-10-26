@@ -53,6 +53,8 @@ describe('parseCents', () => {
     ['1,000,000', 100000000],
     ['007.10', 710],
     ['90071992547409.91', MAX],
+    ['1.500', 150],
+    ['1.50000', 150],
   ])('%s → %i', (input, cents) => {
     expect(parseCents(input)).toBe(cents);
   });
@@ -63,7 +65,9 @@ describe('parseCents', () => {
 
   it.each([
     ['1.234', 'too_many_decimals'],
+    ['1.2301', 'too_many_decimals'],
     ['1,23.45', 'invalid_format'],
+    ['1,23.456', 'invalid_format'],
     ['1 234', 'invalid_format'],
     ['abc', 'invalid_format'],
     ['', 'invalid_format'],
@@ -82,8 +86,11 @@ describe('parseRate', () => {
   it.each([
     ['1.00000001', 'out_of_range'],
     ['4.35', 'out_of_range'],
+    ['2', 'out_of_range'],
     ['0.123456789', 'too_many_decimals'],
     ['-0.1', 'invalid_format'],
+    ['01', 'invalid_format'],
+    ['00.5', 'invalid_format'],
     ['x', 'invalid_format'],
   ] as const)('%s → %s', (input, code) => {
     expect(codeOf(() => parseRate(input))).toBe(code);
@@ -125,6 +132,37 @@ describe('formatUsd', () => {
     [MAX, '$90,071,992,547,409.91'],
   ])('%i → %s', (cents, text) => {
     expect(formatUsd(Cents.parse(cents))).toBe(text);
+  });
+});
+
+describe('round trips over a seeded sample', () => {
+  // Deterministic LCG (Numerical Recipes constants); BigInt keeps it exact.
+  function* sample(seed: bigint, count: number, modulo: bigint): Generator<bigint> {
+    let state = seed;
+    for (let i = 0; i < count; i += 1) {
+      state = (state * 1664525n + 1013904223n) % 4294967296n;
+      yield (state * 2097152n + state) % modulo;
+    }
+  }
+
+  it('formatUsd(parseCents(s)) === s for canonical strings', () => {
+    for (const n of sample(20261025n, 500, 2n * BigInt(MAX) + 1n)) {
+      const signed = n - BigInt(MAX);
+      const abs = signed < 0n ? -signed : signed;
+      const dollars = (abs / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      const cents = (abs % 100n).toString().padStart(2, '0');
+      const text = `${signed < 0n ? '-' : ''}$${dollars}.${cents}`;
+      expect(formatUsd(parseCents(text))).toBe(text);
+    }
+  });
+
+  it('rateFromPercent(formatRate(r)) equals r without trailing zeros', () => {
+    for (const n of sample(42n, 500, 100000001n)) {
+      const digits = n.toString().padStart(9, '0');
+      const text = `${digits.slice(0, 1)}.${digits.slice(1)}`.replace(/\.?0+$/, '');
+      const rate = Rate.parse(text === '' ? '0' : text);
+      expect(rateFromPercent(formatRate(rate).slice(0, -1))).toBe(rate);
+    }
   });
 });
 

@@ -548,7 +548,7 @@ export const SponsoredItem = z.object({
 //   parseRate(fraction: string): Rate         "0.0435"
 //   rateFromPercent(percent: string): Rate    "4.35" -> "0.0435", сдвиг точки на строке
 //   formatUsd(value: Cents): string           "$1,234.56"
-//   formatRate(rate: Rate, { as: 'percent' }): string
+//   formatRate(rate: Rate): string             "0.0435" -> "4.35%"
 // MoneyParseError { code }; формы используют safeParse схем.
 
 // money.ts — арифметика; Rate вне [0, 1] -> EngineError
