@@ -181,6 +181,24 @@ describe('reference data', () => {
     states: { TX: { assumedMarginalRate: '0' } },
     provenance,
   };
+  it('TaxTables requires ascending brackets ending with an open one', () => {
+    const withBrackets = (b: unknown): unknown => ({
+      ...taxTables,
+      federal: { ...taxTables.federal, single: b },
+    });
+    const good = [
+      { upTo: 1000000, rate: '0.1' },
+      { upTo: 4000000, rate: '0.12' },
+      { upTo: null, rate: '0.22' },
+    ];
+    expect(ok(TaxTables, withBrackets(good))).toBe(true);
+    expect(ok(TaxTables, withBrackets([good[1], good[0], good[2]]))).toBe(false);
+    expect(ok(TaxTables, withBrackets([good[0], { upTo: 1000000, rate: '0.12' }, good[2]]))).toBe(
+      false,
+    );
+    expect(ok(TaxTables, withBrackets([good[0], good[1]]))).toBe(false);
+    expect(ok(TaxTables, withBrackets([good[2], good[2]]))).toBe(false);
+  });
   it('TaxTables requires every filing status', () => {
     expect(ok(TaxTables, taxTables)).toBe(true);
     expect(ok(TaxTables, { ...taxTables, federal: { single: brackets } })).toBe(false);

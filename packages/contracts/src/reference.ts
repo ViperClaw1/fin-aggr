@@ -18,10 +18,31 @@ export type FilingStatus = z.infer<typeof FilingStatus>;
 export const TaxBracket = z.strictObject({ upTo: Cents.nullable(), rate: Rate });
 export type TaxBracket = z.infer<typeof TaxBracket>;
 
+/** Brackets in strictly ascending `upTo`; only the last one is open-ended (`null`), and it must be. */
+function bracketProblems(brackets: readonly TaxBracket[]): string[] {
+  const problems: string[] = [];
+  brackets.forEach((b, i) => {
+    const last = i === brackets.length - 1;
+    const prev = brackets[i - 1]?.upTo;
+    if (last !== (b.upTo === null))
+      problems.push(`bracket ${String(i)}: only the last has upTo null`);
+    if (b.upTo !== null && prev !== undefined && prev !== null && b.upTo <= prev)
+      problems.push(`bracket ${String(i)}: upTo must be above the previous bracket`);
+  });
+  return problems;
+}
+
+const TaxBrackets = z
+  .array(TaxBracket)
+  .min(1)
+  .superRefine((brackets, ctx) => {
+    for (const message of bracketProblems(brackets)) ctx.addIssue({ code: 'custom', message });
+  });
+
 export const TaxTables = z.strictObject({
   taxYear: z.int(),
   // zod 4: a record over an enum requires every filing status
-  federal: z.record(FilingStatus, z.array(TaxBracket).min(1)),
+  federal: z.record(FilingStatus, TaxBrackets),
   states: z.record(z.string().length(2), z.strictObject({ assumedMarginalRate: Rate })),
   provenance: Provenance,
 });
