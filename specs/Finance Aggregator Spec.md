@@ -63,7 +63,8 @@ Oct 25, 2026 · @Nikita · Статус: черновик для утвержд�
 
 ### Ограничения
 
-- TypeScript strict, без `any`. Node LTS, pnpm.
+- TypeScript strict, без `any`. Node LTS, pnpm. Точные версии зависимостей закреплены в ADR-014 (`docs/adr/`).
+- Стили: Tailwind 4 (CSS-first). Минимум браузеров из-за него: Safari 16.4+, Chrome 111+ (ADR-014).
 - Интерфейс на английском (рынок США). Браузеры: две последние версии Chrome, Safari, Firefox, Edge (допущение).
 - Шрифты self-hosted (`next/font`), никаких сторонних скриптов на этапе 1.
 
@@ -175,6 +176,7 @@ fa/
 
 - **Решение.** Деньги это `Cents`: целое число центов (brand-тип). Ставки это `Rate`: десятичная строка (`"0.0435"` значит 4,35%). Вся арифметика через `decimal.js` (изолированный клон `Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP })`). Округление до цента только на выходе функции, промежуточные значения не округляются. Запрещены `toFixed`, `parseFloat` и умножение денег на `number`.
 - **Последствия.** Результаты воспроизводимы и объяснимы. Расчёты это оценки, и интерфейс так и подписывает. Реальные банки округляют по своим правилам.
+- **Изменено ADR-013** (`docs/adr/013-money-primitives-in-contracts.md`): брендирование, разбор и форматирование `Cents` и `Rate` живут в `@fa/contracts/src/money/`, арифметика остаётся в `engine`.
 
 ### ADR-004. Профиль пользователя не покидает браузер
 
@@ -237,19 +239,22 @@ fa/
 ### Примитивы и источник
 
 ```ts
-// packages/contracts/src/primitives.ts
+// packages/contracts/src/money/  (ADR-013; zod v4)
 import { z } from 'zod';
 
-export const Cents = z.number().int().brand<'Cents'>();
+export const Cents = z.int().brand<'Cents'>();                      // safe integer
 export type Cents = z.infer<typeof Cents>;
 
-export const Rate = z.string().regex(/^(0|1)(\.\d{1,8})?$/).brand<'Rate'>();
+// доля 0 ≤ r ≤ 1; значения > 100% (множители) это отдельный тип, не Rate
+export const Rate = z.string().regex(/^(0(\.\d{1,8})?|1(\.0{1,8})?)$/).brand<'Rate'>();
 export type Rate = z.infer<typeof Rate>;
+
+// packages/contracts/src/primitives.ts
 
 export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).brand<'IsoDate'>();
 export type IsoDate = z.infer<typeof IsoDate>;
 
-export const IsoDateTime = z.string().datetime({ offset: true }).brand<'IsoDateTime'>();
+export const IsoDateTime = z.iso.datetime({ offset: true }).brand<'IsoDateTime'>();
 export type IsoDateTime = z.infer<typeof IsoDateTime>;
 
 export const Id = z.string().regex(/^[a-z0-9][a-z0-9:_-]{0,63}$/i);
@@ -258,7 +263,7 @@ export type Id = z.infer<typeof Id>;
 // packages/contracts/src/provenance.ts
 export const Provenance = z.object({
   sourceId: Id,
-  sourceUrl: z.string().url(),
+  sourceUrl: z.url(),
   retrievedAt: IsoDateTime,
   document: z
     .object({ id: Id, page: z.number().int().positive(), quote: z.string().min(1).max(400) })
@@ -271,7 +276,7 @@ export const Provenance = z.object({
 });
 export type Provenance = z.infer<typeof Provenance>;
 
-export const fact = <S extends z.ZodTypeAny>(value: S) => z.object({ value, provenance: Provenance });
+export const fact = <S extends z.ZodType>(value: S) => z.object({ value, provenance: Provenance });
 export interface Fact<T> { readonly value: T; readonly provenance: Provenance }
 ```
 
@@ -283,6 +288,8 @@ export interface Fact<T> { readonly value: T; readonly provenance: Provenance }
 // packages/contracts/src/rules.ts
 export const ProfileField = z.enum(['residency', 'stateOfResidence', 'age', 'filingStatus', 'depositAmount']);
 export type ProfileField = z.infer<typeof ProfileField>;
+// Имена полей правил не совпадают с Profile (stateOfResidence ← stateCode, depositAmount ← scenario.principal).
+// toEligibilityContext сопоставляет их явным allowlist, без spread профиля.
 
 type Label = { label?: string | undefined };
 export type Rule =
@@ -320,7 +327,7 @@ export const Institution = z.object({
   kind: InstitutionKind,
   partnerInstitutionIds: z.array(Id),      // для fintech_partner: банки программы; иначе []
   hqState: z.string().length(2),
-  website: z.string().url().nullable(),
+  website: z.url().nullable(),
   provenance: Provenance,
 });
 
@@ -336,7 +343,7 @@ export const BankMetrics = z.object({
   institutionId: Id,
   asOf: IsoDate,
   totalAssetsUsdThousands: z.number().int().nonnegative(),
-  metrics: z.record(MetricKey, MetricValue),     // значения в процентах, без денежной арифметики
+  metrics: z.partialRecord(MetricKey, fact(MetricValue)),  // проценты, без денежной арифметики; нет метрики → «n/a», не выдумываем
   balanceSheetMix: z.array(z.object({ label: z.string(), share: z.number().min(0).max(1) })),
   provenance: Provenance,
 });
@@ -396,7 +403,7 @@ export const FilingStatus = z.enum(['single', 'married_joint', 'married_separate
 export const TaxBracket = z.object({ upTo: Cents.nullable(), rate: Rate });   // upTo включительно, null у последней
 export const TaxTables = z.object({
   taxYear: z.number().int(),
-  federal: z.record(FilingStatus, z.array(TaxBracket).min(1)),               // по налогооблагаемому доходу
+  federal: z.record(FilingStatus, z.array(TaxBracket).min(1)),               // по налогооблагаемому доходу; zod 4: все статусы обязательны
   states: z.record(z.string().length(2), z.object({ assumedMarginalRate: Rate })),
   provenance: Provenance,
 });
@@ -409,13 +416,13 @@ export const InsuranceRules = z.object({
   provenance: Provenance,
 });
 export const SourceRegistryEntry = z.object({
-  id: Id, name: z.string(), url: z.string().url(),
+  id: Id, name: z.string(), url: z.url(),
   kind: z.enum(['official_api', 'official_document', 'issuer_document', 'partner_feed', 'manual']),
   license: z.string(), lastUpdatedAt: IsoDateTime.nullable(), notes: z.string().optional(),
 });
 
 // packages/contracts/src/profile.ts  (клиентский; НЕ импортируется из gateway.ts и queries.ts)
-export const Profile = z.object({
+export const Profile = z.strictObject({
   version: z.literal(1),
   taxYear: z.number().int(),
   filingStatus: FilingStatus,
@@ -425,7 +432,7 @@ export const Profile = z.object({
   residency: z.enum(['us_citizen', 'us_resident', 'nonresident']),
   age: z.number().int().min(0).max(120).nullable(),
   scenario: z.object({ principal: Cents, holdingMonths: z.number().int().min(1).max(120) }),
-}).strict();
+});
 
 // packages/contracts/src/calc.ts  (общие типы вывода движка, чтобы UI рендерил их)
 export const CalcStep = z.object({
@@ -441,21 +448,20 @@ export const Assumption = z.object({ id: z.string(), text: z.string(), editable:
 
 ```ts
 // packages/contracts/src/queries.ts
-export const Page = <S extends z.ZodTypeAny>(item: S) =>
+export const Page = <S extends z.ZodType>(item: S) =>
   z.object({ items: z.array(item), nextCursor: z.string().nullable() });
 export interface PageOf<T> { items: T[]; nextCursor: string | null }
 
 const Limit = z.number().int().min(1).max(100);
-export const InstitutionQuery = z.object({
+export const InstitutionQuery = z.strictObject({
   q: z.string().max(80).optional(), kind: InstitutionKind.optional(),
   limit: Limit.default(25), cursor: z.string().optional(),
-}).strict();
-export const ProductQuery = z.object({
+});
+export const ProductQuery = z.strictObject({
   category: ProductCategory, institutionId: Id.optional(),
   limit: Limit.default(100), cursor: z.string().optional(),
-}).strict();
-export const FactQuery = z.object({ documentId: Id.optional(), productId: Id.optional() })
-  .strict()
+});
+export const FactQuery = z.strictObject({ documentId: Id.optional(), productId: Id.optional() })
   .refine((q) => q.documentId !== undefined || q.productId !== undefined, 'documentId or productId required');
 
 // packages/contracts/src/gateway.ts
@@ -486,7 +492,7 @@ export const SponsoredPlacement = z.enum(['compare_top', 'compare_sidebar', 'pro
 export const SponsoredItem = z.object({
   id: Id, placement: SponsoredPlacement, advertiser: z.string(),
   headline: z.string().max(90), body: z.string().max(200),
-  ctaLabel: z.string(), ctaUrl: z.string().url(),
+  ctaLabel: z.string(), ctaUrl: z.url(),
   disclosure: z.string().min(10),
   compensationType: z.enum(['cpa', 'cpc', 'flat_fee']),
 });
@@ -537,12 +543,17 @@ export const SponsoredItem = z.object({
 ### Публичный API
 
 ```ts
-// money.ts — единственное место, где разрешено создавать Cents и Rate из чисел и строк
-export function usd(input: string): Cents;                     // "1,234.56" -> 123456; больше двух знаков -> EngineError
-export function formatUsd(value: Cents): string;               // "$1,234.56"
+// Разбор и форматирование (ADR-013) живут в @fa/contracts/src/money/, без decimal.js и float:
+//   parseCents(input: string): Cents          "1,234.56" -> 123456; больше двух знаков -> MoneyParseError
+//   parseRate(fraction: string): Rate         "0.0435"
+//   rateFromPercent(percent: string): Rate    "4.35" -> "0.0435", сдвиг точки на строке
+//   formatUsd(value: Cents): string           "$1,234.56"
+//   formatRate(rate: Rate, { as: 'percent' }): string
+// MoneyParseError { code }; формы используют safeParse схем.
+
+// money.ts — арифметика; Rate вне [0, 1] -> EngineError
 export function sumCents(values: readonly Cents[]): Cents;
 export function mulRate(amount: Cents, rate: Rate): Cents;     // half-up до цента, только на выходе
-export function rateFromPercent(percent: string): Rate;        // "4.35" -> "0.0435"
 
 // yield.ts
 export type SignedRate = string & { readonly __brand: 'SignedRate' };   // допускает минус; объявлен в engine
@@ -815,7 +826,8 @@ export interface SponsoredSlotProps { placement: SponsoredPlacement }
 ### 7.2 ESLint (flat config)
 
 ```js
-// eslint.config.mjs
+// eslint.config.mjs  (ESLint 9, версии в ADR-014)
+import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
@@ -863,12 +875,19 @@ const restrict = (layer, { paths = BASE_PATHS, patterns = LAYER_PATTERNS[layer] 
 
 const SYNTAX_COMMON = [
   { selector: 'TSEnumDeclaration', message: 'Вместо enum используйте union-типы.' },
-  { selector: "TSAsExpression[typeAnnotation.typeName.name=/^(Cents|Rate)$/]", message: 'Cents и Rate создаются только через usd(), rateFromPercent() или разбор схемой.' },
+  { selector: "TSAsExpression[typeAnnotation.typeName.name=/^(Cents|Rate)$/]", message: 'Cents и Rate создаются только функциями и схемами @fa/contracts (ADR-013).' },
   { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: 'Запрещено (XSS).' },
 ];
 const NO_AMBIENT_TIME = { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: 'Время только через shared/lib/clock или параметр asOf (ADR-011).' };
+// ADR-013: без float в деньгах; Number.isSafeInteger и прочие статические методы Number разрешены
+const MONEY_FLOAT = [
+  { selector: "CallExpression[callee.name='Number']", message: 'Number() запрещён: parseCents/parseRate из @fa/contracts.' },
+  { selector: "CallExpression[callee.name=/^parse(Float|Int)$/]", message: 'parseFloat/parseInt запрещены: @fa/contracts или decimal.js.' },
+  { selector: "CallExpression[callee.object.name='Number'][callee.property.name=/^parse(Float|Int)$/]", message: 'parseFloat/parseInt запрещены: @fa/contracts или decimal.js.' },
+];
+const NO_LOCAL_MONEY_FORMAT = { selector: "MemberExpression[object.name='Intl'][property.name='NumberFormat']", message: 'Деньги и ставки форматирует только @fa/contracts (ADR-013).' };
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: ['**/dist/**', '**/.next/**', '**/coverage/**', '**/*.generated.*'] },
   // файлы-канарейки проверяются отдельно: LINT_CANARIES=1 pnpm lint:canaries
   ...(process.env.LINT_CANARIES ? [] : [{ ignores: ['**/*.canary.ts'] }]),
@@ -947,8 +966,9 @@ export default tseslint.config(
         { object: 'navigator', property: 'sendBeacon', message: 'Запрещено: данные пользователя не отправляем (ADR-004).' },
         { object: 'document', property: 'cookie', message: 'Запрещено.' },
         { object: 'Date', property: 'now', message: 'Время только через shared/lib/clock.' },
+        { property: 'toLocaleString', message: 'Деньги и ставки форматирует только @fa/contracts (ADR-013).' },
       ],
-      'no-restricted-syntax': ['error', ...SYNTAX_COMMON, NO_AMBIENT_TIME],
+      'no-restricted-syntax': ['error', ...SYNTAX_COMMON, NO_AMBIENT_TIME, NO_LOCAL_MONEY_FORMAT],
     },
   },
 
@@ -989,19 +1009,17 @@ export default tseslint.config(
         { object: 'Math', property: 'random', message: 'Случайность только через seed (ADR-011).' },
         { object: 'Date', property: 'now', message: 'Время параметром asOf (ADR-011).' },
         { property: 'toFixed', message: 'Деньги не форматируем через float.' },
+        { property: 'toNumber', message: 'Decimal не превращаем в float (ADR-013).' },
       ],
-      'no-restricted-syntax': ['error', ...SYNTAX_COMMON, NO_AMBIENT_TIME,
-        { selector: "CallExpression[callee.name='parseFloat']", message: 'parseFloat запрещён: usd() или decimal.js.' },
-        { selector: "CallExpression[callee.object.name='Number'][callee.property.name='parseFloat']", message: 'parseFloat запрещён: usd() или decimal.js.' },
-      ],
+      'no-restricted-syntax': ['error', ...SYNTAX_COMMON, NO_AMBIENT_TIME, ...MONEY_FLOAT],
       '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
       '@typescript-eslint/strict-boolean-expressions': 'error',
       'no-param-reassign': ['error', { props: true }],
     },
   },
   {   // только здесь разрешено приводить значения к Cents и Rate
-    files: ['packages/engine/src/money/**/*.ts', 'packages/contracts/src/primitives.ts'],
-    rules: { 'no-restricted-syntax': ['error', { selector: 'TSEnumDeclaration', message: 'Вместо enum используйте union-типы.' }, NO_AMBIENT_TIME] },
+    files: ['packages/contracts/src/money/**/*.ts'],   // ADR-013
+    rules: { 'no-restricted-syntax': ['error', { selector: 'TSEnumDeclaration', message: 'Вместо enum используйте union-типы.' }, NO_AMBIENT_TIME, ...MONEY_FLOAT] },
   },
 
   /* ---------- страницы тонкие, default export только там, где требует Next ---------- */
@@ -1075,7 +1093,8 @@ module.exports = {
     { name: 'no-orphans', severity: 'error', from: { orphan: true, pathNot: [`${WEB}/app/`, '\\.d\\.ts$', '\\.config\\.', '\\.test\\.', '\\.canary\\.ts$'] }, to: {} },
   ],
   options: {
-    tsConfig: { fileName: 'tsconfig.json' },
+    tsConfig: { fileName: 'apps/web/tsconfig.json' },   // корневой tsconfig без paths: импорты @/… не резолвились бы
+    tsPreCompilationDeps: true,
     doNotFollow: { path: 'node_modules' },
     enhancedResolveOptions: { exportsFields: ['exports'], conditionNames: ['import', 'require', 'node', 'default'] },
   },

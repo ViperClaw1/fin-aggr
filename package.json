@@ -1,27 +1,18 @@
 {
-  "name": "fin-aggr",
+  "name": "fa",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.4.3",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "dev": "pnpm --filter @fa/web dev",
+    "build": "pnpm --filter @fa/web build",
+    "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
-    "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "packageManager": "pnpm@11.10.0"
 }

@@ -1,6 +1,6 @@
 # ADR-013: Money and rate parsing/formatting live in `@fa/contracts`
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-26
 
 ## Context
@@ -12,7 +12,7 @@
 ## Decision
 Move to `packages/contracts/src/money/`:
 - Brands and schemas: `Cents` (safe integer), `Rate` (decimal string, `0 <= r <= 1`, canonical form, no exponent, no leading `+`).
-- Parsing: `parseCents`, `parseRate` (throw typed errors; schema variants return results).
+- Parsing: `parseCents`, `parseRate(fraction)` (`"0.0435"`), `rateFromPercent(percent)` (`"4.35"` -> `"0.0435"`, decimal point shifted on the string). They throw `MoneyParseError` with a `code`; forms use the schemas' `safeParse`. `engine` throws `EngineError` when a `Rate` is out of bounds.
 - Formatting: `formatUsd(cents)`, `formatRate(rate, { as: "percent" })`.
 - Formatting uses integer and string operations only (`BigInt` or string split). `Intl` may be applied only to an already exact integer-part string. No `number` division, no `toFixed`, no `parseFloat`.
 - No `decimal.js` in `contracts`. Arithmetic stays in `@fa/engine`.
@@ -29,8 +29,8 @@ This partially supersedes ADR-003 (spec §3): the location of parsing, formattin
 
 ## Consequences
 - One source for parse, format, and rounding of display values. Golden tests live next to it with independent expected values.
-- New lint rules: ban `toFixed`, `parseFloat`, and `Number(` on money-typed values everywhere; ban money formatting helpers inside `shared/ui` (they must import from contracts).
-- Add canaries for both rules (`/add-lint-canary`).
+- New lint rules, path-based (no type-aware rule): in `packages/contracts/src/money/**` and `packages/engine/**` ban `Number(`, `parseInt`, `parseFloat`, `.toFixed` (and `.toNumber()` in engine); `Number.isSafeInteger` stays allowed. In `apps/web` ban `Intl.NumberFormat` and `toLocaleString` (money is formatted only by `@fa/contracts`).
+- One canary per rule (`/add-lint-canary`).
 - The spec's ESLint block that allows `as Cents` / `as Rate` moves from `packages/engine/src/money/**` to `packages/contracts/src/money/**`.
 - Component-registry rows keep their names.
 - Depends on the zod version decision (zod 4): schemas use the v4 API.
