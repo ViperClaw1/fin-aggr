@@ -1,0 +1,32 @@
+# All gates from spec §7.5, zero warnings (AC-1, AC-10).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_DATA_SOURCE: mock
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm lint:canaries
+      - run: pnpm depcruise
+      - run: pnpm knip
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
+      - run: pnpm e2e

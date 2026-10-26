@@ -1,6 +1,0 @@
-# Claude Code: personal and transient state
-.claude/settings.local.json
-CLAUDE.local.md
-.claude/scheduled_tasks.lock
-.claude/scheduled_tasks.json
-.claude/agent-memory-local/

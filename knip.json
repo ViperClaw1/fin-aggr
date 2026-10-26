@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["**/*.canary.ts", "**/*.canary.tsx"],
+  "workspaces": {
+    ".": {
+      "entry": ["tools/*.mjs"]
+    },
+    "apps/web": {
+      "ignoreDependencies": ["@fa/contracts", "@fa/engine", "@fa/fixtures"]
+    },
+    "packages/*": {}
+  }
+}

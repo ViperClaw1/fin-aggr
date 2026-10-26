@@ -1,2 +1,3 @@
 // expect: no-restricted-imports Upward imports
-import '@/widgets/compare-table';
+// depcruise: layer-features-no-up
+import '@/widgets/canary/gateway.canary';

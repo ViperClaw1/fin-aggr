@@ -1,0 +1,8 @@
+{
+  "//": "dependency-cruiser only: its paths resolver needs baseUrl, which TS 6 deprecates (TS5101).",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0"
+  }
+}

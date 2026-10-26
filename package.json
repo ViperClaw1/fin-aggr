@@ -8,25 +8,44 @@
     "build": "pnpm --filter @fa/web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint . --max-warnings 0",
-    "lint:canaries": "node tools/lint-canaries.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky",
+    "depcruise": "depcruise --config .dependency-cruiser.mjs apps packages",
+    "lint:canaries": "node tools/lint-canaries.mjs \u0026\u0026 node tools/depcruise-canaries.mjs",
+    "knip": "knip",
+    "test": "vitest run --coverage",
+    "e2e": "pnpm --filter @fa/web e2e"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@next/eslint-plugin-next": "16.4.3",
+    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/eslint-plugin": "1.6.28",
+    "dependency-cruiser": "18.7.0",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
+    "husky": "9.1.7",
+    "knip": "6.43.0",
+    "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.0"
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
   },
   "engines": {
     "node": "\u003e=24"
   },
-  "packageManager": "pnpm@11.10.0"
+  "packageManager": "pnpm@11.10.0",
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix --max-warnings 0 --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,css,yaml,yml}": "prettier --write"
+  }
 }

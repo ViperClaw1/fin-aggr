@@ -1,2 +1,3 @@
 // expect: no-restricted-imports Slices of entities
-import '@/entities/product';
+// depcruise: no-cross-slice
+import '@/entities/canary-fixtures/fixtures.canary';

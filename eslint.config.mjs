@@ -9,74 +9,25 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 import importX from 'eslint-plugin-import-x';
 import nextPlugin from '@next/eslint-plugin-next';
 import prettier from 'eslint-config-prettier';
+import vitest from '@vitest/eslint-plugin';
 import {
+  AMBIENT_NOW,
   BASE_PATHS,
   FIXTURES_BAN,
   GATEWAY,
   LAYER_PATTERNS,
+  MONEY_FLOAT,
+  NETWORK_GLOBALS,
+  NO_AMBIENT_TIME,
   PROFILE_WRITE,
+  SYNTAX_COMMON,
+  WEB_PROPS,
+  WEB_SYNTAX,
   restrict,
-} from './tools/eslint-boundaries.mjs';
+} from './tools/eslint-restrictions.mjs';
 
 const WEB = 'apps/web/src';
 const CANARIES = ['**/*.canary.ts', '**/*.canary.tsx'];
-
-/* ---------- syntax and properties ---------- */
-const SYNTAX_COMMON = [
-  { selector: 'TSEnumDeclaration', message: 'Use union types instead of enum.' },
-  {
-    selector: 'TSAsExpression[typeAnnotation.typeName.name=/^(Cents|Rate)$/]',
-    message: 'Cents and Rate are created only by @fa/contracts functions and schemas (ADR-013).',
-  },
-  { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: 'Forbidden (XSS).' },
-];
-const NO_AMBIENT_TIME = {
-  selector: "NewExpression[callee.name='Date'][arguments.length=0]",
-  message: 'Time only via shared/lib/clock or an asOf parameter (ADR-011).',
-};
-// ADR-013: no float on money; Number.isSafeInteger and other static Number methods stay allowed.
-const MONEY_FLOAT = [
-  {
-    selector: "CallExpression[callee.name='Number']",
-    message: 'Number() is forbidden: use @fa/contracts parsers.',
-  },
-  {
-    selector: 'CallExpression[callee.name=/^parse(Float|Int)$/]',
-    message: 'parseFloat/parseInt are forbidden: use @fa/contracts or decimal.js.',
-  },
-  {
-    selector:
-      "CallExpression[callee.object.name='Number'][callee.property.name=/^parse(Float|Int)$/]",
-    message: 'parseFloat/parseInt are forbidden: use @fa/contracts or decimal.js.',
-  },
-];
-const NO_LOCAL_MONEY_FORMAT = {
-  selector: "MemberExpression[object.name='Intl'][property.name='NumberFormat']",
-  message: 'Money and rates are formatted only by @fa/contracts (ADR-013).',
-};
-const AMBIENT_NOW = { object: 'Date', property: 'now', message: 'Time only via shared/lib/clock.' };
-const WEB_PROPS = [
-  {
-    property: 'toFixed',
-    message: 'Money and rates are formatted only by @fa/contracts (ADR-013).',
-  },
-  {
-    property: 'toLocaleString',
-    message: 'Money and rates are formatted only by @fa/contracts (ADR-013).',
-  },
-  {
-    object: 'navigator',
-    property: 'sendBeacon',
-    message: 'Forbidden: user data is never sent (ADR-004).',
-  },
-  { object: 'document', property: 'cookie', message: 'Forbidden.' },
-  AMBIENT_NOW,
-];
-const WEB_SYNTAX = [...SYNTAX_COMMON, NO_AMBIENT_TIME, NO_LOCAL_MONEY_FORMAT];
-const NETWORK_GLOBALS = [
-  { name: 'fetch', message: 'fetch only in shared/api/http.ts.' },
-  { name: 'XMLHttpRequest', message: 'Network only via shared/api/http.ts.' },
-];
 
 export default defineConfig(
   globalIgnores([
@@ -288,8 +239,24 @@ export default defineConfig(
       `${WEB}/app/**/{page,layout,loading,error,not-found,template,default}.tsx`,
       `${WEB}/app/**/{route,sitemap,robots}.ts`,
       '**/*.config.{js,mjs,cjs,ts}',
+      '.dependency-cruiser.mjs',
     ],
     rules: { 'import-x/no-default-export': 'off' },
+  },
+
+  /* ---------- tests ---------- */
+  {
+    files: ['**/*.test.{ts,tsx}'],
+    plugins: { vitest },
+    rules: {
+      ...vitest.configs.recommended.rules,
+      'vitest/no-focused-tests': 'error',
+      'vitest/no-disabled-tests': 'error',
+      'vitest/expect-expect': 'error',
+      'vitest/no-identical-title': 'error',
+      'max-lines-per-function': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+    },
   },
 
   // canaries are excluded from tsconfig (they import modules that do not exist), so no type info
