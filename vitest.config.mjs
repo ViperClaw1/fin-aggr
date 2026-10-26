@@ -3,8 +3,6 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['packages/*/src/**/*.test.ts', 'apps/web/src/**/*.test.{ts,tsx}'],
-    // ponytail: no tests exist before E1; drop this once contracts get their first test
-    passWithNoTests: true,
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],

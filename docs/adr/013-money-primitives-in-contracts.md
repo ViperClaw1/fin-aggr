@@ -37,5 +37,5 @@ This partially supersedes ADR-003 (spec §3): the location of parsing, formattin
 - No code exists yet, so nothing migrates. Spec §5 (`money.ts`) and §7.2 are updated to match.
 
 ## Open points
-- Exact canonical `Rate` form (trailing zeros allowed or normalized): decide in the golden tests.
+- Canonical `Rate` form, resolved 2026-10-26: the schema accepts trailing zeros (`"0.0400"`); `rateFromPercent` returns the form without them (`"0.0435"`, `"0.04"`, `"1"`); `engine` compares rates through Decimal, never as strings.
 - Negative `Cents` (fees, refunds): allowed in `Cents`, forbidden where a domain schema says non-negative.
