@@ -15,7 +15,7 @@ A canary is a file that deliberately violates one rule. `pnpm lint:canaries` exp
 
 1. Find the rule's config and what it forbids.
 2. Create `*.canary.ts` (or `.canary.tsx`) in a location where the rule applies, with the smallest violating code and a header comment naming the rule.
-3. Register the expected rule id in the canary runner config (see `scripts/lint-canaries`).
+3. The first line is the expectation read by `tools/lint-canaries.mjs`: `// expect: <ruleId> [message substring]`. Add the substring when several configs share one rule id (e.g. `no-restricted-imports`).
 4. Run `pnpm lint:canaries`. It must pass, meaning the canary fails as expected with the right rule id.
 5. Confirm the normal `pnpm lint` ignores canary paths and still passes.
 
