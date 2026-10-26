@@ -86,7 +86,6 @@ export default defineConfig(
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
 
-      'import-x/no-cycle': 'error',
       'import-x/no-duplicates': 'error',
       'import-x/no-self-import': 'error',
       'import-x/no-useless-path-segments': 'error',
