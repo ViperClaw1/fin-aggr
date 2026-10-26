@@ -1,0 +1,14 @@
+---
+paths:
+  - "packages/contracts/**"
+  - "packages/fixtures/**"
+---
+
+# Contracts and fixtures rules
+
+- Schemas are the source of truth. Types are inferred from them. Changes are additive. A breaking change needs a major version bump and an ADR.
+- zod v4. Query schemas use `z.strictObject()` and never contain `Profile` fields. `gateway.ts` and `queries.ts` never import `profile.ts`.
+- Organic entities have no keys matching sponsor, commission, payout, affiliate, cpa, cpc. Ads live only in `@fa/contracts/ads`.
+- Fixtures are deterministic from `FA_SEED`. All provenance has `isMock: true`. Only reference constants may have `isMock: false`, and then `verification.status` is `unverified`.
+- PDFs in fixtures are synthetic and written by us. No third-party material, no real customer data.
+- Every new fixture kind gets a contract test that parses it with its schema.

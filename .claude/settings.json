@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm -r typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm lint:canaries)",
+      "Bash(pnpm depcruise)",
+      "Bash(pnpm knip)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm build)",
+      "Bash(pnpm e2e)",
+      "Bash(pnpm e2e *)",
+      "Bash(pnpm exec prettier *)",
+      "Bash(pnpm exec eslint *)",
+      "Bash(pnpm exec vitest *)",
+      "Bash(pnpm exec tsc *)",
+      "Bash(pnpm exec depcruise *)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "ask": [
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(pnpm update *)",
+      "Bash(pnpm up *)",
+      "Bash(pnpm dlx *)",
+      "Bash(npx *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git stash *)",
+      "Bash(curl *)",
+      "Bash(wget *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./apps/web/.env)",
+      "Read(./apps/web/.env.*)",
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(pnpm publish *)",
+      "Bash(npm publish *)"
+    ]
+  },
+  "env": {
+    "NEXT_PUBLIC_DATA_SOURCE": "mock",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "FA_SEED": "20261025"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | xargs pnpm exec prettier --write --ignore-unknown"
+          }
+        ]
+      }
+    ]
+  }
+}

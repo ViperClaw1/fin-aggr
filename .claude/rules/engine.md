@@ -1,0 +1,17 @@
+---
+paths:
+  - "packages/engine/**"
+---
+
+# Engine rules
+
+- Public API only through `src/index.ts`. Everything else is private.
+- Pure functions: no I/O, no `Date`, no `Math.random`. Time arrives as `asOf`.
+- Money is `Cents`, rates are `Rate` strings. Create them only in `src/money/` (`usd()`, `rateFromPercent()`) or by schema parse. Never `as Cents` or `as Rate` elsewhere.
+- Arithmetic through the isolated Decimal clone (`Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP })`). No global `Decimal.set`.
+- Round to cents once, at the output boundary. Intermediate values stay unrounded.
+- Invalid input throws `EngineError` with a code. Never return `NaN`, `Infinity`, or a silently clamped value.
+- Every result shown to a user carries `steps` (`CalcStep`) and `assumptions`.
+- Each assumption listed in the spec (NIIT and AMT ignored, treasury as effective yield, no pass-through insurance) must appear in `assumptions`. Add new assumptions explicitly, never silently.
+- Tests: every public function has golden cases (independent expected values) and property tests (fast-check). Thresholds: lines 90%, branches 85%.
+- Spec: section 5 and the math notes. If code and spec disagree, stop and ask.
