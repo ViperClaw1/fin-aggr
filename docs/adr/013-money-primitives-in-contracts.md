@@ -37,6 +37,11 @@ This partially supersedes ADR-003 (spec §3): the location of parsing, formattin
 - Depends on the zod version decision (zod 4): schemas use the v4 API.
 - No code exists yet, so nothing migrates. Spec §5 (`money.ts`) and §7.2 are updated to match.
 
+## Amendment (E2, 2026-10-27): `SignedRate` and `centsFromInteger`
+The engine's lint rules ban `Number(`, `.toFixed` and `.toNumber()`, and `as Cents` / `as Rate` are allowed only in `contracts/src/money/**`. The engine therefore cannot turn a Decimal into `Cents` or a signed rate by itself. Two additive exports in `contracts/src/money/`:
+- `centsFromInteger(digits)`: an integer string (`"-150"`) → `Cents`, exact via the same digit loop as `parseCents`; `"-0"` → 0, outside the safe range `out_of_range`. The engine rounds half-up in Decimal and passes `toString()` of the integer.
+- `SignedRate`: a signed decimal fraction string without bounds, up to 8 decimals, no `"-0"`, for results such as `netSimpleAnnualYield`. Spec §5 used to declare it in `engine`, but a schema needs zod, and `engine` does not depend on zod.
+
 ## Open points
 - Canonical `Rate` form, resolved 2026-10-26: the schema accepts trailing zeros (`"0.0400"`); `rateFromPercent` returns the form without them (`"0.0435"`, `"0.04"`, `"1"`); `engine` compares rates through Decimal, never as strings.
 - Negative `Cents` (fees, refunds): allowed in `Cents`, forbidden where a domain schema says non-negative.

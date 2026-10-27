@@ -10,6 +10,7 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/src/**/*.test.ts', 'apps/web/src/**/*.test.{ts,tsx}'],
+    setupFiles: ['packages/engine/src/fast-check.config.ts'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],

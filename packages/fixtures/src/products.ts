@@ -56,6 +56,7 @@ const RULES: readonly Rule[] = [
     args: [leaf('stateOfResidence', 'CA'), leaf('stateOfResidence', 'TX')],
   },
   { op: 'not', label: 'Not available in NY', arg: leaf('stateOfResidence', 'NY') },
+  { op: 'neq', field: 'residency', value: 'nonresident', label: 'Not for nonresidents' },
   {
     op: 'and',
     label: 'Deposit between $1,000 and $1,000,000',
@@ -156,7 +157,8 @@ export function generateProducts(rng: Rng, input: ProductInputs): Product[] {
         tierMode: i % 5 === 4 ? 'marginal' : 'whole_balance',
         tiers: tiers(rng.int(1, 2), rng.int(300, 520)),
         compounding: cycle(CD_COMPOUNDING, i),
-        taxTreatment: 'taxable',
+        // synthetic: two federal_exempt CDs so the engine's federal exemption runs on fixtures
+        taxTreatment: i % 30 === 29 ? 'federal_exempt' : 'taxable',
       },
     };
   });

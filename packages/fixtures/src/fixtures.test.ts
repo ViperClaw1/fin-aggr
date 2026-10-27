@@ -148,15 +148,15 @@ describe('variant coverage for E2', () => {
     );
     expect(coverage(countBy((p) => p.tierMode))).toEqual(expected('whole_balance', 'marginal'));
   });
-  it('uses taxable and state_local_exempt (federal_exempt is muni only, out of stage 1)', () => {
+  it('uses every tax treatment (federal_exempt on two synthetic CDs, E2 decision 6)', () => {
     expect(coverage(countBy((p) => p.taxTreatment))).toEqual(
-      expected('taxable', 'state_local_exempt'),
+      expected('taxable', 'state_local_exempt', 'federal_exempt'),
     );
   });
-  it('rules use every operator except neq, nested at least three levels', () => {
+  it('rules use every operator, nested at least three levels', () => {
     const ops = new Set<string>();
     for (const p of f.products) ruleOps(p.eligibility, ops);
-    expect([...ops].sort()).toEqual(['and', 'eq', 'gte', 'in', 'lte', 'not', 'or']);
+    expect([...ops].sort()).toEqual(['and', 'eq', 'gte', 'in', 'lte', 'neq', 'not', 'or']);
     expect(Math.max(...f.products.map((p) => ruleDepth(p.eligibility)))).toBeGreaterThanOrEqual(3);
   });
   it('has single- and multi-tier products', () => {
@@ -168,6 +168,6 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
-    expect(fnv1a(JSON.stringify(f))).toBe('16443c7e');
+    expect(fnv1a(JSON.stringify(f))).toBe('00c9375e');
   });
 });

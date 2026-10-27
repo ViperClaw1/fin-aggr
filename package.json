@@ -12,10 +12,11 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "depcruise": "depcruise --config .dependency-cruiser.mjs apps packages",
-    "lint:canaries": "node tools/lint-canaries.mjs \u0026\u0026 node tools/depcruise-canaries.mjs",
+    "lint:canaries": "node tools/lint-canaries.mjs && node tools/depcruise-canaries.mjs",
     "knip": "knip",
-    "test": "vitest run --coverage",
-    "e2e": "pnpm --filter @fa/web e2e"
+    "test": "vitest run --coverage && node tools/golden-count.mjs",
+    "e2e": "pnpm --filter @fa/web e2e",
+    "bench": "vitest bench --run"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -38,7 +39,7 @@
     "vitest": "5.0.5"
   },
   "engines": {
-    "node": "\u003e=24"
+    "node": ">=24"
   },
   "packageManager": "pnpm@11.10.0",
   "lint-staged": {

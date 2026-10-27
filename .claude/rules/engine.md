@@ -7,7 +7,7 @@ paths:
 
 - Public API only through `src/index.ts`. Everything else is private.
 - Pure functions: no I/O, no `Date`, no `Math.random`. Time arrives as `asOf`.
-- Money is `Cents`, rates are `Rate` strings. Create them only via `@fa/contracts` (`parseCents`, `parseRate`, `rateFromPercent`, ADR-013) or by schema parse. Never `as Cents` or `as Rate` elsewhere.
+- Money is `Cents`, rates are `Rate` strings. Create them only via `@fa/contracts` (`parseCents`, `parseRate`, `rateFromPercent`, `centsFromInteger`, `SignedRate`, ADR-013) or by schema parse. Never `as Cents` or `as Rate` elsewhere.
 - Arithmetic through the isolated Decimal clone (`Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP })`). No global `Decimal.set`.
 - Round to cents once, at the output boundary. Intermediate values stay unrounded.
 - Invalid input throws `EngineError` with a code. Never return `NaN`, `Infinity`, or a silently clamped value.

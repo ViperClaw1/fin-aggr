@@ -1,7 +1,7 @@
 export { Cents } from './money/cents';
-export { Rate } from './money/rate';
+export { Rate, SignedRate } from './money/rate';
 export { MoneyParseError, type MoneyParseErrorCode } from './money/errors';
-export { parseCents, parseRate, rateFromPercent } from './money/parse';
+export { centsFromInteger, parseCents, parseRate, rateFromPercent } from './money/parse';
 export { formatRate, formatUsd } from './money/format';
 export { Id, IsoDate, IsoDateTime } from './primitives';
 export { fact, Provenance, type Fact } from './provenance';

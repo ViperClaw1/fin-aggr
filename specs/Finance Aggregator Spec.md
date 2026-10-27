@@ -551,6 +551,8 @@ export const SponsoredItem = z.object({
 //   rateFromPercent(percent: string): Rate    "4.35" -> "0.0435", сдвиг точки на строке
 //   formatUsd(value: Cents): string           "$1,234.56"
 //   formatRate(rate: Rate): string             "0.0435" -> "4.35%"
+//   centsFromInteger(digits: string): Cents   "-150" -> -150; выход engine из Decimal, без float
+//   SignedRate                                знаковая доля без границ, до 8 знаков, без "-0"
 // MoneyParseError { code }; формы используют safeParse схем.
 
 // money.ts — арифметика; Rate вне [0, 1] -> EngineError
@@ -558,7 +560,7 @@ export function sumCents(values: readonly Cents[]): Cents;
 export function mulRate(amount: Cents, rate: Rate): Cents;     // half-up до цента, только на выходе
 
 // yield.ts
-export type SignedRate = string & { readonly __brand: 'SignedRate' };   // допускает минус; объявлен в engine
+// SignedRate импортируется из @fa/contracts (ADR-013): engine не зависит от zod
 export interface YieldProduct {
   category: ProductCategory; termMonths: number | null;
   tierMode: 'whole_balance' | 'marginal'; tiers: readonly RateTier[];
@@ -636,17 +638,17 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 
 **Чистая доходность (`computeNetYield`):**
 
-1. **Ставка.** `whole_balance`: берётся тир, в который попадает вся сумма. `marginal`: каждый тир считается на свою часть суммы.
+1. **Ставка.** `whole_balance`: берётся тир, где `minBalance ≤ principal ≤ maxBalance`. `marginal`: тир `i` получает `clamp(principal, min_i, min_{i+1}) − min_i`, последний тир берёт остаток; `maxBalance` в `marginal` не участвует (тиры вплотную не дают зазора). Сумма вне тиров: `EngineError('no_tier')`.
 2. **Проценты брутто.** `principal * ((1 + apy)^(months / 12) - 1)`. APY уже эффективная годовая ставка, поэтому частота капитализации влияет только на пояснение, а не на число. Для treasury принимается эквивалентная эффективная доходность (допущение, показывается в `assumptions`).
 3. **Срок.** Если `holdingMonths` больше `termMonths`, расчёт ограничивается сроком, добавляется предупреждение «ставка после срока не продлевается».
-4. **Досрочное закрытие.** Штраф по правилу продукта: `days_of_interest` и `months_of_interest` это проценты за соответствующий период по той же ставке, `percent_of_principal` это доля основной суммы. Штраф не ограничивается начисленными процентами.
+4. **Досрочное закрытие.** Штраф по правилу продукта: `days_of_interest` это простой процент `principal × apy × days / 365` (допущение `day_count_365`), `months_of_interest` это проценты за `months / 12` года по формуле пункта 2, `percent_of_principal` это доля основной суммы. Штраф не ограничивается начисленными процентами.
 5. **База налога.** `max(0, проценты - штраф)` (допущение «штраф уменьшает налогооблагаемую базу», редактируемое, проверить у налогового эксперта).
 6. **Федеральный налог.** Разность налога по скобкам с процентами и без них: `tax(income + interest) - tax(income)`. NIIT, AMT, фазаут вычетов не учитываются, это явно указано в `assumptions`.
 7. **Штат и город.** `assumedMarginalRate` штата и ручная ставка города на ту же базу. `state_local_exempt` обнуляет штат и город, `federal_exempt` обнуляет федеральный налог.
-8. **Округление.** Каждая налоговая строка и итог округляются half-up до цента один раз на выходе.
-9. **Доходность.** Простая годовая: `netInterest / principal * 12 / holdingMonths`, без капитализации (так объяснимо одной строкой).
+8. **Округление.** Каждая строка (проценты, штраф, база, налоги) округляется half-up до цента один раз на выходе; `netInterest` это точная разность округлённых строк, поэтому показанные строки сходятся.
+9. **Доходность.** Простая годовая: `netInterest / principal * 12 / holdingMonths`, без капитализации (так объяснимо одной строкой). Half-up до 8 знаков, трейлинг-нули срезаются, без `-0`.
 
-**Допуск (`evaluateEligibility`).** Трёхзначная логика Клини. `and`: хоть одно `false` даёт `false`, иначе хоть одно `unknown` даёт `unknown`, иначе `true`. `or`: хоть одно `true` даёт `true`, иначе хоть одно `unknown` даёт `unknown`, иначе `false`. `not` сохраняет `unknown`. Лист с незаполненным полем профиля даёт `unknown` и добавляет поле в `missingFields`. Ограничения продукта (`minOpening`, `maxDeposit`) добавляются в трассу неявными узлами с подписями «Minimum opening deposit» и «Maximum deposit».
+**Допуск (`evaluateEligibility`).** Трёхзначная логика Клини. `and`: хоть одно `false` даёт `false`, иначе хоть одно `unknown` даёт `unknown`, иначе `true`. `or`: хоть одно `true` даёт `true`, иначе хоть одно `unknown` даёт `unknown`, иначе `false`. `not` сохраняет `unknown`. Лист с незаполненным полем профиля даёт `unknown` и добавляет поле в `missingFields`. Ограничения продукта (`minOpening`, `maxDeposit`) добавляются в трассу неявными узлами с подписями «Minimum opening deposit» и «Maximum deposit» (`productEligibilityRule(product)` оборачивает правило в `and`). Тип значения в листе не совпал с типом поля (например, `eq` для `age` со строкой): `EngineError('invalid_rule')`, а не `false`. `missingFields` идут в порядке `ProfileField`.
 
 **Ранжирование (`rankProducts`).** Группы: `eligible`, затем `needs_profile`, затем `ineligible`. Внутри группы по `netInterest` по убыванию, при равенстве по `product.id` (детерминизм). Ранг присваивается только `eligible`. Сигнатура не принимает никаких рекламных данных (ADR-006).
 
@@ -675,7 +677,7 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 **Property-тесты (fast-check):**
 
 - `netInterest` не больше `grossInterest`; при нулевых ставках налога равен `gross - penalty`.
-- Итог монотонен по `principal` при фиксированных остальных входах (без тирных границ).
+- Итог монотонен по `principal` при фиксированных остальных входах (без тирных границ) с допуском в 1 цент на каждую округляемую налоговую строку.
 - `insuredTotal + uninsuredTotal` равно сумме счетов.
 - Ни одно размещение не превышает `лимит - резерв`.
 - Добавление кандидата не уменьшает `insuredTotal`.

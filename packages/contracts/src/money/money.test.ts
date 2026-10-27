@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Cents } from './cents';
 import { MoneyParseError, type MoneyParseErrorCode } from './errors';
 import { formatRate, formatUsd } from './format';
-import { parseCents, parseRate, rateFromPercent } from './parse';
-import { Rate } from './rate';
+import { centsFromInteger, parseCents, parseRate, rateFromPercent } from './parse';
+import { Rate, SignedRate } from './rate';
 
 const MAX = Number.MAX_SAFE_INTEGER; // 9007199254740991 cents = $90,071,992,547,409.91
 
@@ -75,6 +75,47 @@ describe('parseCents', () => {
     ['90071992547409.92', 'out_of_range'],
   ] as const)('%s → %s', (input, code) => {
     expect(codeOf(() => parseCents(input))).toBe(code);
+  });
+});
+
+describe('SignedRate schema', () => {
+  it.each(['0', '-0.0123', '0.0435', '-1.5', '12', '-0.00000001', '0.10'])('accepts %s', (s) => {
+    expect(SignedRate.safeParse(s).success).toBe(true);
+  });
+  it.each(['-0', '-0.0', '-0.00000000', '0.000000001', '01', '+0.1', '1e-2', '.5', ''])(
+    'rejects %s',
+    (s) => {
+      expect(SignedRate.safeParse(s).success).toBe(false);
+    },
+  );
+});
+
+describe('centsFromInteger', () => {
+  it.each([
+    ['0', 0],
+    ['150', 150],
+    ['-150', -150],
+    ['007', 7],
+    ['9007199254740991', MAX],
+    ['-9007199254740991', -MAX],
+  ])('%s → %i', (input, cents) => {
+    expect(centsFromInteger(input)).toBe(cents);
+  });
+
+  it('never returns negative zero', () => {
+    expect(Object.is(centsFromInteger('-0'), 0)).toBe(true);
+  });
+
+  it.each([
+    ['1.5', 'invalid_format'],
+    ['1,000', 'invalid_format'],
+    [' 1', 'invalid_format'],
+    ['', 'invalid_format'],
+    ['1e3', 'invalid_format'],
+    ['9007199254740992', 'out_of_range'],
+    ['-9007199254740992', 'out_of_range'],
+  ] as const)('%s → %s', (input, code) => {
+    expect(codeOf(() => centsFromInteger(input))).toBe(code);
   });
 });
 

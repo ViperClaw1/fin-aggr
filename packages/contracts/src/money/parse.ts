@@ -34,6 +34,19 @@ export function parseCents(input: string): Cents {
   return Cents.parse(sign === '-' && value !== 0 ? -value : value);
 }
 
+/**
+ * An integer string of cents such as "-150" → -150, for engine output that is already rounded.
+ * No separators, no decimals; outside the safe range is `out_of_range`. "-0" → 0.
+ */
+export function centsFromInteger(digits: string): Cents {
+  const match = /^(-)?(\d+)$/.exec(digits);
+  if (!match) throw new MoneyParseError('invalid_format', digits);
+  const [, sign, whole = ''] = match;
+  if (BigInt(whole) > MAX_CENTS) throw new MoneyParseError('out_of_range', digits);
+  const value = digitsToInt(stripLeadingZeros(whole));
+  return Cents.parse(sign === '-' && value !== 0 ? -value : value);
+}
+
 /** A fraction string such as "0.0435" (0 ≤ r ≤ 1, up to 8 decimals). */
 export function parseRate(fraction: string): Rate {
   const text = fraction.trim();
