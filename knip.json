@@ -6,7 +6,7 @@
       "entry": ["tools/*.mjs"]
     },
     "apps/web": {
-      "ignoreDependencies": ["@fa/contracts", "@fa/engine", "@fa/fixtures"]
+      "ignoreDependencies": ["@fa/engine"]
     },
     "packages/*": {}
   }

@@ -59,7 +59,7 @@
   "env": {
     "NEXT_PUBLIC_DATA_SOURCE": "mock",
     "NEXT_TELEMETRY_DISABLED": "1",
-    "FA_SEED": "20261025"
+    "NEXT_PUBLIC_FA_SEED": "20261025"
   },
   "hooks": {
     "PostToolUse": [
