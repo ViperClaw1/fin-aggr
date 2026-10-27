@@ -23,5 +23,8 @@ Every slice gets a row here when it is created (spec §2, slice rule 4).
 | reference queries | entities/reference | Tax tables, insurance rules | `taxTablesQuery`, `insuranceRulesQuery` | widgets, app |
 | sponsored queries | entities/sponsored | Ads per placement (ADR-006) | `sponsoredQuery` | widgets/sponsored-slot |
 | profile store | entities/profile | Draft in this browser only, versioned, export/import | `useProfileDraft`, `useCompleteProfile`, `useProfileStatus`, `useProfileHydrated`, `useProfileActions` (edit-profile only), `rehydrateProfile` | features, widgets, app/providers |
+| headlineApy | entities/product | Highest tier APY (via `compareRate`) | `headlineApy(product)` | filter-products, sorting |
+| product filters | features/filter-products | URL filters (nuqs), pure `filterProducts`, `filterRanked` | `PRODUCT_FILTER_KEYS` (parsers and filters join with the UI in E4) | app |
+| citation URL state | features/open-citation | `?doc=&page=&q=`, history push | `CITATION_KEYS` (`useOpenCitation` joins with the viewer in E6) | app |
 | query client | shared/lib | Freshness, retry policy, client per request | `getQueryClient`, `makeQueryClient`, `STALE_TIME` | app/providers, entities |
 | clock | shared/lib | The only wall clock in apps/web | `now`, `today`, `setClock` | client code |

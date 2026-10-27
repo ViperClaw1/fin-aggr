@@ -11,6 +11,7 @@ paths:
 - `getGateway()` only in `entities/*/api`. `fetch` only in `shared/api/http.ts`. `localStorage` only in `entities/profile/model/persist.ts`. Profile writes only in `features/edit-profile`.
 - Zustand only in `entities/profile/model/**` (ESLint `ZUSTAND_BAN`, ADR-009).
 - Changing the shape of `Profile` or `ProfileDraft`: bump `CURRENT_VERSION` in `entities/profile/model/migrate.ts`, add the migration step from the previous version, and a test that migrates a stored old draft.
+- A client component that reads URL state (nuqs, `useSearchParams`) sits inside `<Suspense fallback>`. With `cacheComponents` the route stays static and the fallback is prerendered; without it `next build` fails. URL state is never filled from the profile (depcruise `url-state-never-from-profile`). The citation owns `doc`, `page`, `q`.
 - `SponsoredSlot` is mounted only in `app/**`, never inside a table, list, or card of organic results.
 - `page.tsx` is thin composition (80 lines max): widgets, metadata, prefetch.
 - Server Components by default. `"use client"` only on leaves. Heavy modules (pdf.js, charts) through `next/dynamic`.

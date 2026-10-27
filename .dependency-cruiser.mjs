@@ -110,6 +110,14 @@ export default {
       to: { path: `${WEB}/shared/api/` },
     },
 
+    {
+      // shared links must not carry the profile: URL state is never filled from it (ADR-004)
+      name: 'url-state-never-from-profile',
+      severity: 'error',
+      from: { path: `${WEB}/features/(filter-products|open-citation)/` },
+      to: { path: `${WEB}/entities/profile/` },
+    },
+
     // hygiene
     {
       name: 'prod-not-to-test',

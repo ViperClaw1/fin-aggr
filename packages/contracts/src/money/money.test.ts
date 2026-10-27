@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Cents } from './cents';
 import { MoneyParseError, type MoneyParseErrorCode } from './errors';
+import { compareRate } from './compare';
 import { formatRate, formatUsd } from './format';
 import { centsFromInteger, parseCents, parseRate, rateFromPercent } from './parse';
 import { Rate, SignedRate } from './rate';
@@ -204,6 +205,22 @@ describe('round trips over a seeded sample', () => {
       const rate = Rate.parse(text === '' ? '0' : text);
       expect(rateFromPercent(formatRate(rate).slice(0, -1))).toBe(rate);
     }
+  });
+});
+
+describe('compareRate', () => {
+  it.each([
+    ['0.04', '0.0400', 0],
+    ['0', '0.00000000', 0],
+    ['1', '1.00000000', 0],
+    ['0.0435', '0.044', -1],
+    ['0.1', '0.09999999', 1],
+    ['0.00000001', '0', 1],
+    ['1', '0.99999999', 1],
+    ['0.5', '1', -1],
+  ] as const)('%s vs %s → %i', (a, b, out) => {
+    expect(compareRate(Rate.parse(a), Rate.parse(b))).toBe(out);
+    expect(compareRate(Rate.parse(b), Rate.parse(a))).toBe(-out || 0);
   });
 });
 
