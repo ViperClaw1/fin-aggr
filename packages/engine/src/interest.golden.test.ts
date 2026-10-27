@@ -3,22 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { computeInterest, type YieldProduct } from './interest';
 import { toCents } from './money';
 import { cd, THREE_TIERS } from './test-data';
-
-// independent calc: packages/engine/golden/interest.py
-const EXPECTED = {
-  'cd.6m': 24695,
-  'cd.12m': 50000,
-  'cd.18m': 75930,
-  'whole.atTierMax': 40000,
-  'whole.centAbove': 45000,
-  'marginal.atTierMin': 40000,
-  'marginal.centAbove': 40000,
-  'marginal.allThree': 695000,
-  'penalty.days90': 12329,
-  'penalty.months6': 24695,
-  'penalty.percent1': 10000,
-  'cd.1m': 4074,
-} as const;
+// independent calc: packages/engine/golden/interest.py, whose output is interest.json
+import EXPECTED from '../golden/interest.json';
 
 const P = Cents.parse(1000000);
 const gross = (p: YieldProduct, principal: Cents, months: number): Cents =>

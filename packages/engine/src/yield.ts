@@ -57,6 +57,11 @@ const A = {
     text: 'Yield is simple annual: net interest / principal × 12 / months held, no compounding.',
     editable: false,
   },
+  roundingPerLine: {
+    id: 'rounding_per_line',
+    text: 'Each line is rounded to the cent separately, so a line may differ by one cent from its shown inputs.',
+    editable: false,
+  },
   treasury: {
     id: 'treasury_effective_yield',
     text: 'Treasury interest is modeled as an equivalent effective annual yield.',
@@ -77,6 +82,7 @@ function assumptionsFor(product: YieldProduct): Assumption[] {
     A.niitAmt,
     A.penaltyBase,
     A.simpleYield,
+    A.roundingPerLine,
     ...(product.category === 'treasury' ? [A.treasury] : []),
     ...(product.earlyWithdrawal.kind === 'days_of_interest' ? [A.dayCount] : []),
   ];

@@ -2,57 +2,15 @@ import { Cents } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
 import { planCoverage, type CoverageCandidate, type CoveragePlan } from './coverage';
 import { INSURANCE } from './test-data';
+// independent calc: packages/engine/golden/coverage.py, whose output is coverage.json
+import EXPECTED from '../golden/coverage.json';
 
-type Expected = [
-  allocations: [string, string, number][],
-  insured: number,
-  uninsured: number,
-  used: number,
-];
-
-// independent calc: packages/engine/golden/coverage.py
-const EXPECTED = {
-  atLimit: [[['fdic:1', 'single', 25000000]], 25000000, 0, 1],
-  centAbove: [[['fdic:1', 'single', 25000000]], 25000000, 1, 1],
-  centAboveTwoBanks: [
-    [
-      ['fdic:1', 'single', 25000000],
-      ['fdic:2', 'single', 1],
-    ],
-    25000001,
-    0,
-    2,
-  ],
-  reserve: [
-    [
-      ['fdic:1', 'single', 24900000],
-      ['fdic:2', 'single', 100000],
-    ],
-    25000000,
-    0,
-    2,
-  ],
-  joint: [[['fdic:1', 'joint', 50000000]], 50000000, 0, 1],
-  maxInstitutions: [
-    [
-      ['fdic:1', 'single', 25000000],
-      ['fdic:2', 'single', 25000000],
-    ],
-    50000000,
-    30000000,
-    2,
-  ],
-  fintech: [[['fdic:1', 'single', 10000000]], 10000000, 0, 1],
-  bothCategoriesOneInstitution: [
-    [
-      ['fdic:1', 'single', 25000000],
-      ['fdic:1', 'joint', 50000000],
-    ],
-    75000000,
-    15000000,
-    1,
-  ],
-} satisfies Record<string, Expected>;
+interface Summary {
+  allocations: [string, string, number][];
+  insured: number;
+  uninsured: number;
+  used: number;
+}
 
 const BANKS: CoverageCandidate[] = [
   { institutionId: 'fdic:1', regulator: 'FDIC', kind: 'direct_bank', preference: 1 },
@@ -89,12 +47,12 @@ function plan({ single, joint, candidates, reserve = 0, maxInstitutions }: Case)
   });
 }
 
-const summary = (p: CoveragePlan): Expected => [
-  p.allocations.map((a) => [a.institutionId, a.category, a.amount]),
-  p.insuredTotal,
-  p.uninsuredTotal,
-  p.institutionsUsed,
-];
+const summary = (p: CoveragePlan): Summary => ({
+  allocations: p.allocations.map((a) => [a.institutionId, a.category, a.amount]),
+  insured: p.insuredTotal,
+  uninsured: p.uninsuredTotal,
+  used: p.institutionsUsed,
+});
 
 describe('planCoverage golden cases', () => {
   it('golden: exactly the limit is fully insured', () => {

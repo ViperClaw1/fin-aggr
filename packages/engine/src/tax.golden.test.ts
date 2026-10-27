@@ -3,22 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { D } from './money';
 import { taxesOnInterest, type TaxInput, type Taxes, type TaxProfile } from './tax';
 import { TABLES } from './test-data';
-
-// independent calc: packages/engine/golden/tax.py
-const EXPECTED = {
-  'single.oneCentAtEdge': '0.1',
-  'single.oneCentAboveEdge': '0.2',
-  'married_joint.oneCentAtEdge': '0.1',
-  'married_joint.oneCentAboveEdge': '0.2',
-  'married_separate.oneCentAtEdge': '0.1',
-  'married_separate.oneCentAboveEdge': '0.2',
-  'head_of_household.oneCentAtEdge': '0.1',
-  'head_of_household.oneCentAboveEdge': '0.2',
-  'crossing.federal': '32037.1',
-  'ca.state': '7407.42',
-  'ca.local': '1234.57',
-  'tx.state': '0',
-} as const;
+// independent calc: packages/engine/golden/tax.py, whose output is tax.json
+import EXPECTED from '../golden/tax.json';
 
 const FIRST_EDGE: Record<FilingStatus, number> = {
   single: 2000000,

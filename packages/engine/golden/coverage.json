@@ -1,0 +1,62 @@
+{
+  "atLimit": {
+    "allocations": [["fdic:1", "single", 25000000]],
+    "insured": 25000000,
+    "uninsured": 0,
+    "used": 1
+  },
+  "centAbove": {
+    "allocations": [["fdic:1", "single", 25000000]],
+    "insured": 25000000,
+    "uninsured": 1,
+    "used": 1
+  },
+  "centAboveTwoBanks": {
+    "allocations": [
+      ["fdic:1", "single", 25000000],
+      ["fdic:2", "single", 1]
+    ],
+    "insured": 25000001,
+    "uninsured": 0,
+    "used": 2
+  },
+  "reserve": {
+    "allocations": [
+      ["fdic:1", "single", 24900000],
+      ["fdic:2", "single", 100000]
+    ],
+    "insured": 25000000,
+    "uninsured": 0,
+    "used": 2
+  },
+  "joint": {
+    "allocations": [["fdic:1", "joint", 50000000]],
+    "insured": 50000000,
+    "uninsured": 0,
+    "used": 1
+  },
+  "maxInstitutions": {
+    "allocations": [
+      ["fdic:1", "single", 25000000],
+      ["fdic:2", "single", 25000000]
+    ],
+    "insured": 50000000,
+    "uninsured": 30000000,
+    "used": 2
+  },
+  "fintech": {
+    "allocations": [["fdic:1", "single", 10000000]],
+    "insured": 10000000,
+    "uninsured": 0,
+    "used": 1
+  },
+  "bothCategoriesOneInstitution": {
+    "allocations": [
+      ["fdic:1", "single", 25000000],
+      ["fdic:1", "joint", 50000000]
+    ],
+    "insured": 75000000,
+    "uninsured": 15000000,
+    "used": 1
+  }
+}

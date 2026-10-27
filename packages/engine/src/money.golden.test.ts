@@ -1,22 +1,12 @@
 import { Cents, Rate } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
 import { mulRate, sumCents } from './money';
+// independent calc: packages/engine/golden/money.py, whose output is money.json
+import EXPECTED from '../golden/money.json';
 
 const MAX = Cents.parse(Number.MAX_SAFE_INTEGER);
 const c = (n: number): Cents => Cents.parse(n);
 const r = (s: string): Rate => Rate.parse(s);
-
-// independent calc: packages/engine/golden/money.py
-const EXPECTED = {
-  halfCentRoundsUp: 1,
-  oneAndHalfRoundsUp: 2,
-  negativeHalfRoundsAwayFromZero: -1,
-  justBelowHalfRoundsDown: 1,
-  justAboveHalfRoundsUp: 2,
-  typicalInterest: 5370370,
-  maxTimesOne: 9007199254740991,
-  sumToMax: 9007199254740991,
-};
 
 describe('mulRate golden cases', () => {
   it('golden: half a cent rounds up', () => {

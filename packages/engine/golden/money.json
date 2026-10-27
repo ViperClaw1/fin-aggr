@@ -1,0 +1,10 @@
+{
+  "halfCentRoundsUp": 1,
+  "oneAndHalfRoundsUp": 2,
+  "negativeHalfRoundsAwayFromZero": -1,
+  "justBelowHalfRoundsDown": 1,
+  "justAboveHalfRoundsUp": 2,
+  "typicalInterest": 5370370,
+  "maxTimesOne": 9007199254740991,
+  "sumToMax": 9007199254740991
+}

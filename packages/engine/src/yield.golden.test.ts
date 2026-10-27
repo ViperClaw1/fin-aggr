@@ -3,24 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { YieldProduct } from './interest';
 import { run, THREE_TIERS } from './test-data';
 import type { NetYieldResult } from './yield';
-
-// independent calc: packages/engine/golden/yield.py
-// [gross, penalty, taxable, federal, state, local, net, netSimpleAnnualYield]
-const EXPECTED = {
-  cd12: [50000, 0, 50000, 10000, 3000, 0, 37000, '0.037'],
-  crossing: [50000, 0, 50000, 13000, 3000, 0, 34000, '0.034'],
-  savingsWhole: [45000, 0, 45000, 9000, 2700, 0, 33300, '0.0333'],
-  savingsMarginal: [695000, 0, 695000, 139000, 41700, 0, 514300, '0.03428667'],
-  treasury: [24695, 0, 24695, 4939, 0, 0, 19756, '0.039512'],
-  penaltyDays: [24695, 12329, 12366, 2473, 742, 0, 9151, '0.018302'],
-  penaltyMonths: [24695, 24695, 0, 0, 0, 0, 0, '0'],
-  penaltyPercent: [24695, 10000, 14695, 2939, 882, 0, 10874, '0.021748'],
-  penaltyAboveInterest: [4074, 24695, 0, 0, 0, 0, -20621, '-0.247452'],
-  pastTerm: [50000, 0, 50000, 10000, 3000, 0, 37000, '0.02466667'],
-  noStateTax: [50000, 0, 50000, 10000, 0, 0, 40000, '0.04'],
-  cityRate: [50000, 0, 50000, 10000, 3000, 500, 36500, '0.0365'],
-  federalExempt: [50000, 0, 50000, 0, 3000, 0, 47000, '0.047'],
-} as const;
+// independent calc: packages/engine/golden/yield.py, whose output is yield.json
+import EXPECTED from '../golden/yield.json';
 
 const lines = (r: NetYieldResult): readonly (number | string)[] => [
   r.grossInterest,

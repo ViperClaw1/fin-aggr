@@ -1,6 +1,13 @@
 // Gross interest, term cap and early withdrawal penalty (spec §5 rules 2–4, E2 decision 2).
 import type { Decimal } from 'decimal.js';
-import type { Cents, EarlyWithdrawal, Product, ProductCategory, RateTier } from '@fa/contracts';
+import type {
+  Cents,
+  EarlyWithdrawal,
+  Product,
+  ProductCategory,
+  Rate,
+  RateTier,
+} from '@fa/contracts';
 import { EngineError } from './errors';
 import { D, decCents, decRate } from './money';
 import { tierPortions, type TierPortion } from './tiers';
@@ -26,10 +33,27 @@ export interface Interest {
 
 export const DAYS_PER_YEAR = 365;
 
+// A fractional Decimal pow at precision 40 costs ~0.3 ms; the factor depends only on (apy, years),
+// which repeat across products and profile edits. Decimal is immutable, so sharing is safe.
+// ponytail: cleared when full instead of LRU; switch to LRU if a real workload thrashes it.
+const GROWTH_CACHE_MAX = 4096;
+const growthCache = new Map<string, Decimal>();
+
+/** (1 + apy)^years − 1, memoized. */
+export function growth(apy: Rate, years: Decimal): Decimal {
+  const key = `${apy}|${years.toString()}`;
+  const hit = growthCache.get(key);
+  if (hit !== undefined) return hit;
+  if (growthCache.size >= GROWTH_CACHE_MAX) growthCache.clear();
+  const value = decRate(apy).plus(1).pow(years).minus(1);
+  growthCache.set(key, value);
+  return value;
+}
+
 /** Σ amount × ((1 + apy)^years − 1): APY is already effective, compounding does not change it. */
 function interestFor(portions: readonly TierPortion[], years: Decimal): Decimal {
   return portions.reduce(
-    (sum, { apy, amount }) => sum.plus(amount.times(decRate(apy).plus(1).pow(years).minus(1))),
+    (sum, { apy, amount }) => sum.plus(amount.times(growth(apy, years))),
     new D(0),
   );
 }

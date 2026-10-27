@@ -1,0 +1,14 @@
+{
+  "cd.6m": 24695,
+  "cd.12m": 50000,
+  "cd.18m": 75930,
+  "whole.atTierMax": 40000,
+  "whole.centAbove": 45000,
+  "marginal.atTierMin": 40000,
+  "marginal.centAbove": 40000,
+  "marginal.allThree": 695000,
+  "penalty.days90": 12329,
+  "penalty.months6": 24695,
+  "penalty.percent1": 10000,
+  "cd.1m": 4074
+}

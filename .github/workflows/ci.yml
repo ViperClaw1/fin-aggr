@@ -27,6 +27,7 @@ jobs:
       - run: pnpm depcruise
       - run: pnpm knip
       - run: pnpm test
+      - run: pnpm golden:check # Python 3 ships with ubuntu-latest
       - run: pnpm build
       - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
       - run: pnpm e2e

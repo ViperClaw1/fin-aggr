@@ -9,11 +9,12 @@ const MONTHS_6 = EarlyWithdrawal.parse({ kind: 'months_of_interest', months: 6 }
 const DAYS_90 = EarlyWithdrawal.parse({ kind: 'days_of_interest', days: 90 });
 
 describe('assumptions, warnings and steps', () => {
-  it('always lists NIIT/AMT, the penalty tax base and simple yield', () => {
+  it('always lists NIIT/AMT, the penalty tax base, simple yield and per-line rounding', () => {
     expect(ids(run())).toEqual([
       'niit_amt_ignored',
       'penalty_reduces_taxable_interest',
       'simple_annual_yield',
+      'rounding_per_line',
     ]);
   });
   it('the penalty tax base is editable, NIIT/AMT is not', () => {

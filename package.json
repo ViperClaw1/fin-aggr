@@ -16,7 +16,8 @@
     "knip": "knip",
     "test": "vitest run --coverage && node tools/golden-count.mjs",
     "e2e": "pnpm --filter @fa/web e2e",
-    "bench": "vitest bench --run"
+    "bench": "vitest bench --run",
+    "golden:check": "node tools/golden-check.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

@@ -1,10 +1,26 @@
-import { Cents, EarlyWithdrawal } from '@fa/contracts';
+import { Cents, EarlyWithdrawal, Rate } from '@fa/contracts';
 import type { Decimal } from 'decimal.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { EngineError } from './errors';
-import { computeInterest } from './interest';
+import { computeInterest, growth } from './interest';
 import { D } from './money';
+
+describe('growth cache', () => {
+  it('a cached factor equals a fresh computation, on first and repeated calls', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 1500 }), fc.integer({ min: 1, max: 120 }), (bp, m) => {
+        const apy = Rate.parse(`0.${String(bp).padStart(4, '0')}`);
+        const years = new D(m).div(12);
+        const fresh = new D(apy).plus(1).pow(years).minus(1);
+        expect([growth(apy, years).toString(), growth(apy, years).toString()]).toEqual([
+          fresh.toString(),
+          fresh.toString(),
+        ]);
+      }),
+    );
+  });
+});
 import { cd, THREE_TIERS, tiers } from './test-data';
 
 const P = Cents.parse(1000000);
