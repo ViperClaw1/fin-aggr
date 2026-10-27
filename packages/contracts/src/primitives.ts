@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// zod probes for JIT with `Function("")`; the CSP has no 'unsafe-eval' (ADR-015), so every page
+// load reported a script-src violation and raced the AC-4 e2e test. Every schema module imports this one.
+z.config({ jitless: true });
+
 /** Calendar date "YYYY-MM-DD"; zod's ISO date also rejects impossible days ("2026-02-31"). */
 export const IsoDate = z.iso.date().brand<'IsoDate'>();
 export type IsoDate = z.infer<typeof IsoDate>;

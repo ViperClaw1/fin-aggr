@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { DemoDataBanner } from '@/shared/ui/demo-banner';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        <DemoDataBanner />
         <Providers>{children}</Providers>
       </body>
     </html>

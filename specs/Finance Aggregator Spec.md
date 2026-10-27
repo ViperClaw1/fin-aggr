@@ -701,7 +701,7 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 | `MoneyInput`, `PercentInput` | `shared/ui/inputs` | Ввод в `Cents` и `Rate`, без float | `features`, `widgets` |
 | `StateSelect` | `shared/ui/inputs` | Выбор штата | `features`, `widgets` |
 | `ExplainMath` | `shared/ui/explain-math` | Показывает `CalcStep[]` и `Assumption[]` пошагово | `features`, `widgets`, `app` |
-| `LineChart`, `BulletChart` | `shared/ui/charts` | Ленивые обёртки над библиотекой графиков | `widgets` |
+| `LineChart`, `BulletChart` | `shared/ui/charts` | `BulletChart` (P0): SVG без библиотеки, грузится обычно. `LineChart` (P1): обёртка над библиотекой графиков (выбор через ADR), грузится лениво | `widgets` |
 | `FreshnessLabel` | `shared/ui/freshness` | «Обновлено N дней назад», `now` приходит пропом | Везде |
 | `DemoDataBanner` | `shared/ui/demo-banner` | Баннер DEMO DATA | `app/layout` |
 | `Skeleton`, `EmptyState`, `ErrorState` | `shared/ui/states` | Состояния загрузки, пусто, ошибка | Везде |
@@ -790,7 +790,7 @@ export interface SponsoredSlotProps { placement: SponsoredPlacement }
 2. **Просмотрщик цитат без связей между виджетами.** `SourceCitation` вызывает `onOpen`, фича `open-citation` пишет параметры в URL, а `CitationViewerHost` смонтирован в корневом `layout` и читает URL. Так виджеты не импортируют друг друга.
 3. **Реклама только в `app`.** `SponsoredSlot` рендерится только в `page.tsx` и `layout.tsx` рядом с виджетами, никогда внутри таблицы, списка или карточки выдачи.
 4. **`use client` только на листьях.** Серверные оболочки остаются серверными.
-5. **Тяжёлое грузится лениво:** `PdfViewer` и графики через `next/dynamic`, основной бандл остаётся в бюджете AC-8.
+5. **Тяжёлое грузится лениво:** `PdfViewer` и `LineChart` через `next/dynamic`, основной бандл остаётся в бюджете AC-8.
 6. **Доступность по умолчанию.** `DataTable` требует `caption`, формы связывают подписи с полями, смысл не передаётся одним цветом.
 7. **Стенд компонентов** `/dev/components` существует только в development (в production-сборке отдаёт 404).
 
@@ -1176,7 +1176,7 @@ module.exports = {
 | E2 Движок | money и rate (1); налоги и таблицы (1,5); проценты и тиры (2); чистая доходность, шаги, допущения (1,5); правила допуска с трассой (1,5); ранжирование (1); покрытие (1,5) | 10 | AC-2 |
 | E3 Данные и состояние | `entities/*/api` и queries; профиль (store, persist, миграции, экспорт и импорт); URL-состояние; clock | 3 | Профиль переживает перезагрузку и миграцию версии |
 | E4 UI-кит | `DataTable`, `MetricCard`, поля ввода, `ExplainMath`, графики, баннер, состояния; стенд `/dev/components` | 5 | Компоненты из реестра (раздел 6), проверки доступности |
-| E5 Страницы | главная (1); compare (3); product (2,5); банки, список и карточка (2,5); coverage (1,5); after-tax yield (1); статические (0,5) | 12 | AC-3 и AC-6, все P0-маршруты |
+| E5 Страницы | профиль: `edit-profile`, `profile-drawer`, `useProductFilters`, e2e «профиль переживает перезагрузку» (1,5, перенесено из E4 и E3); главная (1); compare (3); product (2,5); банки, список и карточка (2,5); coverage (1,5); after-tax yield (1); статические (0,5) | 13,5 | AC-3 и AC-6, все P0-маршруты |
 | E6 PDF и цитаты | синтетические PDF нашего авторства; `CitationViewerHost` и просмотрщик с подсветкой; виджет `fine-print` | 4 | Цитата открывает нужную страницу и подсвечивает текст |
 | E7 Качество | e2e (дым, приватность, доступность); замеры и бюджет бандла; README; шлифовка | 4 | AC-1 … AC-10 |
 

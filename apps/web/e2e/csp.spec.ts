@@ -11,6 +11,20 @@ for (const route of ROUTES) {
   });
 }
 
+test('the page loads without CSP violations', async ({ page }) => {
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    Object.assign(window, { cspViolations: seen });
+    document.addEventListener('securitypolicyviolation', (e) => seen.push(e.effectiveDirective));
+  });
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const seen = await page.evaluate(
+    () => (window as unknown as { cspViolations: string[] }).cspViolations,
+  );
+  expect(seen).toEqual([]);
+});
+
 test('connect-src blocks a cross-origin fetch (AC-4)', async ({ page }) => {
   await page.goto('/');
   const directive = await page.evaluate(async () => {

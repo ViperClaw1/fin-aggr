@@ -1,26 +1,76 @@
 @import 'tailwindcss';
 
+/* Text/background pairs meet WCAG AA (4.5:1) in both schemes; axe checks both in e2e. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --muted: #525252;
+  --border: #d4d4d4;
+  --focus: #1d4ed8;
+  --accent: #1d4ed8;
+  --accent-foreground: #ffffff;
+  --ok: #14532d;
+  --ok-bg: #dcfce7;
+  --warn: #78350f;
+  --warn-bg: #fef3c7;
+  --danger: #7f1d1d;
+  --danger-bg: #fee2e2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --muted: #a3a3a3;
+    --border: #404040;
+    --focus: #93c5fd;
+    --accent: #93c5fd;
+    --accent-foreground: #0a0a0a;
+    --ok: #bbf7d0;
+    --ok-bg: #052e16;
+    --warn: #fde68a;
+    --warn-bg: #451a03;
+    --danger: #fecaca;
+    --danger-bg: #450a0a;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-focus: var(--focus);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

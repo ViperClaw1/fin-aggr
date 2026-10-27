@@ -45,6 +45,9 @@ export function readEnv(raw: RawEnv): Env {
   };
 }
 
+/** Dev-only routes (the component stand, spec §6 rule 7) answer 404 when this is true. */
+export const isProduction = process.env.NODE_ENV === 'production';
+
 // Dot access on each variable is required for Next's build-time inlining.
 export const env: Env = readEnv({
   NEXT_PUBLIC_DATA_SOURCE: process.env.NEXT_PUBLIC_DATA_SOURCE,
