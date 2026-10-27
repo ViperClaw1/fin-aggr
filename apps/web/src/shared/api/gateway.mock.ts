@@ -73,6 +73,10 @@ function parseQuery<T>(schema: Schema<T>, raw: unknown): T {
   return parsed.data;
 }
 
+/** Parses the query inside the promise, so a bad query rejects instead of throwing. */
+const withQuery = <Q, T>(schema: Schema<Q>, raw: unknown, run: (q: Q) => Promise<T>): Promise<T> =>
+  Promise.resolve(raw).then((r) => run(parseQuery(schema, r)));
+
 /** Cursor is the opaque offset of the next item. */
 function paginate<T>(items: readonly T[], limit: number, cursor: string | undefined): PageOf<T> {
   if (cursor !== undefined && !/^\d+$/.test(cursor)) {
@@ -145,12 +149,12 @@ function createResponder(options: MockGatewayOptions): Respond {
 export function createMockGateway(options: MockGatewayOptions): DataGateway {
   const respond = createResponder(options);
   return {
-    listInstitutions: (raw) => {
-      const q = parseQuery(InstitutionQuery, raw);
-      return respond('listInstitutions', [q], Page(Institution), (f) =>
-        paginate(institutionsMatching(f, q), q.limit, q.cursor),
-      );
-    },
+    listInstitutions: (raw) =>
+      withQuery(InstitutionQuery, raw, (q) =>
+        respond('listInstitutions', [q], Page(Institution), (f) =>
+          paginate(institutionsMatching(f, q), q.limit, q.cursor),
+        ),
+      ),
     getInstitution: (id) =>
       respond(
         'getInstitution',
@@ -166,12 +170,12 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
           return notFound(`Metrics ${id}`);
         return m;
       }),
-    listProducts: (raw) => {
-      const q = parseQuery(ProductQuery, raw);
-      return respond('listProducts', [q], Page(Product), (f) =>
-        paginate(productsMatching(f, q), q.limit, q.cursor),
-      );
-    },
+    listProducts: (raw) =>
+      withQuery(ProductQuery, raw, (q) =>
+        respond('listProducts', [q], Page(Product), (f) =>
+          paginate(productsMatching(f, q), q.limit, q.cursor),
+        ),
+      ),
     getProduct: (id) =>
       respond(
         'getProduct',
@@ -186,10 +190,10 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
         DocumentMeta,
         (f) => f.documents.find((d) => d.id === id) ?? notFound(`Document ${id}`),
       ),
-    listFacts: (raw) => {
-      const q = parseQuery(FactQuery, raw);
-      return respond('listFacts', [q], listOf(FactRecord), (f) => factsMatching(f, q));
-    },
+    listFacts: (raw) =>
+      withQuery(FactQuery, raw, (q) =>
+        respond('listFacts', [q], listOf(FactRecord), (f) => factsMatching(f, q)),
+      ),
     getTaxTables: (taxYear) =>
       respond('getTaxTables', [taxYear], TaxTables, (f) =>
         f.taxTables.taxYear === taxYear ? f.taxTables : notFound(`Tax tables ${String(taxYear)}`),
