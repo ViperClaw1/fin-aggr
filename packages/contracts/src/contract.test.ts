@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { Assumption, CalcStep } from './calc';
 import { BankMetrics, DocumentMeta, FactRecord, Institution, Product, RateTier } from './entities';
-import { Profile } from './profile';
+import { Profile, ProfileDraft } from './profile';
 import { Provenance } from './provenance';
 import { FactQuery, InstitutionQuery, ProductQuery } from './queries';
 import { InsuranceRules, SourceRegistryEntry, TaxTables } from './reference';
@@ -111,6 +111,10 @@ describe('request schemas carry no Profile fields (ADR-004)', () => {
     expect([...profileKeys]).toEqual(
       expect.arrayContaining([...Object.keys(Profile.shape), 'principal']),
     );
+  });
+
+  it('ProfileDraft keys are a subset of Profile keys, so this check covers drafts too', () => {
+    expect([...collectKeys(ProfileDraft)].filter((k) => !profileKeys.has(k))).toEqual([]);
   });
 
   it.each(Object.entries(REQUESTS))('%s', (_name, schema) => {

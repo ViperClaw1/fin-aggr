@@ -28,7 +28,7 @@ export {
   TaxBracket,
   TaxTables,
 } from './reference';
-export { Profile } from './profile';
+export { Profile, ProfileDraft } from './profile';
 export { Assumption, CalcStep } from './calc';
 export { FactQuery, InstitutionQuery, Page, ProductQuery, type PageOf } from './queries';
 export { GatewayError, type DataGateway, type GatewayErrorCode } from './gateway';

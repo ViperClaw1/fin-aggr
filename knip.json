@@ -5,9 +5,7 @@
     ".": {
       "entry": ["tools/*.mjs"]
     },
-    "apps/web": {
-      "ignoreDependencies": ["@fa/engine"]
-    },
+    "apps/web": {},
     "packages/*": {}
   }
 }

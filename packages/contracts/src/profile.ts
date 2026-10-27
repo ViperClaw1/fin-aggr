@@ -16,3 +16,12 @@ export const Profile = z.strictObject({
   scenario: z.strictObject({ principal: Cents, holdingMonths: z.int().min(1).max(120) }),
 });
 export type Profile = z.infer<typeof Profile>;
+
+/**
+ * What the profile store holds while the user fills it in: the Profile fields, all optional,
+ * the nested scenario too, without `version` (that belongs to the persisted envelope). Strict.
+ */
+export const ProfileDraft = Profile.omit({ version: true })
+  .extend({ scenario: Profile.shape.scenario.partial() })
+  .partial();
+export type ProfileDraft = z.infer<typeof ProfileDraft>;

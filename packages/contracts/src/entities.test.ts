@@ -9,7 +9,7 @@ import {
   Product,
   RateTier,
 } from './entities';
-import { Profile } from './profile';
+import { Profile, ProfileDraft } from './profile';
 import { InsuranceRules, SourceRegistryEntry, TaxTables } from './reference';
 
 const provenance = {
@@ -251,6 +251,23 @@ describe('Profile', () => {
     expect(ok(Profile, { ...profile, email: 'x@example.com' })).toBe(false);
     expect(ok(Profile, { ...profile, version: 2 })).toBe(false);
     expect(ok(Profile, { ...profile, scenario: { principal: 1, holdingMonths: 121 } })).toBe(false);
+  });
+});
+
+describe('ProfileDraft', () => {
+  it('accepts an empty draft and a partial scenario', () => {
+    expect(ok(ProfileDraft, {})).toBe(true);
+    expect(ok(ProfileDraft, { stateCode: 'NY', scenario: { holdingMonths: 6 } })).toBe(true);
+  });
+  it('rejects extra keys at both levels, a version and wrong types', () => {
+    expect(ok(ProfileDraft, { email: 'x@example.com' })).toBe(false);
+    expect(ok(ProfileDraft, { scenario: { principal: 1, note: 'x' } })).toBe(false);
+    expect(ok(ProfileDraft, { version: 1 })).toBe(false);
+    expect(ok(ProfileDraft, { age: '34' })).toBe(false);
+  });
+  it('keeps the field rules of Profile', () => {
+    expect(ok(ProfileDraft, { scenario: { holdingMonths: 121 } })).toBe(false);
+    expect(ok(ProfileDraft, { cityMarginalRate: null })).toBe(true);
   });
 });
 

@@ -23,6 +23,7 @@ import {
   SYNTAX_COMMON,
   WEB_PROPS,
   WEB_SYNTAX,
+  ZUSTAND_BAN,
   restrict,
 } from './tools/eslint-restrictions.mjs';
 
@@ -149,6 +150,14 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': restrict('entities', {
         paths: BASE_PATHS.filter((p) => p !== GATEWAY),
+      }),
+    },
+  },
+  {
+    files: [`${WEB}/entities/profile/model/**/*.ts`], // the only Zustand store (ADR-009)
+    rules: {
+      'no-restricted-imports': restrict('entities', {
+        patterns: LAYER_PATTERNS.entities.filter((p) => p !== ZUSTAND_BAN),
       }),
     },
   },

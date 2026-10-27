@@ -22,5 +22,6 @@ Every slice gets a row here when it is created (spec §2, slice rule 4).
 | document queries | entities/document | Document metadata | `documentQuery` | widgets, app |
 | reference queries | entities/reference | Tax tables, insurance rules | `taxTablesQuery`, `insuranceRulesQuery` | widgets, app |
 | sponsored queries | entities/sponsored | Ads per placement (ADR-006) | `sponsoredQuery` | widgets/sponsored-slot |
+| profile store | entities/profile | Draft in this browser only, versioned, export/import | `useProfileDraft`, `useCompleteProfile`, `useProfileStatus`, `useProfileHydrated`, `useProfileActions` (edit-profile only), `rehydrateProfile` | features, widgets, app/providers |
 | query client | shared/lib | Freshness, retry policy, client per request | `getQueryClient`, `makeQueryClient`, `STALE_TIME` | app/providers, entities |
 | clock | shared/lib | The only wall clock in apps/web | `now`, `today`, `setClock` | client code |

@@ -9,6 +9,8 @@ paths:
 - Inside a slice use relative imports. Between slices use the `@/` alias to the public API (`index.ts`; `entities/*` also expose `queries.ts`).
 - `features` receive data as arguments. Only `widgets` and `app` use `entities/*/queries`.
 - `getGateway()` only in `entities/*/api`. `fetch` only in `shared/api/http.ts`. `localStorage` only in `entities/profile/model/persist.ts`. Profile writes only in `features/edit-profile`.
+- Zustand only in `entities/profile/model/**` (ESLint `ZUSTAND_BAN`, ADR-009).
+- Changing the shape of `Profile` or `ProfileDraft`: bump `CURRENT_VERSION` in `entities/profile/model/migrate.ts`, add the migration step from the previous version, and a test that migrates a stored old draft.
 - `SponsoredSlot` is mounted only in `app/**`, never inside a table, list, or card of organic results.
 - `page.tsx` is thin composition (80 lines max): widgets, metadata, prefetch.
 - Server Components by default. `"use client"` only on leaves. Heavy modules (pdf.js, charts) through `next/dynamic`.

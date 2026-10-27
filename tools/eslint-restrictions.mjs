@@ -21,6 +21,10 @@ export const FIXTURES_BAN = {
   group: ['@fa/fixtures', '@fa/fixtures/*'],
   message: 'Fixtures are wired only in shared/api (mock gateway).',
 };
+export const ZUSTAND_BAN = {
+  group: ['zustand', 'zustand/*'],
+  message: 'Zustand only for the profile store in entities/profile/model (ADR-009).',
+};
 const QUERIES_BAN = {
   group: ['@/entities/*/queries'],
   message: 'features receive data as arguments; queries only in widgets and app.',
@@ -49,11 +53,27 @@ const OUT_OF_STACK = [
 export const BASE_PATHS = [GATEWAY, PROFILE_WRITE, ...OUT_OF_STACK];
 
 export const LAYER_PATTERNS = {
-  shared: [UPWARD(['entities', 'features', 'widgets', 'app']), ENGINE_BAN, FIXTURES_BAN],
-  entities: [UPWARD(['features', 'widgets', 'app']), SAME_LAYER('entities'), FIXTURES_BAN],
-  features: [UPWARD(['widgets', 'app']), SAME_LAYER('features'), QUERIES_BAN, FIXTURES_BAN],
-  widgets: [UPWARD(['app']), SAME_LAYER('widgets'), FIXTURES_BAN],
-  app: [FIXTURES_BAN],
+  shared: [
+    UPWARD(['entities', 'features', 'widgets', 'app']),
+    ENGINE_BAN,
+    FIXTURES_BAN,
+    ZUSTAND_BAN,
+  ],
+  entities: [
+    UPWARD(['features', 'widgets', 'app']),
+    SAME_LAYER('entities'),
+    FIXTURES_BAN,
+    ZUSTAND_BAN,
+  ],
+  features: [
+    UPWARD(['widgets', 'app']),
+    SAME_LAYER('features'),
+    QUERIES_BAN,
+    FIXTURES_BAN,
+    ZUSTAND_BAN,
+  ],
+  widgets: [UPWARD(['app']), SAME_LAYER('widgets'), FIXTURES_BAN, ZUSTAND_BAN],
+  app: [FIXTURES_BAN, ZUSTAND_BAN],
 };
 export const restrict = (layer, { paths = BASE_PATHS, patterns = LAYER_PATTERNS[layer] } = {}) => [
   'error',
