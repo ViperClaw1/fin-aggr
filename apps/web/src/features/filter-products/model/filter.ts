@@ -6,12 +6,13 @@ import type { ProductFilters } from './search-params';
 
 export type InstitutionIndex = ReadonlyMap<Id, Pick<Institution, 'name' | 'kind'>>;
 
-type Test = (p: Product, issuer: Pick<Institution, 'name' | 'kind'>) => boolean;
+type Test = (p: Product, issuer: Pick<Institution, 'name' | 'kind'> | undefined) => boolean;
 
 function tests(f: Omit<ProductFilters, 'hide'>): Test[] {
   const out: Test[] = [];
   if (f.term.length > 0) out.push((p) => p.termMonths !== null && f.term.includes(p.termMonths));
-  if (f.kind.length > 0) out.push((_, issuer) => f.kind.includes(issuer.kind));
+  if (f.kind.length > 0)
+    out.push((_, issuer) => issuer !== undefined && f.kind.includes(issuer.kind));
   const { minApy, maxOpening } = f;
   if (minApy !== null) out.push((p) => compareRate(headlineApy(p), minApy) >= 0);
   if (maxOpening !== null) out.push((p) => p.minOpening <= maxOpening);
@@ -19,12 +20,17 @@ function tests(f: Omit<ProductFilters, 'hide'>): Test[] {
   if (needle !== '')
     out.push(
       (p, issuer) =>
-        p.name.toLowerCase().includes(needle) || issuer.name.toLowerCase().includes(needle),
+        issuer !== undefined &&
+        (p.name.toLowerCase().includes(needle) || issuer.name.toLowerCase().includes(needle)),
     );
   return out;
 }
 
-/** A product whose institution is missing from the index is left out. */
+/**
+ * Only `kind` and `search` need the institution: with either active, a product whose institution
+ * is missing from the index is left out. Other filters keep it, so products do not vanish while
+ * institutions are still loading.
+ */
 export function filterProducts(
   products: readonly Product[],
   filters: Omit<ProductFilters, 'hide'>,
@@ -33,7 +39,7 @@ export function filterProducts(
   const checks = tests(filters);
   return products.filter((p) => {
     const issuer = institutions.get(p.institutionId);
-    return issuer !== undefined && checks.every((check) => check(p, issuer));
+    return checks.every((check) => check(p, issuer));
   });
 }
 

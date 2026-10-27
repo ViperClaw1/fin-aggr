@@ -63,26 +63,34 @@ const INDEX: InstitutionIndex = new Map([
   ['fin:3', { name: 'Spark Savings', kind: 'fintech_partner' }],
 ]);
 
-const ids = (f: Partial<Filters>, products = PRODUCTS): string[] =>
-  filterProducts(products, { ...NONE, ...f }, INDEX).map((p) => p.id);
+const EMPTY: InstitutionIndex = new Map();
+
+const ids = (f: Partial<Filters>, index = INDEX): string[] =>
+  filterProducts(PRODUCTS, { ...NONE, ...f }, index).map((p) => p.id);
 
 describe('filterProducts', () => {
-  it('no filters keep every product of a known institution, in order', () => {
-    expect(ids({})).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+  it('no filters keep every product, in order', () => {
+    expect(ids({})).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+  });
+  it('no filters keep every product while institutions are not loaded', () => {
+    expect(ids({}, EMPTY)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+  });
+  it('kind and search leave out a product of an unknown institution', () => {
+    expect([ids({ kind: ['direct_bank'] }, EMPTY), ids({ search: 'cd' }, EMPTY)]).toEqual([[], []]);
   });
   it('term keeps the listed terms and drops products without a term', () => {
-    expect(ids({ term: [6, 12] })).toEqual(['p1', 'p2']);
+    expect(ids({ term: [6, 12] })).toEqual(['p1', 'p2', 'p6']);
   });
   it('kind matches the issuing institution', () => {
     expect(ids({ kind: ['credit_union', 'fintech_partner'] })).toEqual(['p3', 'p4', 'p5']);
   });
   it('minApy compares the highest tier, the bound included', () => {
-    expect(ids({ minApy: Rate.parse('0.048') })).toEqual(['p2', 'p3', 'p5']);
-    expect(ids({ minApy: Rate.parse('0.0500') })).toEqual(['p2', 'p3']);
+    expect(ids({ minApy: Rate.parse('0.048') })).toEqual(['p2', 'p3', 'p5', 'p6']);
+    expect(ids({ minApy: Rate.parse('0.0500') })).toEqual(['p2', 'p3', 'p6']);
   });
   it('maxOpening keeps products whose minimum opening fits, the bound included', () => {
-    expect(ids({ maxOpening: Cents.parse(50000) })).toEqual(['p1', 'p2', 'p4', 'p5']);
-    expect(ids({ maxOpening: Cents.parse(0) })).toEqual(['p2', 'p4']);
+    expect(ids({ maxOpening: Cents.parse(50000) })).toEqual(['p1', 'p2', 'p4', 'p5', 'p6']);
+    expect(ids({ maxOpening: Cents.parse(0) })).toEqual(['p2', 'p4', 'p6']);
   });
   it('search is case-insensitive over product and institution names', () => {
     expect(ids({ search: 'harbor' })).toEqual(['p1', 'p2']);
@@ -90,7 +98,7 @@ describe('filterProducts', () => {
     expect(ids({ search: 'no such bank' })).toEqual([]);
   });
   it('filters combine', () => {
-    expect(ids({ term: [12, 24], minApy: Rate.parse('0.05') })).toEqual(['p3']);
+    expect(ids({ term: [12, 24], minApy: Rate.parse('0.05') })).toEqual(['p3', 'p6']);
   });
   it('does not mutate the input', () => {
     const copy = structuredClone(PRODUCTS);
@@ -124,6 +132,14 @@ describe('filterProducts properties', () => {
         const onceA = after(a, PRODUCTS);
         expect(after(a, onceA)).toEqual(onceA);
         expect(after(b, onceA)).toEqual(after(a, after(b, PRODUCTS)));
+      }),
+    );
+  });
+  it('the index matters only to kind and search', () => {
+    fc.assert(
+      fc.property(filtersArb, (f) => {
+        const needsIssuer = f.kind.length > 0 || f.search !== '';
+        expect(ids(f, EMPTY)).toEqual(needsIssuer ? [] : ids(f));
       }),
     );
   });

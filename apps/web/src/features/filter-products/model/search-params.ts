@@ -9,8 +9,8 @@ import {
   parseCents,
   rateFromPercent,
   compareRate,
+  Rate,
   type Cents,
-  type Rate,
 } from '@fa/contracts';
 import {
   createLoader,
@@ -54,12 +54,13 @@ const kind = createParser<Kind[]>({
   eq: sameList,
 }).withDefault([]);
 
-/** In the URL as a percent ("4.5"), in the app as a Rate ("0.045"). */
+/** In the URL as a percent ("4.5"), in the app as a Rate ("0.045"). Zero cuts nothing: default. */
 const minApy = createParser<Rate>({
   parse: (value) => {
     if (value.length > 10) return null;
     try {
-      return rateFromPercent(value);
+      const rate = rateFromPercent(value);
+      return compareRate(rate, Rate.parse('0')) === 0 ? null : rate;
     } catch {
       return null;
     }
@@ -68,14 +69,17 @@ const minApy = createParser<Rate>({
   eq: (a, b) => compareRate(a, b) === 0,
 });
 
-/** Whole dollars in the URL ("5000"), Cents in the app. */
+/** Whole dollars in the URL ("5000"), Cents in the app. Cents are written rounded down. */
 const maxOpening = createParser<Cents>({
   parse: (value) => {
     if (!/^\d{1,8}$/.test(value)) return null;
     const cents = parseCents(value);
     return cents <= parseCents(String(MAX_OPENING_DOLLARS)) ? cents : null;
   },
-  serialize: (cents) => formatUsd(cents).replace(/[$,]/g, '').replace(/\.00$/, ''),
+  serialize: (cents) =>
+    formatUsd(cents)
+      .replace(/[$,]/g, '')
+      .replace(/\.\d{2}$/, ''),
 });
 
 /** Plain text, never HTML: React renders it as a string. */

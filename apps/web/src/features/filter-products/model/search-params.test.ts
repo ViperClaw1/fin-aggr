@@ -50,6 +50,8 @@ describe('parsing', () => {
     ['minApy=-1'],
     ['minApy=4.123456789'],
     ['minApy=00000000004.5'],
+    ['minApy=0'],
+    ['minApy=0.000'],
     ['maxOpening=5000.50'],
     ['maxOpening=$5,000'],
     ['maxOpening=10000001'],
@@ -62,7 +64,7 @@ describe('parsing', () => {
     expect([load('maxOpening=0').maxOpening, load('maxOpening=10000000').maxOpening]).toEqual([
       0, 1000000000,
     ]);
-    expect([load('minApy=0').minApy, load('minApy=100').minApy]).toEqual(['0', '1']);
+    expect([load('minApy=0.001').minApy, load('minApy=100').minApy]).toEqual(['0.00001', '1']);
   });
   it('search is trimmed, capped at 80 and stays plain text', () => {
     const raw = `  <script>alert(1)</script>\u0007${'x'.repeat(100)}  `;
@@ -81,6 +83,10 @@ describe('serializing', () => {
     expect(
       productFiltersUrl('', { minApy: Rate.parse('0.045'), maxOpening: Cents.parse(500000) }),
     ).toBe('?minApy=4.5&maxOpening=5000');
+  });
+  it('maxOpening with cents is written rounded down to whole dollars and reads back', () => {
+    const url = productFiltersUrl('', { maxOpening: Cents.parse(50050) });
+    expect([url, load(url.slice(1)).maxOpening]).toEqual(['?maxOpening=500', 50000]);
   });
   it('equal filters written in any order give the same link', () => {
     expect(productFiltersUrl('', load('term=24,12,12&kind=credit_union,direct_bank'))).toBe(
