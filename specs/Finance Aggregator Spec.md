@@ -85,7 +85,7 @@ fa/
       app/         маршруты Next.js, layouts, метаданные (композиция, без логики)
       widgets/     блоки страниц
       features/    действия пользователя
-      entities/    product, institution, rule, fact, document, profile, sponsored
+      entities/    product, institution, rule, fact (+ реестр источников), document, reference (налоговые таблицы, лимиты страхования), profile, sponsored
         <entity>/
           index.ts     публичный API: типы, селекторы, UI
           queries.ts   вторая публичная точка: query-хуки (реэкспорт из ./api)
