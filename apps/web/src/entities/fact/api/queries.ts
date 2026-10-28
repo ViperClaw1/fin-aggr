@@ -13,6 +13,17 @@ export const factsQuery = (q: ListInput) =>
     staleTime: STALE_TIME.facts,
   });
 
+/**
+ * The data set date: freshness of mock facts counts from it (ADR-016 D6).
+ * @public prefetched by E5 pages on the server after D1
+ */
+export const datasetInfoQuery = () =>
+  queryOptions({
+    queryKey: ['datasetInfo'] as const,
+    queryFn: () => getGateway().getDatasetInfo(),
+    staleTime: STALE_TIME.datasetInfo,
+  });
+
 /** The source registry, for SourceCitation. */
 export const sourcesQuery = () =>
   queryOptions({

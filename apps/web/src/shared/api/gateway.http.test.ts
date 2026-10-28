@@ -16,9 +16,10 @@ describe('http gateway', () => {
     ['getInsuranceRules', () => httpGateway.getInsuranceRules()],
     ['listSources', () => httpGateway.listSources()],
     ['listSponsored', () => httpGateway.listSponsored('compare_top')],
+    ['getDatasetInfo', () => httpGateway.getDatasetInfo()],
   ];
 
-  it('covers all 11 DataGateway methods', () => {
+  it('covers all 12 DataGateway methods', () => {
     expect(new Set(calls.map(([name]) => name))).toEqual(new Set(Object.keys(httpGateway)));
   });
 

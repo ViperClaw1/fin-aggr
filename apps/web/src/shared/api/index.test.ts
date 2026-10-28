@@ -43,6 +43,11 @@ describe('createLazyGateway (ADR-016 D2)', () => {
     });
     expect((await lazy.listSources()).length).toBeGreaterThan(0);
   });
+  it('keeps the real reason of a failed load in cause', async () => {
+    const reason = new Error('mock config: seed is not a number');
+    const lazy = createLazyGateway(() => Promise.reject(reason));
+    await expect(lazy.listSources()).rejects.toMatchObject({ cause: reason });
+  });
 });
 
 describe('loadGateway', () => {

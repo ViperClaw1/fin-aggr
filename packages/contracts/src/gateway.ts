@@ -4,7 +4,7 @@ import type { SponsoredItem, SponsoredPlacement } from './ads';
 import type { BankMetrics, DocumentMeta, FactRecord, Institution, Product } from './entities';
 import type { Id, IsoDate } from './primitives';
 import type { FactQuery, InstitutionQuery, PageOf, ProductQuery } from './queries';
-import type { InsuranceRules, SourceRegistryEntry, TaxTables } from './reference';
+import type { DatasetInfo, InsuranceRules, SourceRegistryEntry, TaxTables } from './reference';
 
 export type GatewayErrorCode =
   'not_found' | 'validation_failed' | 'rate_limited' | 'unavailable' | 'not_implemented';
@@ -14,8 +14,10 @@ export class GatewayError extends Error {
     readonly code: GatewayErrorCode,
     message: string,
     readonly retryable: boolean,
+    // the underlying error, so devtools and logs show the real reason behind a wrapped failure
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = 'GatewayError';
   }
 }
@@ -32,4 +34,6 @@ export interface DataGateway {
   getInsuranceRules(asOf?: IsoDate): Promise<InsuranceRules>;
   listSources(): Promise<SourceRegistryEntry[]>;
   listSponsored(placement: SponsoredPlacement): Promise<SponsoredItem[]>;
+  /** The date the data set describes, and whether it is mock data (REST `GET /v1/meta`, ADR-016 D6). */
+  getDatasetInfo(): Promise<DatasetInfo>;
 }

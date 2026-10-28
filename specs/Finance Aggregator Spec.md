@@ -516,6 +516,7 @@ export const SponsoredItem = z.object({
 | `GET /v1/reference/tax-tables/{year}` | `getTaxTables` | `TaxTables` | `s-maxage=604800` |
 | `GET /v1/reference/insurance-rules` | `getInsuranceRules` | `InsuranceRules` | `s-maxage=86400` |
 | `GET /v1/meta/sources` | `listSources` | `SourceRegistryEntry[]` | `s-maxage=3600` |
+| `GET /v1/meta` | `getDatasetInfo` | `DatasetInfo` (`asOf`, `isMock`) | `s-maxage=3600` |
 | `GET /v1/ads?placement=` | `listSponsored` | `SponsoredItem[]` | `s-maxage=60` |
 
 ### Поведение mock-gateway

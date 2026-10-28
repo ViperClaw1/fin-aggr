@@ -14,8 +14,9 @@ export function createLazyGateway(load: () => Promise<DataGateway>): DataGateway
       let gateway: DataGateway;
       try {
         gateway = await once();
-      } catch {
-        throw new GatewayError('unavailable', 'the data module failed to load', true);
+      } catch (cause) {
+        // a failed chunk and a broken mock config look alike here; `cause` tells them apart
+        throw new GatewayError('unavailable', 'the data module failed to load', true, { cause });
       }
       const method = gateway[name] as (
         ...a: Parameters<DataGateway[K]>
@@ -35,6 +36,7 @@ export function createLazyGateway(load: () => Promise<DataGateway>): DataGateway
     getInsuranceRules: call('getInsuranceRules'),
     listSources: call('listSources'),
     listSponsored: call('listSponsored'),
+    getDatasetInfo: call('getDatasetInfo'),
   };
 }
 

@@ -8,7 +8,16 @@ import {
   type RateTier,
   type Rule,
 } from '@fa/contracts';
-import { PENALTY_PAGE, VALID_FROM, bps, dollars, mockProvenance, type DocumentRef } from './common';
+import {
+  AS_OF,
+  PENALTY_PAGE,
+  VALID_FROM,
+  bps,
+  daysBefore,
+  dollars,
+  mockProvenance,
+  type DocumentRef,
+} from './common';
 import { cycle, type Rng } from './prng';
 
 const COUNTS = { cd: 60, savings: 40, treasury: 20 } as const;
@@ -108,7 +117,11 @@ interface Draft {
   extra: Pick<Product, 'category' | 'tierMode' | 'tiers' | 'compounding' | 'taxTreatment'>;
 }
 
-function finish(rng: Rng, d: Draft, i: number, docs: ReadonlyMap<string, string>): Product {
+/** Days before AS_OF a fact was retrieved, per kind, so the demo has fresh and stale facts (ADR-016 D6). */
+const RETRIEVED_DAYS_BACK = { apy: [0, 14], terms: [0, 150] } as const;
+
+function finish(rng: Rng, d: Draft, i: number, input: ProductInputs): Product {
+  const { documents: docs, retrieval } = input;
   const docId = docs.get(d.issuer.id);
   const citation: DocumentRef | undefined =
     docId === undefined
@@ -124,12 +137,21 @@ function finish(rng: Rng, d: Draft, i: number, docs: ReadonlyMap<string, string>
     maxDeposit: rng.chance(20) ? dollars(1000000) : null,
     earlyWithdrawal: {
       value: d.penalty,
-      provenance: mockProvenance('mock-issuer-documents', citation),
+      provenance: mockProvenance(
+        'mock-issuer-documents',
+        citation,
+        daysBefore(AS_OF, retrieval.int(...RETRIEVED_DAYS_BACK.terms)),
+      ),
     },
     eligibility: cycle(RULES, i + rng.int(0, RULES.length - 1)),
     validFrom: VALID_FROM,
     validTo: null,
-    provenance: mockProvenance('mock-issuer-rates'),
+    // the product's own provenance stands for its APY tiers
+    provenance: mockProvenance(
+      'mock-issuer-rates',
+      undefined,
+      daysBefore(AS_OF, retrieval.int(...RETRIEVED_DAYS_BACK.apy)),
+    ),
   };
 }
 
@@ -140,10 +162,12 @@ export interface ProductInputs {
   treasuryIssuers: readonly Institution[];
   /** institutionId → id of the synthetic document that issuer published */
   documents: ReadonlyMap<string, string>;
+  /** a stream of its own, so retrieval dates do not shift any other generated value */
+  retrieval: Rng;
 }
 
 export function generateProducts(rng: Rng, input: ProductInputs): Product[] {
-  const { depositIssuers, treasuryIssuers, documents } = input;
+  const { depositIssuers, treasuryIssuers } = input;
   const cds = Array.from({ length: COUNTS.cd }, (_, i): Draft => {
     const termMonths = cycle(CD_TERMS, i);
     return {
@@ -196,5 +220,5 @@ export function generateProducts(rng: Rng, input: ProductInputs): Product[] {
       },
     };
   });
-  return [...cds, ...savings, ...treasuries].map((d, i) => finish(rng, d, i, documents));
+  return [...cds, ...savings, ...treasuries].map((d, i) => finish(rng, d, i, input));
 }

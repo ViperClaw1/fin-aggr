@@ -2,6 +2,7 @@
 // Imported only by *.test.ts files.
 import {
   BankMetrics,
+  DatasetInfo,
   DocumentMeta,
   FactRecord,
   Institution,
@@ -31,6 +32,36 @@ async function walk<T>(load: (cursor?: string) => Promise<PageOf<T>>, limit: num
     cursor = page.nextCursor;
   }
   throw new Error('pagination did not terminate');
+}
+
+/** Every `retrievedAt` anywhere in the values. */
+function* retrievedAts(value: unknown): Generator<string> {
+  if (typeof value !== 'object' || value === null) return;
+  for (const [key, v] of Object.entries(value)) {
+    if (key === 'retrievedAt' && typeof v === 'string') yield v;
+    else yield* retrievedAts(v);
+  }
+}
+
+/** Products, institutions, their metrics and reference data: what carries provenance. */
+async function served(gw: DataGateway): Promise<unknown[]> {
+  const out: unknown[] = [];
+  for (const category of STAGE1_CATEGORIES)
+    out.push(...(await gw.listProducts({ category, limit: 100 })).items);
+  const institutions = (await gw.listInstitutions({ limit: 100 })).items;
+  out.push(...institutions);
+  for (const i of institutions) out.push(await gw.getBankMetrics(i.id).catch(() => null));
+  out.push(await gw.getTaxTables(2026), await gw.getInsuranceRules());
+  return out;
+}
+
+function datasetContract(gw: DataGateway): void {
+  it('describes the data set, and nothing it serves was retrieved after its asOf', async () => {
+    const { asOf } = DatasetInfo.parse(await gw.getDatasetInfo());
+    const end = Date.parse(`${asOf}T23:59:59Z`);
+    const late = [...retrievedAts(await served(gw))].filter((at) => Date.parse(at) > end);
+    expect(late).toEqual([]);
+  });
 }
 
 const rejectsWith = (p: Promise<unknown>, code: GatewayErrorCode): Promise<void> =>
@@ -109,6 +140,8 @@ export function gatewayContract(name: string, create: () => DataGateway): void {
       for (const f of facts) expect(FactRecord.parse(f).documentId).toBe(documentId);
       expect(DocumentMeta.parse(await gw.getDocument(documentId)).id).toBe(documentId);
     });
+
+    datasetContract(gw);
 
     it('serves reference data, sources and labeled ads per placement', async () => {
       const tables = await gw.getTaxTables(2026);

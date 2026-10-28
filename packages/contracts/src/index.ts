@@ -33,6 +33,7 @@ export {
   STAGE1_CATEGORIES,
 } from './entities';
 export {
+  DatasetInfo,
   FilingStatus,
   InsuranceRules,
   SourceRegistryEntry,

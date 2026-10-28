@@ -168,6 +168,7 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
-    expect(fnv1a(JSON.stringify(f))).toBe('00c9375e');
+    // e98987c2: ADR-016 D6, retrievedAt spread per kind of fact, asOf in the set
+    expect(fnv1a(JSON.stringify(f))).toBe('e98987c2');
   });
 });

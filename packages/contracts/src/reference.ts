@@ -67,3 +67,7 @@ export const SourceRegistryEntry = z.strictObject({
   notes: z.string().optional(),
 });
 export type SourceRegistryEntry = z.infer<typeof SourceRegistryEntry>;
+
+/** What the data set describes (ADR-016 D6): freshness of mock data counts from `asOf`. */
+export const DatasetInfo = z.strictObject({ asOf: IsoDate, isMock: z.boolean() });
+export type DatasetInfo = z.infer<typeof DatasetInfo>;

@@ -16,4 +16,5 @@ export const httpGateway: DataGateway = {
   getInsuranceRules: notImplemented('getInsuranceRules'),
   listSources: notImplemented('listSources'),
   listSponsored: notImplemented('listSponsored'),
+  getDatasetInfo: notImplemented('getDatasetInfo'),
 };

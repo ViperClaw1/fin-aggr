@@ -2,6 +2,7 @@
 // pagination, deterministic latency and failure injection keyed by a hash of the request.
 import {
   BankMetrics,
+  DatasetInfo,
   DocumentMeta,
   FactQuery,
   FactRecord,
@@ -209,5 +210,7 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
       respond('listSponsored', [placement], listOf(SponsoredItem), (f) =>
         f.sponsored.filter((s) => s.placement === placement),
       ),
+    getDatasetInfo: () =>
+      respond('getDatasetInfo', [], DatasetInfo, (f) => ({ asOf: f.asOf, isMock: true })),
   };
 }

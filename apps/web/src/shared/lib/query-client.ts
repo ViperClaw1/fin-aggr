@@ -17,6 +17,7 @@ export const STALE_TIME = {
   taxTables: 7 * DAY,
   insuranceRules: DAY,
   sources: HOUR,
+  datasetInfo: HOUR,
   sponsored: MINUTE,
 } as const;
 

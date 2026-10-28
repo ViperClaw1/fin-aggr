@@ -9,8 +9,9 @@ import {
   type Rate,
 } from '@fa/contracts';
 
-export const RETRIEVED_AT = IsoDateTime.parse('2026-10-01T00:00:00Z');
 export const AS_OF = IsoDate.parse('2026-09-30');
+/** Default retrieval time: the data set date, never after it (ADR-016 D6). */
+export const RETRIEVED_AT = IsoDateTime.parse(`${AS_OF}T00:00:00Z`);
 export const VALID_FROM = IsoDate.parse('2026-10-01');
 
 export const STATE_CODES = [
@@ -76,12 +77,24 @@ export interface DocumentRef {
   quote: string;
 }
 
+const DAY_MS = 86_400_000;
+
+/** Midnight UTC `days` before `date` (fixed dates only, never the clock). */
+export function daysBefore(date: IsoDate, days: number): IsoDateTime {
+  const ms = Date.parse(`${date}T00:00:00Z`) - days * DAY_MS;
+  return IsoDateTime.parse(`${new Date(ms).toISOString().slice(0, 19)}Z`);
+}
+
 /** Provenance of synthetic data: always isMock, never verified. */
-export function mockProvenance(sourceId: string, document?: DocumentRef): Provenance {
+export function mockProvenance(
+  sourceId: string,
+  document?: DocumentRef,
+  retrievedAt: IsoDateTime = RETRIEVED_AT,
+): Provenance {
   return {
     sourceId,
     sourceUrl: `https://example.com/sources/${sourceId}`,
-    retrievedAt: RETRIEVED_AT,
+    retrievedAt,
     ...(document === undefined ? {} : { document }),
     verification: { status: 'unverified' },
     isMock: true,
