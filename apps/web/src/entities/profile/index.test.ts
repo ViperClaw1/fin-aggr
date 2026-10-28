@@ -35,7 +35,7 @@ describe('profile hooks on the server', () => {
       draft: {},
       complete: null,
       hydrated: false,
-      status: { hydrated: false, resetReason: null, persistError: false },
+      status: { hydrated: false, resetReason: null, persistError: false, loadError: false },
       actions: ['update', 'replace', 'clearAll', 'acknowledgeReset'],
     });
   });

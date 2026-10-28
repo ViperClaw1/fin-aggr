@@ -1,11 +1,13 @@
 // The profile store (ADR-004, ADR-009): a draft persisted in this browser only. Hydration is manual
 // (skipHydration) so the static shell renders without a profile; HydrateProfile starts it.
-import { ProfileDraft } from '@fa/contracts';
-import { createJSONStorage, persist } from 'zustand/middleware';
+// The schema loads lazily on hydration (ADR-016 D5); until it has loaded, edits are rejected and
+// nothing is written, so a failed load never overwrites the stored profile.
+import type { ProfileDraft } from '@fa/contracts';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
+import { loadProfileSchema, type CheckDraft, type SchemaLoader } from './load-schema';
 import { CURRENT_VERSION, migrateDraft, ProfileVersionError, type Migrator } from './migrate';
 import { browserBackend, createGuardedStorage, type StorageLike } from './persist';
-import { issuesOf } from './serialize';
 
 export const STORAGE_KEY = 'fa.profile';
 
@@ -19,6 +21,8 @@ export interface ProfileState {
   resetReason: ResetReason | null;
   /** storage failed (quota, blocked): the profile lives in memory for this session */
   persistError: boolean;
+  /** the schema chunk failed to load: the stored profile is kept but not shown; retried on reload */
+  loadError: boolean;
   /** merges into the draft; an undefined value clears that field */
   update: (patch: ProfileDraft) => ActionResult;
   replace: (draft: ProfileDraft) => ActionResult;
@@ -30,6 +34,40 @@ export interface ProfileState {
 interface Options {
   backend?: () => StorageLike | null;
   migrate?: Migrator;
+  loadSchema?: SchemaLoader;
+}
+
+class SchemaLoadError extends Error {
+  constructor(cause: unknown) {
+    super('profile schema failed to load', { cause });
+    this.name = 'SchemaLoadError';
+  }
+}
+
+const NOT_LOADED: ActionResult = { ok: false, issues: ['(root): profile is not loaded yet'] };
+
+interface Gate {
+  check: CheckDraft | null;
+}
+
+/** Loads the schema before the first read; writes wait for it, so a failed load overwrites nothing. */
+function gatedStorage(guarded: StorageLike, loadSchema: SchemaLoader, gate: Gate): StateStorage {
+  return {
+    getItem: async (key) => {
+      try {
+        gate.check = await loadSchema();
+      } catch (error) {
+        throw new SchemaLoadError(error);
+      }
+      return guarded.getItem(key);
+    },
+    setItem: (key, value) => {
+      if (gate.check !== null) guarded.setItem(key, value);
+    },
+    removeItem: (key) => {
+      guarded.removeItem(key);
+    },
+  };
 }
 
 const draftOf = (persisted: unknown): unknown =>
@@ -51,19 +89,24 @@ function mergeDraft(draft: ProfileDraft, patch: ProfileDraft): unknown {
 export function createProfileStore({
   backend = browserBackend,
   migrate = migrateDraft,
+  loadSchema = loadProfileSchema,
 }: Options = {}) {
-  const storage = createGuardedStorage(backend, () => {
+  const guarded = createGuardedStorage(backend, () => {
     // set once: setState itself writes to storage, which would fail again
     if (!store.getState().persistError) store.setState({ persistError: true });
   });
+  const gate: Gate = { check: null };
+  const storage = gatedStorage(guarded, loadSchema, gate);
+  const check = (value: unknown) => gate.check?.(value);
 
   const store = createStore<ProfileState>()(
     persist(
       (set, get) => {
         const accept = (candidate: unknown): ActionResult => {
-          const parsed = ProfileDraft.safeParse(candidate);
-          if (!parsed.success) return { ok: false, issues: issuesOf(parsed.error) };
-          set({ draft: parsed.data });
+          const checked = check(candidate);
+          if (checked === undefined) return NOT_LOADED;
+          if (!checked.ok) return checked;
+          set({ draft: checked.draft });
           return { ok: true };
         };
         return {
@@ -71,6 +114,7 @@ export function createProfileStore({
           hydrated: false,
           resetReason: null,
           persistError: false,
+          loadError: false,
           update: (patch) => accept(mergeDraft(get().draft, patch)),
           replace: (draft) => accept(draft),
           clearAll: () => {
@@ -92,13 +136,19 @@ export function createProfileStore({
         migrate: (persisted, version) => ({ draft: migrate(draftOf(persisted), version) }),
         // persist does not validate; a stored value of the wrong shape is discarded here
         merge: (persisted, current) => {
-          const parsed = ProfileDraft.safeParse(draftOf(persisted) ?? {});
-          return parsed.success
-            ? { ...current, draft: parsed.data }
+          // getItem has loaded the schema before persist calls merge
+          const checked = check(draftOf(persisted) ?? {});
+          return checked?.ok === true
+            ? { ...current, draft: checked.draft }
             : { ...current, draft: {}, resetReason: 'invalid_shape' };
         },
         // persist leaves hasHydrated() false after an error, so the store keeps its own flag
         onRehydrateStorage: () => (_state, error) => {
+          if (error instanceof SchemaLoadError) {
+            // the stored key stays: writes are off until a load succeeds
+            store.setState({ loadError: true, hydrated: true });
+            return;
+          }
           if (error !== undefined) {
             const future = error instanceof ProfileVersionError && error.code === 'future';
             store.setState({ draft: {}, resetReason: future ? 'future_version' : 'corrupt' });

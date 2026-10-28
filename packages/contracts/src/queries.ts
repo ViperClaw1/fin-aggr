@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { InstitutionKind, ProductCategory } from './entities';
 import { Id } from './primitives';
+import { INSTITUTION_LIST_DEFAULTS, PRODUCT_LIST_DEFAULTS } from './query-keys';
 
 export function Page<S extends z.ZodType>(
   item: S,
@@ -18,14 +19,14 @@ const Limit = z.int().min(1).max(100);
 export const InstitutionQuery = z.strictObject({
   q: z.string().max(80).optional(),
   kind: InstitutionKind.optional(),
-  limit: Limit.default(25),
+  limit: Limit.default(INSTITUTION_LIST_DEFAULTS.limit),
   cursor: z.string().optional(),
 });
 
 export const ProductQuery = z.strictObject({
   category: ProductCategory,
   institutionId: Id.optional(),
-  limit: Limit.default(100),
+  limit: Limit.default(PRODUCT_LIST_DEFAULTS.limit),
   cursor: z.string().optional(),
 });
 

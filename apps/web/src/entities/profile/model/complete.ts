@@ -1,5 +1,11 @@
 // Pure views of the draft: the full Profile the engine needs, and what was filled in for the user.
-import { formatUsd, Profile, type Assumption, type ProfileDraft } from '@fa/contracts';
+import {
+  formatUsd,
+  isProfile,
+  type Assumption,
+  type Profile,
+  type ProfileDraft,
+} from '@fa/contracts';
 import { DEFAULT_SCENARIO, DEFAULT_TAX_YEAR, REQUIRED_FIELDS } from './defaults';
 
 type Required = (typeof REQUIRED_FIELDS)[number];
@@ -21,15 +27,16 @@ export const missingFields = (draft: ProfileDraft): Required[] =>
 
 /** The full profile with defaults filled in, or null while a required field is missing or invalid. */
 export function toCompleteProfile(draft: ProfileDraft): Profile | null {
-  const parsed = Profile.safeParse({
+  const candidate = {
     version: 1,
     taxYear: DEFAULT_TAX_YEAR,
     cityMarginalRate: null,
     age: null,
     ...defined(draft),
     scenario: scenarioOf(draft),
-  });
-  return parsed.success ? parsed.data : null;
+  };
+  // zod-free: this runs on every render (ADR-016 D3)
+  return isProfile(candidate) ? candidate : null;
 }
 
 /** Values the user did not enter but the results depend on. */

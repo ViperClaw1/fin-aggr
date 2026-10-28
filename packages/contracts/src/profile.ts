@@ -2,18 +2,22 @@
 import { z } from 'zod';
 import { Cents } from './money/cents';
 import { Rate } from './money/rate';
+import { AGE_RANGE, HOLDING_MONTHS_RANGE, RESIDENCIES, STATE_CODE_LENGTH } from './profile-rules';
 import { FilingStatus } from './reference';
 
 export const Profile = z.strictObject({
   version: z.literal(1),
   taxYear: z.int(),
   filingStatus: FilingStatus,
-  stateCode: z.string().length(2),
+  stateCode: z.string().length(STATE_CODE_LENGTH),
   taxableIncome: Cents, // before this interest
   cityMarginalRate: Rate.nullable(), // entered by hand
-  residency: z.enum(['us_citizen', 'us_resident', 'nonresident']),
-  age: z.int().min(0).max(120).nullable(),
-  scenario: z.strictObject({ principal: Cents, holdingMonths: z.int().min(1).max(120) }),
+  residency: z.enum(RESIDENCIES),
+  age: z.int().min(AGE_RANGE[0]).max(AGE_RANGE[1]).nullable(),
+  scenario: z.strictObject({
+    principal: Cents,
+    holdingMonths: z.int().min(HOLDING_MONTHS_RANGE[0]).max(HOLDING_MONTHS_RANGE[1]),
+  }),
 });
 export type Profile = z.infer<typeof Profile>;
 

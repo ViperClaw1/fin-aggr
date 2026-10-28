@@ -1,4 +1,4 @@
-import { InstitutionQuery, type DataGateway, type Id, type IsoDate } from '@fa/contracts';
+import { normalizeInstitutionQuery, type DataGateway, type Id, type IsoDate } from '@fa/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import { getGateway } from '@/shared/api';
 import { STALE_TIME } from '@/shared/lib/query-client';
@@ -8,7 +8,7 @@ type ListInput = Parameters<DataGateway['listInstitutions']>[0];
 export const institutionsQuery = (q: ListInput) =>
   queryOptions({
     // defaults applied, so equal requests share one cache entry
-    queryKey: ['institutions', 'list', InstitutionQuery.safeParse(q).data ?? q] as const,
+    queryKey: ['institutions', 'list', normalizeInstitutionQuery(q)] as const,
     queryFn: () => getGateway().listInstitutions(q),
     staleTime: STALE_TIME.institutions,
   });

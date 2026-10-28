@@ -173,9 +173,29 @@ describe('storage failures', () => {
     await store.persist.rehydrate();
     expect([store.getState().hydrated, store.getState().persistError]).toEqual([true, true]);
   });
-  it('without a browser (server) the default store works in memory', () => {
+  it('without a browser (server) the store stays empty and rejects edits until hydrated', () => {
     const store = createProfileStore();
-    expect(store.getState().update({ stateCode: 'NY' })).toEqual({ ok: true });
-    expect(store.getState().persistError).toBe(false);
+    expect(store.getState().update({ stateCode: 'NY' }).ok).toBe(false);
+    expect([store.getState().draft, store.getState().persistError]).toEqual([{}, false]);
+  });
+});
+
+describe('the schema chunk fails to load (ADR-016 D5)', () => {
+  const failing = () => Promise.reject(new Error('ChunkLoadError'));
+  const raw = JSON.stringify({ state: { draft: { stateCode: 'NY' } }, version: 1 });
+
+  it('hydrates with an empty draft, flags loadError and keeps the stored profile', async () => {
+    const backend = memoryBackend({ [STORAGE_KEY]: raw });
+    const store = createProfileStore({ backend: () => backend, loadSchema: failing });
+    await store.persist.rehydrate();
+    const s = store.getState();
+    expect([s.draft, s.hydrated, s.loadError, s.resetReason]).toEqual([{}, true, true, null]);
+    expect(s.update({ age: 30 }).ok).toBe(false);
+    expect(backend.getItem(STORAGE_KEY)).toBe(raw);
+  });
+  it('a reload with a working load restores the kept profile', async () => {
+    const backend = memoryBackend({ [STORAGE_KEY]: raw });
+    await createProfileStore({ backend: () => backend, loadSchema: failing }).persist.rehydrate();
+    expect((await hydrated(backend)).getState().draft).toEqual({ stateCode: 'NY' });
   });
 });

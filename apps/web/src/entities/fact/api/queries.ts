@@ -1,4 +1,4 @@
-import { FactQuery, type DataGateway } from '@fa/contracts';
+import type { DataGateway } from '@fa/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import { getGateway } from '@/shared/api';
 import { STALE_TIME } from '@/shared/lib/query-client';
@@ -7,7 +7,8 @@ type ListInput = Parameters<DataGateway['listFacts']>[0];
 
 export const factsQuery = (q: ListInput) =>
   queryOptions({
-    queryKey: ['facts', FactQuery.safeParse(q).data ?? q] as const,
+    // no defaults in FactQuery: the request is the key
+    queryKey: ['facts', q] as const,
     queryFn: () => getGateway().listFacts(q),
     staleTime: STALE_TIME.facts,
   });

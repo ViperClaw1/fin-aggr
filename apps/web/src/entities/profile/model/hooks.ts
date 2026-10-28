@@ -18,6 +18,7 @@ export const useProfileStatus = () =>
       hydrated: s.hydrated,
       resetReason: s.resetReason,
       persistError: s.persistError,
+      loadError: s.loadError,
     })),
   );
 

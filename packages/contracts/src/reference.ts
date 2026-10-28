@@ -3,15 +3,11 @@ import { z } from 'zod';
 import { Cents } from './money/cents';
 import { Rate } from './money/rate';
 import { Id, IsoDate, IsoDateTime } from './primitives';
+import { FILING_STATUSES } from './profile-rules';
 import { Provenance } from './provenance';
 import { Regulator } from './entities';
 
-export const FilingStatus = z.enum([
-  'single',
-  'married_joint',
-  'married_separate',
-  'head_of_household',
-]);
+export const FilingStatus = z.enum(FILING_STATUSES);
 export type FilingStatus = z.infer<typeof FilingStatus>;
 
 // upTo is inclusive; null on the last bracket

@@ -11,14 +11,14 @@ const DRAFT: ProfileDraft = {
   scenario: { principal: Cents.parse(2500000) },
 };
 const file = (body: unknown): string => JSON.stringify(body);
-const errorOf = (text: string): string | undefined => {
-  const r = parseImport(text);
+const errorOf = async (text: string): Promise<string | undefined> => {
+  const r = await parseImport(text);
   return r.ok ? undefined : r.error;
 };
 
 describe('export and import', () => {
-  it('a round trip gives the same draft', () => {
-    expect(parseImport(exportProfile(DRAFT))).toEqual({ ok: true, draft: DRAFT });
+  it('a round trip gives the same draft', async () => {
+    expect(await parseImport(exportProfile(DRAFT))).toEqual({ ok: true, draft: DRAFT });
   });
   it('the export has the format tag and version and no timestamp', () => {
     expect(Object.keys(JSON.parse(exportProfile(DRAFT)) as object)).toEqual([
@@ -27,10 +27,16 @@ describe('export and import', () => {
       'profile',
     ]);
   });
-  it('imports an older version through the migrations', () => {
+  it('imports an older version through the migrations', async () => {
     const migrate = createMigrator({ 0: (d) => ({ ...(d as object), stateCode: 'TX' }) }, 1);
     const old = file({ format: 'fa-profile', version: 0, profile: {} });
-    expect(parseImport(old, migrate)).toEqual({ ok: true, draft: { stateCode: 'TX' } });
+    expect(await parseImport(old, migrate)).toEqual({ ok: true, draft: { stateCode: 'TX' } });
+  });
+  it('a failed schema load is reported as unavailable', async () => {
+    const r = await parseImport(exportProfile(DRAFT), undefined, () =>
+      Promise.reject(new Error('ChunkLoadError')),
+    );
+    expect(r.ok ? undefined : r.error).toBe('unavailable');
   });
 });
 
@@ -55,23 +61,23 @@ describe('rejected imports', () => {
       file({ format: 'fa-profile', version: 1, profile: { email: 'a' } }),
       'invalid_profile',
     ],
-  ])('%s → %s', (_, text, error) => {
-    expect(errorOf(text)).toBe(error);
+  ])('%s → %s', async (_, text, error) => {
+    expect(await errorOf(text)).toBe(error);
   });
-  it('counts the size in UTF-8 bytes, not characters', () => {
+  it('counts the size in UTF-8 bytes, not characters', async () => {
     const body = file({ format: 'fa-profile', version: 1, profile: {} });
     const padded = body + ' '.repeat(MAX_IMPORT_BYTES - body.length);
-    expect(errorOf(padded)).toBeUndefined();
+    expect(await errorOf(padded)).toBeUndefined();
     // same character count, one more byte: "é" is two bytes in UTF-8
-    expect(errorOf(`${padded.slice(0, -1)}é`)).toBe('too_large');
+    expect(await errorOf(`${padded.slice(0, -1)}é`)).toBe('too_large');
   });
-  it('issues name the path, never the value (the file may hold income)', () => {
+  it('issues name the path, never the value (the file may hold income)', async () => {
     const text = file({
       format: 'fa-profile',
       version: 1,
       profile: { taxableIncome: 'SENTINEL-987654' },
     });
-    const r = parseImport(text);
+    const r = await parseImport(text);
     expect(r.ok ? [] : r.issues).toEqual([expect.stringMatching(/^taxableIncome: /)]);
     expect(JSON.stringify(r)).not.toContain('SENTINEL-987654');
   });

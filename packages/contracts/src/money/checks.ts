@@ -11,12 +11,7 @@ export const isRate = (v: unknown): v is Rate => typeof v === 'string' && RATE_R
 export const isSignedRate = (v: unknown): v is SignedRate =>
   typeof v === 'string' && SIGNED_RATE_RE.test(v);
 
-/** "0.0435" → Rate; anything else is `invalid_format`. */
-export function asRate(text: string): Rate {
-  if (!isRate(text)) throw new MoneyParseError('invalid_format', text);
-  return text;
-}
-
+/** "-0.0435" → SignedRate; anything else is `invalid_format`. */
 export function asSignedRate(text: string): SignedRate {
   if (!isSignedRate(text)) throw new MoneyParseError('invalid_format', text);
   return text;
