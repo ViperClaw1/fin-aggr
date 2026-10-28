@@ -16,6 +16,8 @@ export interface EligibilityContext {
 export interface RuleTraceNode {
   path: string;
   label?: string;
+  /** Leaves only: which profile field was compared, so the UI can format actual and expected. */
+  field?: ProfileField;
   op: Rule['op'];
   result: Tri;
   actual?: string | number;
@@ -116,6 +118,7 @@ function leaf(
   if (actual === undefined) missing.add(rule.field);
   const node: RuleTraceNode = {
     path,
+    field: rule.field,
     op: rule.op,
     result: actual === undefined ? 'unknown' : compare(rule, actual),
     expected: rule.op === 'in' ? rule.values : rule.value,

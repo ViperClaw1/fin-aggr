@@ -110,6 +110,7 @@ describe('result', () => {
       children: [
         {
           path: '$.arg',
+          field: 'residency',
           op: 'eq',
           result: false,
           actual: 'us_citizen',
@@ -121,6 +122,7 @@ describe('result', () => {
   it('an unknown leaf has no actual value', () => {
     expect(evaluateEligibility(LEAF['U']!, CTX).trace).toEqual({
       path: '$',
+      field: 'age',
       op: 'gte',
       result: 'unknown',
       expected: 18,

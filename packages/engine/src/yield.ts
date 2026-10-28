@@ -1,6 +1,7 @@
 // Net yield after penalty and taxes (spec §5 computeNetYield, rules 1–9).
 import type { Decimal } from 'decimal.js';
 import {
+  FILING_STATUS_LABEL,
   formatRate,
   formatSignedRate,
   formatUsd,
@@ -102,12 +103,6 @@ const PENALTY: Record<YieldProduct['earlyWithdrawal']['kind'], string> = {
   months_of_interest: 'Months of interest at the account APY',
   percent_of_principal: 'Percent of the principal',
 };
-const FILING: Record<NetYieldInput['profile']['filingStatus'], string> = {
-  single: 'Single',
-  married_joint: 'Married filing jointly',
-  married_separate: 'Married filing separately',
-  head_of_household: 'Head of household',
-};
 
 type Row = [
   id: string,
@@ -135,7 +130,7 @@ function taxRows(profile: TaxProfile, taxes: Taxes, lines: Lines): Row[] {
       'tax(income + interest) − tax(income)',
       {
         'Taxable income': usd(profile.taxableIncome),
-        'Filing status': FILING[profile.filingStatus],
+        'Filing status': FILING_STATUS_LABEL[profile.filingStatus],
       },
       usd(lines.federalTax),
     ],

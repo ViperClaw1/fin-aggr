@@ -1,6 +1,6 @@
 import { formatSignedRate, type Rate, type SignedRate } from '@fa/contracts';
 import type { ReactNode } from 'react';
-import { RateExplain } from './rate-explain';
+import { Disclosure } from '../disclosure';
 
 interface RateValueProps {
   rate: Rate | SignedRate;
@@ -18,8 +18,8 @@ export function RateValue({
   const text = formatSignedRate(rate);
   if (explain === undefined) return <span className="tabular-nums">{text}</span>;
   return (
-    <RateExplain text={text} label={explainLabel}>
+    <Disclosure summary={text} label={explainLabel}>
       {explain}
-    </RateExplain>
+    </Disclosure>
   );
 }

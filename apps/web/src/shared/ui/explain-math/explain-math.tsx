@@ -23,7 +23,8 @@ export function ExplainMath({
   const id = useId();
   const Heading = `h${String(headingLevel)}` as 'h2' | 'h3' | 'h4';
   return (
-    <section aria-labelledby={id} className="space-y-4">
+    // data-assumption marks a calculated result with its assumptions for the AC-3 e2e check
+    <section aria-labelledby={id} className="space-y-4" data-assumption="">
       <Heading id={id} className="text-lg font-semibold">
         {title}
       </Heading>
@@ -59,14 +60,14 @@ function Step({ step }: { step: CalcStep }) {
         {step.label}: <strong className="tabular-nums">{step.result}</strong>
       </p>
       <p className="text-sm text-muted">
-        <code className="break-words">{step.formula}</code>
+        <code className="wrap-break-word">{step.formula}</code>
       </p>
       {inputs.length === 0 ? null : (
         <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 text-sm">
           {inputs.map(([key, value]) => (
             <div key={key} className="contents">
               <dt className="text-muted">{key}</dt>
-              <dd className="break-words tabular-nums">{value}</dd>
+              <dd className="wrap-break-word tabular-nums">{value}</dd>
             </div>
           ))}
         </dl>

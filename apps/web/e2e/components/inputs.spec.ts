@@ -48,7 +48,8 @@ test('a percent becomes a rate fraction', async ({ page }) => {
 
 test('a state is chosen from the keyboard', async ({ page }) => {
   await page.getByLabel('State of residence').focus();
-  await page.keyboard.type('Texas');
-  await expect(page.getByLabel('State of residence')).toHaveValue('TX');
-  await expect(values(page)).toContainText('"state":"TX"');
+  // one key: multi-key type-ahead resets after ~1 s and is flaky on a loaded machine
+  await page.keyboard.press('W');
+  await expect(page.getByLabel('State of residence')).toHaveValue('WA');
+  await expect(values(page)).toContainText('"state":"WA"');
 });

@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
-/**
- * Native <details> (no Popover API: Safari 16.4 floor, ADR-014). The panel is absolute so a
- * table row does not grow. Escape closes it and returns focus, which <details> lacks natively.
- */
-export function RateExplain({
-  text,
-  label,
-  children,
-}: {
-  text: string;
+interface DisclosureProps {
+  /** Visible part of the toggle, e.g. a value or a chip. */
+  summary: ReactNode;
+  /** Appended for screen readers: "4.35%, How is this calculated?". */
   label: string;
   children: ReactNode;
-}) {
+}
+
+/**
+ * Native <details> (no Popover API: Safari 16.4 floor, ADR-014). From `sm` up the panel is
+ * absolute so a table row does not grow; on phones it stays in the flow. Escape closes it and returns focus, which <details> lacks natively.
+ * Not inside <p>: <details> is not phrasing content.
+ */
+export function Disclosure({ summary, label, children }: DisclosureProps) {
   const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const details = ref.current;
@@ -33,13 +34,15 @@ export function RateExplain({
   return (
     <details ref={ref} className="relative inline-block">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 tabular-nums [&::-webkit-details-marker]:hidden">
-        {text}
+        {summary}
         <span aria-hidden="true" className="text-muted">
           ⓘ
         </span>
         <span className="sr-only">, {label}</span>
       </summary>
-      <div className="absolute left-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded border border-border bg-background p-3 text-sm shadow-lg">
+      {/* in the flow on phones (an absolute panel from a toggle near the right edge would leave
+          the screen), absolute from `sm` up so a table row keeps its height */}
+      <div className="z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded border border-border bg-background p-3 text-sm shadow-lg sm:absolute sm:left-0">
         {children}
       </div>
     </details>
