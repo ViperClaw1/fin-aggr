@@ -136,6 +136,14 @@ export const WEB_PROPS = [
   AMBIENT_NOW,
 ];
 export const WEB_SYNTAX = [...SYNTAX_COMMON, NO_AMBIENT_TIME, NO_LOCAL_MONEY_FORMAT];
+// ADR-016 D3: client and engine code use the zod-free checks from @fa/contracts, so zod stays out
+// of the browser bundle. Schemas are capitalised (Cents, ProfileDraft); Date and JSON are not schemas.
+export const NO_SCHEMA_CALL = {
+  selector:
+    "CallExpression[callee.type='MemberExpression'][callee.property.name=/^(parse|safeParse)$/][callee.object.name=/^(?!(Date|JSON)$)[A-Z]/]",
+  message:
+    'No zod schema calls in client or engine code (ADR-016): use the checks from @fa/contracts (isRate, asIsoDate, …).',
+};
 export const NETWORK_GLOBALS = [
   { name: 'fetch', message: 'fetch only in shared/api/http.ts.' },
   { name: 'XMLHttpRequest', message: 'Network only via shared/api/http.ts.' },

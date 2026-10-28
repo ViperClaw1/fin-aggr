@@ -1,16 +1,13 @@
 // URL state of the citation viewer, ?doc=&page=&q= (spec §2 CitationViewerHost). Opening pushes a
 // history entry, so Back closes the viewer. The quote is plain text, rendered as a string, never HTML.
-import { Id } from '@fa/contracts';
+import { isId, type Id } from '@fa/contracts';
 import { createLoader, createParser, createSerializer, type inferParserType } from 'nuqs';
 
 const MAX_PAGE = 9999;
 const MAX_QUOTE = 400;
 
 const doc = createParser<Id>({
-  parse: (value) => {
-    const parsed = Id.safeParse(value);
-    return parsed.success ? parsed.data : null;
-  },
+  parse: (value) => (isId(value) ? value : null),
   serialize: (id) => id,
 });
 

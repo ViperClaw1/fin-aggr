@@ -9,6 +9,9 @@ export {
   rateFromPercent,
 } from './money/parse';
 export { formatRate, formatSignedRate, formatUsd } from './money/format';
+// Brand checks without zod for client and engine code (ADR-016 D3)
+export { asSignedRate, isRate, RATE_ZERO } from './money/checks';
+export { asIsoDate, isId } from './checks';
 export { FILING_STATUS_LABEL, PROFILE_FIELD_LABEL, RESIDENCY_LABEL } from './labels';
 export { compareRate } from './money/compare';
 export { Id, IsoDate, IsoDateTime } from './primitives';

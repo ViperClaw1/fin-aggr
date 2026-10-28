@@ -1,7 +1,14 @@
 // Decimal arithmetic on Cents and Rate (ADR-003, ADR-013). Values enter Decimal as safe integers
 // or strings and leave through @fa/contracts as integer or decimal strings; never through float.
 import { Decimal } from 'decimal.js';
-import { centsFromInteger, Rate, SignedRate, type Cents } from '@fa/contracts';
+import {
+  asSignedRate,
+  centsFromInteger,
+  isRate,
+  type Cents,
+  type Rate,
+  type SignedRate,
+} from '@fa/contracts';
 import { EngineError } from './errors';
 
 /** Isolated clone: the global Decimal config is never touched. No exponent form in toString. */
@@ -21,7 +28,8 @@ export function decCents(value: Cents): Decimal {
 }
 
 export function decRate(value: Rate): Decimal {
-  if (!Rate.safeParse(value).success) throw new EngineError('invalid_rate', `not a rate: ${value}`);
+  // a typed Rate can still be wrong at runtime (unchecked input), hence the widened string
+  if (!isRate(value)) throw new EngineError('invalid_rate', `not a rate: ${value as string}`);
   return new D(value);
 }
 
@@ -40,7 +48,7 @@ export function toCents(value: Decimal): Cents {
 export function toSignedRate(value: Decimal): SignedRate {
   if (!value.isFinite()) throw new EngineError('invalid_input', 'rate is not finite');
   const rounded = value.toDecimalPlaces(RATE_DECIMALS, D.ROUND_HALF_UP);
-  return SignedRate.parse(rounded.isZero() ? '0' : rounded.toString());
+  return asSignedRate(rounded.isZero() ? '0' : rounded.toString());
 }
 
 export function sumCents(values: readonly Cents[]): Cents {

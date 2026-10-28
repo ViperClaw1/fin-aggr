@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ID_RE } from './patterns';
 
 // zod probes for JIT with `Function("")`; the CSP has no 'unsafe-eval' (ADR-015), so every page
 // load reported a script-src violation and raced the AC-4 e2e test. Every schema module imports this one.
@@ -13,5 +14,5 @@ export const IsoDateTime = z.iso.datetime({ offset: true }).brand<'IsoDateTime'>
 export type IsoDateTime = z.infer<typeof IsoDateTime>;
 
 /** Opaque identifier: "fdic:628", "prod_cd_0042". */
-export const Id = z.string().regex(/^[a-z0-9][a-z0-9:_-]{0,63}$/i);
+export const Id = z.string().regex(ID_RE);
 export type Id = z.infer<typeof Id>;

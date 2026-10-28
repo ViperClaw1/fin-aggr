@@ -9,7 +9,8 @@ import {
   parseCents,
   rateFromPercent,
   compareRate,
-  Rate,
+  RATE_ZERO,
+  type Rate,
   type Cents,
 } from '@fa/contracts';
 import {
@@ -60,7 +61,7 @@ const minApy = createParser<Rate>({
     if (value.length > 10) return null;
     try {
       const rate = rateFromPercent(value);
-      return compareRate(rate, Rate.parse('0')) === 0 ? null : rate;
+      return compareRate(rate, RATE_ZERO) === 0 ? null : rate;
     } catch {
       return null;
     }

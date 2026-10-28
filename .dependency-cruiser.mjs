@@ -4,8 +4,9 @@ import { URL, fileURLToPath } from 'node:url';
 // Graph rules ESLint cannot express: cycles, slice isolation, package boundaries, privacy (spec §7.3).
 const WEB = '^apps/web/src';
 const CANARY = '\\.canary\\.tsx?$';
+// node_modules is not excluded: that would drop every edge to an npm package and silence the
+// npm rules (contracts-depend-on-zod-only, money-checks-without-zod). doNotFollow keeps the edge.
 const BUILD_OUTPUT = [
-  'node_modules',
   '(^|/)\\.next/',
   '(^|/)coverage/',
   '(^|/)playwright-report/',
@@ -67,10 +68,26 @@ export default {
     {
       name: 'contracts-depend-on-zod-only',
       severity: 'error',
-      from: { path: '^packages/contracts/src' },
+      from: { path: '^packages/contracts/src', pathNot: '\\.test\\.' },
       to: {
         dependencyTypes: ['npm', 'npm-dev', 'npm-peer', 'npm-optional'],
         pathNot: 'node_modules/zod/',
+      },
+    },
+    {
+      // ADR-016 D3: parsing, formatting and brand checks stay zod-free at runtime, so client code
+      // that uses them does not pull zod. `import type` of a schema's type is fine.
+      name: 'money-checks-without-zod',
+      severity: 'error',
+      from: {
+        path: '^packages/contracts/src/(checks|money/(checks|parse|format|compare|errors)|money/canary/no-zod-[a-z-]+\\.canary)\\.ts$',
+      },
+      to: {
+        path: [
+          'node_modules/zod/',
+          '^packages/contracts/src/(primitives|money/(cents|rate))\\.ts$',
+        ],
+        dependencyTypesNot: ['type-only'],
       },
     },
     {

@@ -19,6 +19,7 @@ import {
   MONEY_FLOAT,
   NETWORK_GLOBALS,
   NO_AMBIENT_TIME,
+  NO_SCHEMA_CALL,
   PROFILE_WRITE,
   SYNTAX_COMMON,
   WEB_PROPS,
@@ -176,6 +177,17 @@ export default defineConfig(
     ignores: [`${WEB}/shared/ui/charts/scale.ts`],
     rules: { 'no-restricted-syntax': ['error', ...WEB_SYNTAX, ...MONEY_FLOAT] },
   },
+  {
+    // ADR-016 D3: code that reaches the browser calls no zod schema (tests and shared/api may)
+    files: [`${WEB}/{features,widgets,entities,shared/lib}/**/*.{ts,tsx}`],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', ...WEB_SYNTAX, NO_SCHEMA_CALL] },
+  },
+  {
+    files: [`${WEB}/shared/ui/**/*.{ts,tsx}`],
+    ignores: ['**/*.test.{ts,tsx}', `${WEB}/shared/ui/charts/scale.ts`],
+    rules: { 'no-restricted-syntax': ['error', ...WEB_SYNTAX, ...MONEY_FLOAT, NO_SCHEMA_CALL] },
+  },
   { files: [`${WEB}/shared/api/http.ts`], rules: { 'no-restricted-globals': 'off' } },
   {
     files: [`${WEB}/entities/profile/model/persist.ts`],
@@ -185,7 +197,11 @@ export default defineConfig(
     files: [`${WEB}/shared/lib/clock.ts`],
     rules: {
       'no-restricted-properties': ['error', ...WEB_PROPS.filter((p) => p !== AMBIENT_NOW)],
-      'no-restricted-syntax': ['error', ...WEB_SYNTAX.filter((s) => s !== NO_AMBIENT_TIME)],
+      'no-restricted-syntax': [
+        'error',
+        ...WEB_SYNTAX.filter((s) => s !== NO_AMBIENT_TIME),
+        NO_SCHEMA_CALL,
+      ],
     },
   },
 
@@ -227,6 +243,20 @@ export default defineConfig(
       '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
       '@typescript-eslint/strict-boolean-expressions': 'error',
       'no-param-reassign': ['error', { props: true }],
+    },
+  },
+  {
+    // ADR-016 D3: the engine runs in the browser (useNetYield), so it calls no zod schema
+    files: ['packages/engine/src/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.bench.ts', 'packages/engine/src/test-data.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...SYNTAX_COMMON,
+        NO_AMBIENT_TIME,
+        ...MONEY_FLOAT,
+        NO_SCHEMA_CALL,
+      ],
     },
   },
   {
