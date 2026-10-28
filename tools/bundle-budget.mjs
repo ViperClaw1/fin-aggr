@@ -2,16 +2,21 @@
 // (apps/web/.next/diagnostics/route-bundle-stats.json, written by `next build`). ADR-016.
 // Report only for now; it starts failing above the AC-8 budget once /compare/cd exists (ADR-016 D7).
 import process from 'node:process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const APP = 'apps/web';
 const BUDGET_KB = 200; // AC-8: /compare/cd, gzip, without the PDF module
 
-const stats = JSON.parse(
-  readFileSync(join(APP, '.next/diagnostics/route-bundle-stats.json'), 'utf8'),
-);
+const STATS = join(APP, '.next/diagnostics/route-bundle-stats.json');
+if (!existsSync(STATS)) {
+  process.stderr.write(
+    `✖ ${STATS} not found: run \`pnpm build\` first, or Next output changed (see ADR-016)\n`,
+  );
+  process.exit(1);
+}
+const stats = JSON.parse(readFileSync(STATS, 'utf8'));
 const gz = new Map();
 const size = (path) => {
   if (!gz.has(path)) gz.set(path, gzipSync(readFileSync(join(APP, path))).length);
