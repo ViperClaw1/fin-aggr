@@ -21,11 +21,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${String(PORT)}` },
     },
     {
+      name: 'components-warmup',
+      testDir: './e2e/components',
+      testMatch: 'warmup.setup.ts',
+      use: { baseURL: DEV_URL },
+    },
+    {
       name: 'components',
       testDir: './e2e/components',
-      // a cold dev server compiles on first visit; in CI run after the production project, one worker,
-      // so it never competes for CPU with it. Locally the projects stay independent.
-      ...(CI ? { workers: 1, dependencies: ['chromium'] } : {}),
+      // a cold dev server compiles on first visit: the warm-up project visits the stand once first.
+      // In CI also run after the production project, one worker, so it never competes for CPU with it.
+      dependencies: CI ? ['components-warmup', 'chromium'] : ['components-warmup'],
+      ...(CI ? { workers: 1 } : {}),
       use: {
         ...devices['Desktop Chrome'],
         baseURL: DEV_URL,

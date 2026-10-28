@@ -721,7 +721,7 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 
 | Фича | Путь | Что делает | Кто использует |
 | --- | --- | --- | --- |
-| `edit-profile` | `features/edit-profile` | Форма профиля, единственное место записи в store профиля | `widgets/profile-drawer` |
+| `edit-profile` | `features/edit-profile` | Форма профиля, единственное место записи в store профиля. Пока `hydrated === false`, форма неактивна (`<fieldset disabled>`, `aria-busy`): стор до гидрации отклоняет правки (ADR-016 D5). `loadError` показывается как ошибка загрузки | `widgets/profile-drawer` |
 | `edit-assumptions` | `features/edit-assumptions` | Правка допущений (ставка города, ставка штата) | `widgets/product-breakdown`, `widgets/yield-comparator` |
 | `filter-products` | `features/filter-products` | Состояние фильтров в URL и чистая функция фильтрации | `widgets/compare-table` |
 | `compute-net-yield` | `features/compute-net-yield` | Хук `useNetYield`: вызывает `engine`, возвращает результат и состояние расчёта | `widgets/*` |

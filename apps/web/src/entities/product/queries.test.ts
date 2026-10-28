@@ -1,4 +1,5 @@
 import { GatewayError, type DataGateway } from '@fa/contracts';
+import { hashKey } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { createMockGateway, type MockGatewayOptions } from '@/shared/api/gateway.mock';
 import { makeQueryClient } from '@/shared/lib/query-client';
@@ -18,6 +19,11 @@ describe('product queries', () => {
   it('a list key is the same with and without the default limit', () => {
     expect(productsQuery({ category: 'cd' }).queryKey).toEqual(
       productsQuery({ category: 'cd', limit: 100 }).queryKey,
+    );
+  });
+  it('an optional field set to undefined hashes like an absent one (D1 hydration relies on it)', () => {
+    expect(hashKey(productsQuery({ category: 'cd', institutionId: undefined }).queryKey)).toBe(
+      hashKey(productsQuery({ category: 'cd' }).queryKey),
     );
   });
   it('different categories get different keys', () => {

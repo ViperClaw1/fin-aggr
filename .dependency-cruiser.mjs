@@ -91,6 +91,17 @@ export default {
       },
     },
     {
+      // ADR-016 D2: the gateway implementations (mock with fixtures and schemas, http) load only
+      // through import(), so a route without data requests does not ship them. Tests may import them.
+      name: 'gateway-impl-dynamic-only',
+      severity: 'error',
+      from: { path: '^apps/web/src/', pathNot: '\\.test\\.|/contract-suite\\.ts$' },
+      to: {
+        path: '^apps/web/src/shared/api/gateway\\.(mock|http)\\.ts$',
+        dependencyTypesNot: ['dynamic-import'],
+      },
+    },
+    {
       name: 'profile-never-in-gateway-types',
       severity: 'error',
       from: { path: '^packages/contracts/src/(gateway|queries)' },
