@@ -2,6 +2,7 @@
 import type { Decimal } from 'decimal.js';
 import {
   formatRate,
+  formatSignedRate,
   formatUsd,
   type Assumption,
   type CalcStep,
@@ -89,6 +90,25 @@ function assumptionsFor(product: YieldProduct): Assumption[] {
 }
 
 const usd = (cents: Cents): string => formatUsd(cents);
+
+// Step texts are shown to the user as is (ExplainMath), so codes become words here.
+const TIER_MODE: Record<YieldProduct['tierMode'], string> = {
+  whole_balance: 'Whole balance earns the APY of its tier',
+  marginal: 'Each portion earns the APY of its own tier',
+};
+const PENALTY: Record<YieldProduct['earlyWithdrawal']['kind'], string> = {
+  none: 'No early withdrawal penalty',
+  days_of_interest: 'Days of interest at the account APY',
+  months_of_interest: 'Months of interest at the account APY',
+  percent_of_principal: 'Percent of the principal',
+};
+const FILING: Record<NetYieldInput['profile']['filingStatus'], string> = {
+  single: 'Single',
+  married_joint: 'Married filing jointly',
+  married_separate: 'Married filing separately',
+  head_of_household: 'Head of household',
+};
+
 type Row = [
   id: string,
   label: string,
@@ -105,56 +125,75 @@ interface StepsInput {
   yld: SignedRate;
 }
 
-function stepsFor({ input, interest, taxes, lines, yld }: StepsInput): CalcStep[] {
-  const { principal, holdingMonths, profile, product } = input;
-  const tiers = interest.portions
-    .map((p) => `${usd(toCents(p.amount))} at ${formatRate(p.apy)}`)
-    .join('; ');
-  const pct = (d: Decimal): string => `${d.times(100).toString()}%`;
-  const rows: Row[] = [
-    ['tiers', 'Rate tiers', product.tierMode, { principal: usd(principal) }, tiers],
-    [
-      'gross',
-      'Gross interest',
-      'amount × ((1 + APY)^(months / 12) − 1)',
-      { months: String(interest.months), tiers },
-      usd(lines.grossInterest),
-    ],
-    [
-      'penalty',
-      'Early withdrawal penalty',
-      interest.closedEarly ? product.earlyWithdrawal.kind : 'none (held to term)',
-      { holdingMonths: String(holdingMonths) },
-      usd(lines.earlyWithdrawalPenalty),
-    ],
-    [
-      'taxable',
-      'Taxable interest',
-      'max(0, gross interest − penalty)',
-      { gross: usd(lines.grossInterest), penalty: usd(lines.earlyWithdrawalPenalty) },
-      usd(lines.taxableInterest),
-    ],
+const pct = (d: Decimal): string => `${d.times(100).toString()}%`;
+
+function taxRows(profile: TaxProfile, taxes: Taxes, lines: Lines): Row[] {
+  return [
     [
       'federal',
       'Federal tax',
       'tax(income + interest) − tax(income)',
-      { income: usd(profile.taxableIncome), filingStatus: profile.filingStatus },
+      {
+        'Taxable income': usd(profile.taxableIncome),
+        'Filing status': FILING[profile.filingStatus],
+      },
       usd(lines.federalTax),
     ],
     [
       'state',
       'State tax',
       'taxable interest × state rate',
-      { state: profile.stateCode, rate: pct(taxes.stateRate) },
+      { State: profile.stateCode, 'State rate': pct(taxes.stateRate) },
       usd(lines.stateTax),
     ],
     [
       'local',
       'Local tax',
       'taxable interest × city rate',
-      { rate: pct(taxes.localRate) },
+      { 'City rate': pct(taxes.localRate) },
       usd(lines.localTax),
     ],
+  ];
+}
+
+function stepsFor({ input, interest, taxes, lines, yld }: StepsInput): CalcStep[] {
+  const { principal, holdingMonths, profile, product } = input;
+  const tiers = interest.portions
+    .map((p) => `${usd(toCents(p.amount))} at ${formatRate(p.apy)}`)
+    .join('; ');
+  const rows: Row[] = [
+    [
+      'tiers',
+      'Rate tiers',
+      'principal split across the APY tiers',
+      { Principal: usd(principal), 'Tier mode': TIER_MODE[product.tierMode] },
+      tiers,
+    ],
+    [
+      'gross',
+      'Gross interest',
+      'amount × ((1 + APY)^(months / 12) − 1)',
+      { Months: String(interest.months), Tiers: tiers },
+      usd(lines.grossInterest),
+    ],
+    [
+      'penalty',
+      'Early withdrawal penalty',
+      interest.closedEarly ? PENALTY[product.earlyWithdrawal.kind] : 'None: held to term',
+      { 'Months held': String(holdingMonths) },
+      usd(lines.earlyWithdrawalPenalty),
+    ],
+    [
+      'taxable',
+      'Taxable interest',
+      'max(0, gross interest − penalty)',
+      {
+        'Gross interest': usd(lines.grossInterest),
+        Penalty: usd(lines.earlyWithdrawalPenalty),
+      },
+      usd(lines.taxableInterest),
+    ],
+    ...taxRows(profile, taxes, lines),
     [
       'net',
       'Net interest',
@@ -166,8 +205,8 @@ function stepsFor({ input, interest, taxes, lines, yld }: StepsInput): CalcStep[
       'yield',
       'Net simple annual yield',
       'net interest / principal × 12 / months held',
-      { principal: usd(principal), holdingMonths: String(holdingMonths) },
-      yld,
+      { Principal: usd(principal), 'Months held': String(holdingMonths) },
+      formatSignedRate(yld),
     ],
   ];
   return rows.map(([id, label, formula, inputs, result]) => ({

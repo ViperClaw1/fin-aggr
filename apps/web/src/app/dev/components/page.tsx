@@ -3,6 +3,7 @@ import { isProduction } from '@/shared/config';
 import { InputsSection } from '../_stand/inputs-section';
 import { StatesSection } from '../_stand/states-section';
 import { TableSection } from '../_stand/table-section';
+import { ValuesSection } from '../_stand/values-section';
 
 /** Component stand (spec §6 rule 7): development only. Light and dark come from the OS scheme. */
 export default function ComponentStandPage() {
@@ -13,6 +14,7 @@ export default function ComponentStandPage() {
       <StatesSection />
       <InputsSection />
       <TableSection />
+      <ValuesSection />
     </main>
   );
 }

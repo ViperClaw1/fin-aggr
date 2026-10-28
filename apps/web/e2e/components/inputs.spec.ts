@@ -5,7 +5,7 @@ const values = (page: Page) => page.getByTestId('input-values');
 
 /** Types into a field by its label and leaves it with Tab, which triggers parsing. */
 async function enter(page: Page, label: string, text: string): Promise<void> {
-  await page.getByLabel(label).fill(text);
+  await page.getByLabel(label, { exact: true }).fill(text);
   await page.keyboard.press('Tab');
 }
 

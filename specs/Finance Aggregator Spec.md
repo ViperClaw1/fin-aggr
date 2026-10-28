@@ -791,10 +791,23 @@ export interface CompatibilityBadgeProps { result: EligibilityResult; compact?: 
 
 // shared/ui/explain-math
 export interface ExplainMathProps {
-  steps: readonly CalcStep[];
+  steps: readonly CalcStep[];                        // тексты шагов готовит движок, UI выводит как есть
   assumptions: readonly Assumption[];
   onEditAssumption?: (id: string) => void;
+  title?: string;
+  headingLevel?: 2 | 3 | 4;
 }
+
+// shared/ui/rate-value: только форматирует; ставка банка идёт через FactValue
+export interface RateValueProps { rate: Rate | SignedRate; explain?: ReactNode; explainLabel?: string }
+
+// shared/ui/metric-card: value уже отформатирован; warn и danger требуют toneLabel
+export type MetricCardProps = {
+  label: string; value: ReactNode; hint?: string;
+} & ({ tone?: 'neutral' | 'ok'; toneLabel?: string } | { tone: 'warn' | 'danger'; toneLabel: string });
+
+// shared/ui/freshness: now приходит пропом; на SSG-страницах рендерить на клиенте через clock
+export interface FreshnessLabelProps { at: IsoDateTime | IsoDate; now: Date; staleAfterDays?: number }
 
 // widgets/sponsored-slot: монтируется только в app/**
 export interface SponsoredSlotProps { placement: SponsoredPlacement }

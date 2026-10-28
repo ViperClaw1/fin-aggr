@@ -1,4 +1,4 @@
-import { Cents, EarlyWithdrawal, Rate } from '@fa/contracts';
+import { Cents, EarlyWithdrawal, formatSignedRate, Rate } from '@fa/contracts';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { YieldProduct } from './interest';
@@ -58,8 +58,21 @@ describe('assumptions, warnings and steps', () => {
       'net',
       'yield',
     ]);
-    expect(r.steps.at(-1)?.result).toBe(r.netSimpleAnnualYield);
+    expect(r.steps.at(-1)?.result).toBe(formatSignedRate(r.netSimpleAnnualYield));
     expect(r.steps.find((s) => s.id === 'net')?.result).toBe('$370.00');
+  });
+  it('step texts are words for people: no enum codes or camelCase keys', () => {
+    const r = run({ product: { earlyWithdrawal: DAYS_90 }, holdingMonths: 1 });
+    const texts = r.steps.flatMap((s) => [
+      s.formula,
+      s.result,
+      ...Object.keys(s.inputs),
+      ...Object.values(s.inputs),
+    ]);
+    expect(texts.filter((t) => /[a-z]_[a-z]|[a-z][A-Z]/.test(t))).toEqual([]);
+    expect(r.steps.find((s) => s.id === 'penalty')?.formula).toBe(
+      'Days of interest at the account APY',
+    );
   });
   it('a zero principal is invalid_input', () => {
     expect(() => run({ principal: 0 })).toThrow(/^invalid_input/);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Cents } from './cents';
 import { MoneyParseError, type MoneyParseErrorCode } from './errors';
 import { compareRate } from './compare';
-import { formatRate, formatUsd } from './format';
+import { formatRate, formatSignedRate, formatUsd } from './format';
 import { centsFromInteger, parseCents, parseRate, rateFromPercent } from './parse';
 import { Rate, SignedRate } from './rate';
 
@@ -236,5 +236,19 @@ describe('formatRate', () => {
     ['0.00000001', '0.000001%'],
   ])('%s → %s', (rate, text) => {
     expect(formatRate(Rate.parse(rate))).toBe(text);
+  });
+});
+
+describe('formatSignedRate', () => {
+  it.each([
+    ['0.0312', '3.12%'],
+    ['-0.0312', '−3.12%'],
+    ['0', '0%'],
+    ['-0.0500', '−5%'],
+    ['-0.00000001', '−0.000001%'],
+    ['1.25', '125%'],
+    ['-12.5', '−1250%'],
+  ])('%s → %s', (rate, text) => {
+    expect(formatSignedRate(SignedRate.parse(rate))).toBe(text);
   });
 });
