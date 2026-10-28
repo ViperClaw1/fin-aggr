@@ -55,8 +55,9 @@ test('warn and danger cards say why in text', async ({ page }) => {
 test('freshness shows a machine date and relative text for a fixed now', async ({ page }) => {
   const today = section(page).locator('time[datetime="2026-10-28T08:00:00Z"]');
   await expect(today).toHaveText('Updated today');
-  await expect(section(page).locator('time[datetime="2026-09-01"]')).toHaveText(
-    'Updated 57 days ago',
+  // past the 90-day threshold for terms (STALE_AFTER_DAYS.terms)
+  await expect(section(page).locator('time[datetime="2026-07-01"]')).toHaveText(
+    'Updated 119 days ago',
   );
   await expect(section(page).getByText('may be outdated')).toHaveCount(1);
 });

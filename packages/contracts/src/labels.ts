@@ -1,5 +1,6 @@
 // Words for enum codes, shared by the engine (step texts) and the UI (eligibility reasons),
 // so a code never reaches the screen and there is one copy of each label.
+// Labels are UI words: additive, no logic (ADR-013 consequences).
 import type { FilingStatus } from './reference';
 import type { Profile } from './profile';
 import type { ProfileField } from './rules';

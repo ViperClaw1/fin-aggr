@@ -806,6 +806,12 @@ export type MetricCardProps = {
   label: string; value: ReactNode; hint?: string;
 } & ({ tone?: 'neutral' | 'ok'; toneLabel?: string } | { tone: 'warn' | 'danger'; toneLabel: string });
 
+// shared/ui/charts: SVG без библиотеки; числа для геометрии только в charts/scale.ts (ADR-013)
+type BulletScale<K, V> = { kind: K; max: V; value: V; marker?: { value: V; label: string };
+  bands?: readonly { upTo: V; label: string }[] };
+export type BulletChartProps = { label: string; overflowText?: string }
+  & (BulletScale<'usd', Cents> | BulletScale<'rate', Rate>);
+
 // shared/ui/freshness: now приходит пропом; на SSG-страницах рендерить на клиенте через clock
 export interface FreshnessLabelProps { at: IsoDateTime | IsoDate; now: Date; staleAfterDays?: number }
 

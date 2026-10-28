@@ -2,8 +2,9 @@ import type { Institution } from '@fa/contracts';
 
 export type InstitutionKind = Institution['kind'];
 
-// DRAFT, legal wording: pending approval (CLAUDE.md "legal wording: ask"). Deliberately makes no
-// claim about deposit insurance, including pass-through coverage (engine assumption).
+// Approved for the demo on 2026-10-28. Before a launch with real data a lawyer reviews these:
+// deposit insurance in advertising is regulated. Deliberately no claim about deposit insurance,
+// including pass-through coverage (engine assumption).
 export const SAFETY_TEXT: Record<InstitutionKind, { title: string; detail: string }> = {
   direct_bank: {
     title: 'Bank',

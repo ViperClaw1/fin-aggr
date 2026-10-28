@@ -169,6 +169,13 @@ export default defineConfig(
       }),
     },
   },
+  {
+    // ADR-013 (E4): shared/ui never turns money or rates into numbers; chart geometry does it
+    // in one place, shared/ui/charts/scale.ts
+    files: [`${WEB}/shared/ui/**/*.{ts,tsx}`],
+    ignores: [`${WEB}/shared/ui/charts/scale.ts`],
+    rules: { 'no-restricted-syntax': ['error', ...WEB_SYNTAX, ...MONEY_FLOAT] },
+  },
   { files: [`${WEB}/shared/api/http.ts`], rules: { 'no-restricted-globals': 'off' } },
   {
     files: [`${WEB}/entities/profile/model/persist.ts`],

@@ -30,7 +30,7 @@ export function SafetyBadge({ kind, partners = [] }: SafetyBadgeProps) {
       >
         <p>{text.detail}</p>
         {partners.length === 0 ? null : (
-          <p className="mt-1">Partner banks: {partners.map((b) => b.name).join(', ')}</p>
+          <p className="mt-1">Deposits are held at: {partners.map((b) => b.name).join(', ')}</p>
         )}
       </Disclosure>
     </div>

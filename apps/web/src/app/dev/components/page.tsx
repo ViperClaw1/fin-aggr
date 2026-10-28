@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { isProduction } from '@/shared/config';
+import { ChartsSection } from '../_stand/charts-section';
 import { EntitiesSection } from '../_stand/entities-section';
 import { InputsSection } from '../_stand/inputs-section';
 import { StatesSection } from '../_stand/states-section';
@@ -17,6 +18,7 @@ export default function ComponentStandPage() {
       <TableSection />
       <ValuesSection />
       <EntitiesSection />
+      <ChartsSection />
     </main>
   );
 }

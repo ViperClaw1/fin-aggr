@@ -47,6 +47,15 @@ export function centsFromInteger(digits: string): Cents {
   return Cents.parse(sign === '-' && value !== 0 ? -value : value);
 }
 
+/**
+ * A safe integer → Cents without running the zod schema, for UI code that should not pull zod
+ * into the first-load bundle (ADR-016). Same rule as the schema: a safe integer; "-0" → 0.
+ */
+export function centsFromSafeInteger(value: number): Cents {
+  if (!Number.isSafeInteger(value)) throw new MoneyParseError('out_of_range', String(value));
+  return (value === 0 ? 0 : value) as Cents;
+}
+
 /** A fraction string such as "0.0435" (0 ≤ r ≤ 1, up to 8 decimals). */
 export function parseRate(fraction: string): Rate {
   const text = fraction.trim();

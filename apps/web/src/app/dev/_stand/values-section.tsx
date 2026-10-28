@@ -11,6 +11,7 @@ import {
   parseRate,
   SignedRate,
 } from '@fa/contracts';
+import { STALE_AFTER_DAYS } from '@/shared/config';
 import { ExplainMath } from '@/shared/ui/explain-math';
 import { FreshnessLabel } from '@/shared/ui/freshness';
 import { MetricCard } from '@/shared/ui/metric-card';
@@ -76,7 +77,11 @@ export function ValuesSection() {
           <FreshnessLabel at={IsoDateTime.parse('2026-10-28T08:00:00Z')} now={NOW} />
         </li>
         <li>
-          <FreshnessLabel at={IsoDate.parse('2026-09-01')} now={NOW} staleAfterDays={30} />
+          <FreshnessLabel
+            at={IsoDate.parse('2026-07-01')}
+            now={NOW}
+            staleAfterDays={STALE_AFTER_DAYS.terms}
+          />
         </li>
       </ul>
       <ExplainMath steps={STEPS} assumptions={ASSUMPTIONS} onEditAssumption={setEdited} />

@@ -42,6 +42,14 @@ The engine's lint rules ban `Number(`, `.toFixed` and `.toNumber()`, and `as Cen
 - `centsFromInteger(digits)`: an integer string (`"-150"`) → `Cents`, exact via the same digit loop as `parseCents`; `"-0"` → 0, outside the safe range `out_of_range`. The engine rounds half-up in Decimal and passes `toString()` of the integer.
 - `SignedRate`: a signed decimal fraction string without bounds, up to 8 decimals, no `"-0"`, for results such as `netSimpleAnnualYield`. Spec §5 used to declare it in `engine`, but a schema needs zod, and `engine` does not depend on zod.
 
+## Amendment (E4, 2026-10-28): signed rate format, labels, brand without zod
+- `formatSignedRate(rate)`: a `SignedRate` or `Rate` as percent, minus sign U+2212.
+- `labels.ts`: English words for enum codes (filing status, residency, profile fields), shared by the engine step texts and the UI. Labels are UI words: additive, no logic.
+- `centsFromSafeInteger(n)`: brands a safe integer as `Cents` without running the zod schema, for UI code that should keep zod out of the first-load bundle (ADR-016). Same rule as the schema; `-0` → 0.
+
+## Amendment (E4, 2026-10-28): chart geometry
+Display geometry may use `number`, only in `apps/web/src/shared/ui/charts/scale.ts`: `Cents` and `Rate` become a position in percent for SVG coordinates and never turn back into money. Every label on a chart is formatted from the original value (`formatUsd`, `formatRate`). ESLint bans `Number(`, `parseFloat` and `parseInt` in `apps/web/src/shared/ui/**` except that file (canaries `shared/ui/canary/number|parse-float.canary.ts`).
+
 ## Open points
 - Canonical `Rate` form, resolved 2026-10-26: the schema accepts trailing zeros (`"0.0400"`); `rateFromPercent` returns the form without them (`"0.0435"`, `"0.04"`, `"1"`); `engine` compares rates through Decimal, never as strings.
 - Negative `Cents` (fees, refunds): allowed in `Cents`, forbidden where a domain schema says non-negative.

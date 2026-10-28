@@ -113,7 +113,7 @@ describe('explainEligibility', () => {
     expect(explainEligibility(result('needs_profile', unknown, ['age']))).toEqual({
       status: 'needs_profile',
       headline: 'Add your age to check',
-      reasons: ['Add your age to check'],
+      reasons: [],
     });
   });
 

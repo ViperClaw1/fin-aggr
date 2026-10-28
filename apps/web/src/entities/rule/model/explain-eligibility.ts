@@ -1,7 +1,7 @@
 // Eligibility result → words. Reasons come from the engine trace: a rule's own label when it has
 // one, otherwise a sentence built from the leaf's field, operator and values.
 import {
-  Cents,
+  centsFromSafeInteger,
   FILING_STATUS_LABEL,
   formatUsd,
   PROFILE_FIELD_LABEL,
@@ -19,7 +19,7 @@ export interface EligibilityExplanation {
 type Scalar = string | number;
 
 function formatValue(field: ProfileField, v: Scalar): string {
-  if (field === 'depositAmount' && typeof v === 'number') return formatUsd(Cents.parse(v));
+  if (field === 'depositAmount' && typeof v === 'number') return formatUsd(centsFromSafeInteger(v));
   if (field === 'filingStatus' && v in FILING_STATUS_LABEL) {
     return FILING_STATUS_LABEL[v as keyof typeof FILING_STATUS_LABEL];
   }
@@ -74,8 +74,9 @@ export function explainEligibility(result: EligibilityResult): EligibilityExplan
   const missing = result.missingFields.map((f) => PROFILE_FIELD_LABEL[f]);
   return {
     status,
+    // one field: the headline already says it, a reason would repeat it word for word
     headline:
       missing.length === 1 ? `Add your ${missing.join('')} to check` : 'Add your details to check',
-    reasons: missing.map((m) => `Add your ${m} to check`),
+    reasons: missing.length === 1 ? [] : missing.map((m) => `Add your ${m} to check`),
   };
 }

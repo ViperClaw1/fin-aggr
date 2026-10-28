@@ -4,7 +4,13 @@ import { Cents } from './cents';
 import { MoneyParseError, type MoneyParseErrorCode } from './errors';
 import { compareRate } from './compare';
 import { formatRate, formatSignedRate, formatUsd } from './format';
-import { centsFromInteger, parseCents, parseRate, rateFromPercent } from './parse';
+import {
+  centsFromInteger,
+  centsFromSafeInteger,
+  parseCents,
+  parseRate,
+  rateFromPercent,
+} from './parse';
 import { Rate, SignedRate } from './rate';
 
 const MAX = Number.MAX_SAFE_INTEGER; // 9007199254740991 cents = $90,071,992,547,409.91
@@ -87,6 +93,25 @@ describe('SignedRate schema', () => {
     'rejects %s',
     (s) => {
       expect(SignedRate.safeParse(s).success).toBe(false);
+    },
+  );
+});
+
+describe('centsFromSafeInteger', () => {
+  it('accepts what the Cents schema accepts', () => {
+    for (const n of [0, -150, 123456, Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER]) {
+      expect(centsFromSafeInteger(n)).toBe(Cents.parse(n));
+    }
+  });
+
+  it('turns -0 into 0', () => {
+    expect(Object.is(centsFromSafeInteger(-0), 0)).toBe(true);
+  });
+
+  it.each([1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects %s as out_of_range',
+    (n) => {
+      expect(() => centsFromSafeInteger(n)).toThrow(/^out_of_range/);
     },
   );
 });

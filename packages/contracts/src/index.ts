@@ -1,7 +1,13 @@
 export { Cents } from './money/cents';
 export { Rate, SignedRate } from './money/rate';
 export { MoneyParseError, type MoneyParseErrorCode } from './money/errors';
-export { centsFromInteger, parseCents, parseRate, rateFromPercent } from './money/parse';
+export {
+  centsFromInteger,
+  centsFromSafeInteger,
+  parseCents,
+  parseRate,
+  rateFromPercent,
+} from './money/parse';
 export { formatRate, formatSignedRate, formatUsd } from './money/format';
 export { FILING_STATUS_LABEL, PROFILE_FIELD_LABEL, RESIDENCY_LABEL } from './labels';
 export { compareRate } from './money/compare';
