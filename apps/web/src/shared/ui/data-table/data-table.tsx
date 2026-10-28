@@ -32,6 +32,8 @@ export interface DataTableProps<T> {
   /** Hidden columns are not rendered at all. */
   hiddenColumnIds?: readonly string[];
   renderExpanded?: (row: T) => ReactNode;
+  /** Names the row in its expand button ("Show details: Birch Bank"); pass it with renderExpanded. */
+  expandLabel?: (row: T) => string;
   /** Controlled expansion: pass both. */
   expandedIds?: ReadonlySet<string>;
   onExpandedChange?: (ids: ReadonlySet<string>) => void;
@@ -81,8 +83,8 @@ export function DataTable<T>(props: DataTableProps<T>) {
           </caption>
           <thead>
             <tr>
-              {visible.map((c) => (
-                <HeaderCell key={c.id} column={c} sort={sort} onSort={onSort} />
+              {visible.map((c, i) => (
+                <HeaderCell key={c.id} column={c} first={i === 0} sort={sort} onSort={onSort} />
               ))}
             </tr>
           </thead>
@@ -109,11 +111,13 @@ export function DataTable<T>(props: DataTableProps<T>) {
 
 function HeaderCell<T>(p: {
   column: Column<T>;
+  /** The first column also sticks to the left, above the sticky row headers. */
+  first: boolean;
   sort: SortState | null;
   onSort: (id: string) => void;
 }) {
   const { column, sort } = p;
-  const base = `sticky top-0 z-10 border-b border-border bg-background px-3 py-2 font-medium whitespace-nowrap ${alignClass(column.align)}`;
+  const base = `sticky top-0 ${p.first ? 'left-0 z-20' : 'z-10'} border-b border-border bg-background px-3 py-2 font-medium whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (
       <th scope="col" className={base}>
@@ -181,7 +185,7 @@ function Body<T>(
                         type="button"
                         aria-expanded={open}
                         aria-controls={detailsId}
-                        aria-label={open ? 'Hide details' : 'Show details'}
+                        aria-label={`${open ? 'Hide' : 'Show'} details${p.expandLabel ? `: ${p.expandLabel(row)}` : ''}`}
                         onClick={() => {
                           p.onToggle(id);
                         }}

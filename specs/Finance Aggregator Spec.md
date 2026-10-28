@@ -769,6 +769,7 @@ export interface DataTableProps<T> {
   onSortChange?: (sort: SortState | null) => void;
   hiddenColumnIds?: readonly string[];               // скрытые колонки не попадают в DOM
   renderExpanded?: (row: T) => ReactNode;
+  expandLabel?: (row: T) => string;                  // имя строки в подписи кнопки раскрытия
   expandedIds?: ReadonlySet<string>;                 // управляемое раскрытие
   onExpandedChange?: (ids: ReadonlySet<string>) => void;
 }

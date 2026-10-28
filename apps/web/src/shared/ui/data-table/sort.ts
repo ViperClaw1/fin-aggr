@@ -14,15 +14,16 @@ export function nextSort(current: SortState | null, columnId: string): SortState
 }
 
 /**
- * The sort that applies: the requested one if its column is visible and sortable, otherwise
- * the default under the same condition, otherwise none (e.g. after the sorted column is hidden).
+ * The sort that applies. `null` ("not sorted") stays `null`, so a default sort can be switched
+ * off. Only a sort whose column is hidden or not sortable falls back to the default, if that
+ * column is available, and otherwise to none.
  */
 export function resolveSort(
   requested: SortState | null,
   fallback: SortState | null,
   isSortable: (columnId: string) => boolean,
 ): SortState | null {
-  if (requested !== null && isSortable(requested.columnId)) return requested;
+  if (requested === null || isSortable(requested.columnId)) return requested;
   if (fallback !== null && isSortable(fallback.columnId)) return fallback;
   return null;
 }

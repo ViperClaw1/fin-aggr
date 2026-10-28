@@ -33,7 +33,8 @@ const COLUMNS: Column<StandRow>[] = [
     id: 'bank',
     header: 'Bank',
     cell: (r) => r.bank,
-    compare: (a, b) => a.bank.localeCompare(b.bank),
+    // a fixed locale keeps the order the same in every browser
+    compare: (a, b) => a.bank.localeCompare(b.bank, 'en-US'),
   },
   {
     id: 'minDeposit',
@@ -78,7 +79,15 @@ export function TableSection() {
         rows={ROWS}
         getRowId={getRowId}
         hiddenColumnIds={hideApy ? ['apy'] : []}
-        renderExpanded={(r) => `Details for ${r.bank}`}
+        renderExpanded={(r: StandRow) => `Details for ${r.bank}`}
+        expandLabel={(r: StandRow) => r.bank}
+      />
+      <DataTable
+        caption="Sorted by APY by default"
+        columns={COLUMNS}
+        rows={ROWS}
+        getRowId={getRowId}
+        defaultSort={{ columnId: 'apy', direction: 'desc' }}
       />
       <DataTable
         caption="Loading table"

@@ -22,7 +22,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      {/* block, not flex: a flex column makes `mx-auto` children shrink-wrap their content */}
+      <body className="min-h-full">
         <DemoDataBanner />
         <Providers>{children}</Providers>
       </body>

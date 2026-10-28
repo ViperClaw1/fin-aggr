@@ -115,4 +115,32 @@ test.describe('on a 375 px screen', () => {
     await page.keyboard.press('Tab');
     await expect(region).toBeFocused();
   });
+
+  test('the first header stays with its column when the table scrolls sideways', async ({
+    page,
+  }) => {
+    const region = page.getByRole('region', { name: MAIN });
+    await region.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    const left = async (name: string, role: 'columnheader' | 'rowheader') =>
+      (await table(page).getByRole(role, { name }).first().boundingBox())?.x;
+    expect(await left('Bank', 'columnheader')).toBe(await left('Alder Savings', 'rowheader'));
+  });
+});
+
+test('a default sort can be switched off and back on', async ({ page }) => {
+  const sorted = page.getByRole('table', { name: 'Sorted by APY by default' });
+  const apy = sorted.getByRole('columnheader', { name: /APY/ });
+  await expect(apy).toHaveAttribute('aria-sort', 'descending');
+  await apy.getByRole('button').click();
+  await expect(apy).toHaveAttribute('aria-sort', 'none');
+  await apy.getByRole('button').click();
+  await expect(apy).toHaveAttribute('aria-sort', 'ascending');
+});
+
+test('each expand button names its row', async ({ page }) => {
+  await expect(table(page).getByRole('button', { name: 'Show details: Birch Bank' })).toHaveCount(
+    1,
+  );
 });
