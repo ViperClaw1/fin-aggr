@@ -29,6 +29,6 @@ jobs:
       - run: pnpm test
       - run: pnpm golden:check # Python 3 ships with ubuntu-latest
       - run: pnpm build
-      - run: pnpm bundle:report # First Load JS per route (ADR-016); fails above budget from D7
+      - run: pnpm bundle:report # First Load JS per route; fails above 200 KB on /compare/[category] (ADR-016 D7)
       - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
       - run: pnpm e2e

@@ -13,10 +13,10 @@ export const freshnessNow = (info: DatasetInfo, clock: () => Date = now): Date =
   info.isMock ? new Date(`${info.asOf}T00:00:00Z`) : clock();
 
 /**
- * Undefined until the answer arrives: SourceCitation then shows the absolute date.
- * @public first consumers are the E5 widgets (product, compare); prefetched on the server after D1
+ * Undefined until the answer arrives: SourceCitation then shows the absolute date. Pages prefetch
+ * it on the server (ADR-016 D1), so it is there from the first render and never refetched.
  */
 export function useFreshnessNow(): Date | undefined {
-  const { data } = useQuery(datasetInfoQuery());
+  const { data } = useQuery({ ...datasetInfoQuery(), staleTime: Infinity });
   return useMemo(() => (data === undefined ? undefined : freshnessNow(data)), [data]);
 }

@@ -19,6 +19,7 @@ import {
   createSerializer,
   debounce,
   parseAsStringLiteral,
+  useQueryStates,
   type inferParserType,
 } from 'nuqs';
 
@@ -102,4 +103,6 @@ const productFilterParsers = { term, kind, minApy, maxOpening, search, hide };
 export type ProductFilters = inferParserType<typeof productFilterParsers>;
 export const PRODUCT_FILTER_KEYS = Object.keys(productFilterParsers) as (keyof ProductFilters)[];
 export const loadProductFilters = createLoader(productFilterParsers);
+/** The filters as URL state; the component using it sits inside <Suspense> (.claude/rules/web.md). */
+export const useProductFilters = () => useQueryStates(productFilterParsers);
 export const productFiltersUrl = createSerializer(productFilterParsers);

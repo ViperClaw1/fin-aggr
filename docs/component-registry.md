@@ -30,7 +30,9 @@ Every slice gets a row here when it is created (spec §2, slice rule 4).
 | institution queries | entities/institution | Institutions and bank metrics | `institutionsQuery`, `institutionQuery`, `bankMetricsQuery` | widgets, app |
 | product queries | entities/product | Products by category, one product | `productsQuery`, `productQuery` | widgets, app |
 | eligibility explanation | entities/rule | Trace → `{ status, headline, reasons }`; values formatted by field (cents as dollars, codes as words from `@fa/contracts` labels) | internal (`model/explain-eligibility.ts`), used by CompatibilityBadge | entities/rule |
-| fact queries | entities/fact | Facts and the source registry | `factsQuery`, `sourcesQuery` | widgets, app |
+| fact queries | entities/fact | Facts, the source registry, the data set date; `useFreshnessNow()` gives `now` for freshness labels (data set `asOf` for mock data, the clock otherwise) | `factsQuery`, `sourcesQuery`, `datasetInfoQuery`, `useFreshnessNow` | widgets, app |
+| CompareTable | widgets/compare-table | MINIMAL (ADR-016 D1): DataTable of a category with bank, product, term, top APY (FactValue), minimum to open; URL filters applied in memory; data prefetched at build (`prefetchCompare`, `'use cache'`) and never refetched on the client. Filter form, profile ranking, row summary: E5 | `category`; `prefetchCompare(category)` for the page | app/compare |
+| product filters | features/filter-products | URL filter state (nuqs) and in-memory filtering | `useProductFilters`, `filterProducts`, `PRODUCT_FILTER_KEYS` | widgets |
 | document queries | entities/document | Document metadata | `documentQuery` | widgets, app |
 | reference queries | entities/reference | Tax tables, insurance rules | `taxTablesQuery`, `insuranceRulesQuery` | widgets, app |
 | sponsored queries | entities/sponsored | Ads per placement (ADR-006) | `sponsoredQuery` | widgets/sponsored-slot |

@@ -1,3 +1,3 @@
-// Parsers, filterProducts/filterRanked and the hook (useQueryStates(productFilterParsers)) join the
-// public API with the filter UI in E4; until then only the URL keys are consumed (app/url-keys).
-export { PRODUCT_FILTER_KEYS } from './model/search-params';
+// The filter form and filterRanked join the public API with the full compare-table in E5.
+export { filterProducts, type InstitutionIndex } from './model/filter';
+export { PRODUCT_FILTER_KEYS, useProductFilters } from './model/search-params';

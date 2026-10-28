@@ -1,7 +1,7 @@
 # ADR-016: Client data loading and First Load JS
 
-- Status: proposed
-- Date: 2026-10-28
+- Status: accepted
+- Date: 2026-10-28 (accepted 2026-10-28 with D1 and D7)
 - Relates to: ADR-005 (gateway), ADR-008 (rendering), ADR-013 (money in contracts), ADR-015 (CSP)
 
 ## Context
@@ -30,7 +30,7 @@ Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 202
 - **D4. Declare side effects.** `packages/contracts/package.json`: `"sideEffects": ["./src/primitives.ts"]`. Every schema module imports `primitives.ts`, so the zod setting is kept. Check: the AC-4 e2e "page loads without CSP violations". `@fa/contracts` is consumed as source (`exports: ./src/index.ts`, `transpilePackages`); whether Turbopack honours `sideEffects` there is unknown, only the measurement tells. If the numbers do not move, record that here and treat D3 as the main path.
 - **D5. Lazy profile schema.** `entities/profile/model/schema.ts` is the slice's only zod user and is reached through `import()` (`load-schema.ts`, caches only a successful load). The store's storage loads it before the first read and drops writes until then, so a failed load hydrates an empty draft with `loadError` and never overwrites the stored profile; edits before hydration are rejected. `parseImport` is async and reports a failed load as `unavailable`. Completeness (`toCompleteProfile`, every render) uses the zod-free `isProfile`, built on constants shared with the schema (`profile-rules.ts`) and kept in agreement by a test. Node tests cover a valid draft, broken JSON, an old version, an oversized import and a failed `import()`.
 - **D6. `now` for mock data comes from the data set.** Additive `getDatasetInfo(): Promise<{ asOf: IsoDate; isMock: boolean }>` on `DataGateway` (REST `GET /v1/meta`), useful for a real backend too. Mock mode counts freshness from `asOf`; http mode from `shared/lib/clock`. Fixtures spread `retrievedAt` by seed, per kind of fact, never after `AS_OF`: APY 0–14 days back, terms 0–150 days, bank metrics from their report `asOf`. A fixture test checks that each kind has both fresh and stale examples for `STALE_AFTER_DAYS`. Done: retrieval offsets come from their own seeded stream (`seed ^ 0x5eed`), so no other value moves; bank metrics take a quarter-end report date (2026-09-30, -06-30, -03-31) and are retrieved on it. `useFreshnessNow()` and `datasetInfoQuery` (`entities/fact`) take the mode from the answer's `isMock`, not from env; until it arrives `SourceCitation` shows the absolute date. They join the slice's public API with their first consumer in E5. The contract suite checks that nothing served was retrieved after `asOf`. A failed gateway load keeps its reason in `GatewayError.cause`.
-- **D7. Budget as a CI gate.** `tools/bundle-budget.mjs` reports per route now (CI step after `build`). Once `/compare/cd` with 120 products exists it fails above 200 KB gzip on that route.
+- **D7. Budget as a CI gate.** `tools/bundle-budget.mjs` reports per route (CI step after `build`) and fails above 200 KB gzip on `/compare/[category]`, or when that route is missing from the build.
 
 ## Measurements
 | Commit | `/` | `/_not-found` | `/dev/components` | Note |
@@ -40,6 +40,9 @@ Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 202
 | D3 + D5 (zod-free checks, lazy profile schema) | 145.8 | 145.8 | 186.3 | −32.8 KB on `/`: the zod chunk left the first load. Commit `290b297` landed D3 with lint and knip red; this commit restores `main`. The stand still pulls zod through its own sections (exempt from `NO_SCHEMA_CALL`, 404 in production). |
 | D2 lazy gateway | 145.8 | 145.8 | 186.3 | No change expected: no route makes client requests yet. Verified by the depcruise rule `gateway-impl-dynamic-only` (with a canary); effect measured after D1. |
 | D6 dataset `asOf` | 145.8 | 145.8 | 186.3 | No change expected: additive method and fixture dates; `useFreshnessNow` has no consumer until E5. Fixture hash changes (`e98987c2`); with `retrievedAt`, `asOf` and `lastUpdatedAt` stripped the data set is byte-identical to before (separate PRNG stream for retrieval dates). |
+| D1 + minimal compare-table, D7 | 147.4 | 147.4 | 192.1 | `/compare/[category]` (cd, savings, treasury; 120 products, one bundle): **192.4 KB**, 7.6 KB under the AC-8 budget. Static HTML holds the catalog; the mock/fixtures chunk exists but is not loaded (e2e checks every script after hydration). `/` +1.6 KB from shared chunks. The table is minimal (no filter form, no engine ranking): the full widget in E5 must fit in the remaining 7.6 KB, and D7 now fails CI above 200 KB. |
+
+D1 details: one set of query options for server and client (`widgets/compare-table/model/queries.ts`), `staleTime: Infinity` on the client for page data (a refetch of build-time data would load the gateway; rebuilding the page refreshes it). `dehydrate` keeps only `success` queries (verified in `@tanstack/query-core` 5.105 `defaultShouldDehydrateQuery`); a failed build-time query is left to the client. `datasetInfo` is prefetched too, so freshness text is in the first render. An unknown category renders the not-found page with `noindex`; with partial prerendering the status stays 200.
 
 Query keys: `normalizeProductQuery` / `normalizeInstitutionQuery` (`query-keys.ts`) apply the same default constants as the schemas, so a server prefetch (D1) and a client query build equal keys; `FactQuery` has no defaults and its request is the key. A test checks normalizer output against `parse`.
 
