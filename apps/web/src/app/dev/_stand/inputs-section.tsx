@@ -18,7 +18,7 @@ export function InputsSection() {
       <MoneyInput label="Fee or refund" allowNegative onValueChange={setFee} />
       <PercentInput label="City tax rate" hint="Percent, e.g. 3.876" onValueChange={setRate} />
       <StateSelect label="State of residence" value={state} onChange={setState} />
-      <output data-testid="input-values" className="block font-mono text-sm text-muted">
+      <output data-testid="input-values" className="block font-mono text-sm break-all text-muted">
         {JSON.stringify({ balance, fee, rate, state })}
       </output>
     </section>

@@ -695,7 +695,7 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 
 | Компонент | Путь | Что делает | Где можно использовать |
 | --- | --- | --- | --- |
-| `DataTable` | `shared/ui/data-table` | Обёртка TanStack Table: сортировка, скрытие колонок, закреплённая шапка, раскрытие строки. `caption` обязателен | Везде выше `shared` |
+| `DataTable` | `shared/ui/data-table` | Своя таблица на нативном `<table>` (TanStack снят, ADR-014): сортировка, скрытие колонок, закреплённая шапка и первая колонка, раскрытие строки, состояния. `caption` обязателен | Везде выше `shared` |
 | `MetricCard` | `shared/ui/metric-card` | Значение, подпись, подсказка | Везде |
 | `RateValue` | `shared/ui/rate-value` | Показ `Rate` с поповером «как посчитано» | Везде |
 | `MoneyInput`, `PercentInput` | `shared/ui/inputs` | Ввод в `Cents` и `Rate`, без float | `features`, `widgets` |
@@ -749,13 +749,28 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 
 ```ts
 // shared/ui/data-table
+export interface Column<T> {
+  id: string;
+  header: string;
+  cell: (row: T) => ReactNode;
+  compare?: (a: T, b: T) => number;                  // по возрастанию; Cents как целые, Rate через compareRate
+  align?: 'start' | 'end';
+}
+export interface SortState { columnId: string; direction: 'asc' | 'desc' }
 export interface DataTableProps<T> {
   caption: string;                                   // обязателен (доступность)
-  columns: readonly ColumnDef<T>[];
-  data: readonly T[];
+  columns: readonly Column<T>[];
+  rows: readonly T[];
   getRowId: (row: T) => string;
+  status?: 'ready' | 'loading' | 'empty' | 'error';
+  error?: unknown; onRetry?: () => void; emptyTitle?: string;
+  defaultSort?: SortState | null;                    // своя сортировка и откат, если колонку скрыли
+  sort?: SortState | null;                           // управляемая сортировка (URL в E5)
+  onSortChange?: (sort: SortState | null) => void;
+  hiddenColumnIds?: readonly string[];               // скрытые колонки не попадают в DOM
   renderExpanded?: (row: T) => ReactNode;
-  initialSorting?: SortingState;
+  expandedIds?: ReadonlySet<string>;                 // управляемое раскрытие
+  onExpandedChange?: (ids: ReadonlySet<string>) => void;
 }
 
 // entities/fact/ui

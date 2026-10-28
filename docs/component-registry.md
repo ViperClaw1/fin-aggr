@@ -7,7 +7,7 @@ Search here before creating a component. Add a row for every exported UI compone
 | FactValue | shared/ui | Shows a value with its provenance | `fact`, `format` | tables, cards |
 | SourceCitation | shared/ui | Source, date, verification status | `provenance` | tables, cards |
 | ExplainMath | shared/ui | Expandable calculation steps | `steps`, `assumptions` | result widgets |
-| DataTable | shared/ui | Accessible table with caption | `caption`, `columns`, `rows` | comparison widgets |
+| DataTable | shared/ui/data-table | Native table: sort (header button, `aria-sort`, none → asc → desc), hidden columns, row expansion (`aria-expanded`, `aria-controls`, full-width row), sticky header and first column, focusable scroll region; states loading, empty, error. Ties ordered by row id | `caption` (required), `columns: Column<T>[]` (`id`, `header`, `cell`, `compare?`, `align?`), `rows`, `getRowId`, `status`, `error`, `onRetry`, `emptyTitle`, `defaultSort`, `sort` + `onSortChange`, `hiddenColumnIds`, `renderExpanded`, `expandedIds` + `onExpandedChange` | comparison widgets |
 | DemoDataBanner | shared/ui/demo-banner | DEMO DATA notice, not dismissable (AC-5) | none | app/layout |
 | Skeleton, EmptyState, ErrorState | shared/ui/states | Loading, empty and error states; retry only for a retryable `GatewayError` | `label`, `className`; `title`, `children`; `error`, `title`, `onRetry` | everywhere |
 | MoneyInput, PercentInput | shared/ui/inputs | Text field parsed on blur into `Cents` or `Rate`, error by `MoneyParseError` code | `label`, `hint`, `defaultValue`, `allowNegative` (money), `onValueChange` | features, widgets |
