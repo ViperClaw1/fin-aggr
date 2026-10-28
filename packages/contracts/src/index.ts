@@ -30,8 +30,8 @@ export {
   ProductCategory,
   RateTier,
   Regulator,
-  STAGE1_CATEGORIES,
 } from './entities';
+export { INSTITUTION_KINDS, STAGE1_CATEGORIES } from './enums';
 export {
   DatasetInfo,
   FilingStatus,

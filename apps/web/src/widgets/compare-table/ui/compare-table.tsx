@@ -1,12 +1,11 @@
 'use client';
 
-// Minimal compare table for ADR-016 D1: products, institutions and the data set date come
-// hydrated from the server, so the first render makes no gateway call. Filters are read from the
+// Minimal compare table for ADR-016 D1: the data comes as props, loaded at build time, so the
+// table is in the static HTML and the client never loads the gateway. Filters are read from the
 // URL and run in memory. The filter form, ranking by profile and row summaries arrive in E5.
 import { compareRate, formatUsd, type Product, type ProductCategory } from '@fa/contracts';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { FactValue, useFreshnessNow } from '@/entities/fact';
+import { Suspense, useMemo } from 'react';
+import { FactValue, freshnessNow } from '@/entities/fact';
 import { headlineApy } from '@/entities/product';
 import {
   filterProducts,
@@ -15,7 +14,7 @@ import {
 } from '@/features/filter-products';
 import { DataTable, type Column } from '@/shared/ui/data-table';
 import { RateValue } from '@/shared/ui/rate-value';
-import { compareInstitutionsQuery, compareProductsQuery } from '../model/queries';
+import type { CompareData } from '../api/prefetch';
 
 const CAPTION: Record<string, string> = {
   cd: 'Certificates of deposit',
@@ -23,7 +22,10 @@ const CAPTION: Record<string, string> = {
   treasury: 'Treasury bills and notes',
 };
 
-function columns(institutions: InstitutionIndex, now: Date | undefined): Column<Product>[] {
+type Filters = Parameters<typeof filterProducts>[1];
+const NO_FILTERS: Filters = { term: [], kind: [], minApy: null, maxOpening: null, search: '' };
+
+function columns(institutions: InstitutionIndex, now: Date): Column<Product>[] {
   const bank = (p: Product): string => institutions.get(p.institutionId)?.name ?? 'Unknown bank';
   return [
     {
@@ -48,7 +50,7 @@ function columns(institutions: InstitutionIndex, now: Date | undefined): Column<
         <FactValue
           fact={{ value: headlineApy(p), provenance: p.provenance }}
           render={(rate) => <RateValue rate={rate} />}
-          {...(now ? { now } : {})}
+          now={now}
         />
       ),
       compare: (a, b) => compareRate(headlineApy(a), headlineApy(b)),
@@ -64,41 +66,45 @@ function columns(institutions: InstitutionIndex, now: Date | undefined): Column<
   ];
 }
 
-function statusOf(
-  q: { isError: boolean; isPending: boolean },
-  count: number,
-): 'error' | 'loading' | 'empty' | 'ready' {
-  if (q.isError) return 'error';
-  if (q.isPending) return 'loading';
-  return count === 0 ? 'empty' : 'ready';
+type Props = CompareData & { category: ProductCategory };
+
+/**
+ * Reading the URL suspends during prerendering, so the fallback is the same table without URL
+ * filters: the static HTML holds the whole catalog, and URL filters apply after hydration.
+ */
+export function CompareTable(props: Props) {
+  return (
+    <Suspense fallback={<Table {...props} filters={NO_FILTERS} />}>
+      <UrlFilteredTable {...props} />
+    </Suspense>
+  );
 }
 
-export function CompareTable({ category }: { category: ProductCategory }) {
-  const products = useQuery(compareProductsQuery(category));
-  const institutions = useQuery(compareInstitutionsQuery());
-  const now = useFreshnessNow();
+function UrlFilteredTable(props: Props) {
   const [filters] = useProductFilters();
+  return <Table {...props} filters={filters} />;
+}
 
+function Table({
+  category,
+  products,
+  institutions,
+  dataset,
+  filters,
+}: Props & { filters: Filters }) {
   const index: InstitutionIndex = useMemo(
-    () => new Map((institutions.data?.items ?? []).map((i) => [i.id, i])),
-    [institutions.data],
+    () => new Map(institutions.map((i) => [i.id, i])),
+    [institutions],
   );
-  const rows = useMemo(
-    () => filterProducts(products.data?.items ?? [], filters, index),
-    [products.data, filters, index],
-  );
-  const status = statusOf(products, rows.length);
-
+  const rows = useMemo(() => filterProducts(products, filters, index), [products, filters, index]);
   return (
     <DataTable
       caption={CAPTION[category] ?? 'Products'}
-      columns={columns(index, now)}
+      columns={columns(index, freshnessNow(dataset))}
       rows={rows}
       getRowId={(p) => p.id}
       defaultSort={{ columnId: 'apy', direction: 'desc' }}
-      status={status}
-      error={products.error}
-      onRetry={() => void products.refetch()}
+      status={rows.length === 0 ? 'empty' : 'ready'}
       emptyTitle="No products match these filters"
     />
   );

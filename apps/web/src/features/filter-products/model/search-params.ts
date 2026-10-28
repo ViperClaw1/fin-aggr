@@ -5,7 +5,7 @@
 import {
   formatRate,
   formatUsd,
-  InstitutionKind,
+  INSTITUTION_KINDS,
   parseCents,
   rateFromPercent,
   compareRate,
@@ -45,11 +45,12 @@ const term = createParser<number[]>({
   eq: sameList,
 }).withDefault([]);
 
-type Kind = (typeof InstitutionKind.options)[number];
+// the zod-free list: InstitutionKind.options would pull zod into /compare (ADR-016)
+type Kind = (typeof INSTITUTION_KINDS)[number];
 const kind = createParser<Kind[]>({
   parse: (value) => {
     const given = new Set(value.split(','));
-    const known = InstitutionKind.options.filter((k) => given.has(k));
+    const known = INSTITUTION_KINDS.filter((k) => given.has(k));
     return known.length === 0 ? null : known;
   },
   serialize: (kinds) => kinds.join(','),

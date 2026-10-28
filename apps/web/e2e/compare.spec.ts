@@ -5,9 +5,12 @@ import { expectNoA11yViolations } from './axe';
 // a string that exists only in the fixtures package, so only the mock gateway chunk carries it
 const FIXTURE_MARKER = 'mock-call-reports';
 
-test('the CD catalog is in the static HTML', async ({ request }) => {
+test('the CD table is rendered in the static HTML, freshness included', async ({ request }) => {
   const html = await (await request.get('/compare/cd')).text();
-  expect(html).toContain('12-Month CD');
+  // a rendered row, not only the serialized props (which also carry the names)
+  expect(html).toMatch(/<caption[^>]*>Certificates of deposit<\/caption>/);
+  expect(html).toMatch(/<td[^>]*>12-Month CD<\/td>/);
+  expect(html).toMatch(/\d+ days? ago|today/i);
 });
 
 test('after hydration no script with the mock gateway or fixtures is loaded', async ({ page }) => {
@@ -50,6 +53,7 @@ test('compare renders without serious or critical axe violations', async ({ page
 test('an unknown category renders not found, noindex', async ({ page }) => {
   await page.goto('/compare/mortgage');
   await expect(page.getByText(/could not be found/i)).toBeVisible();
-  await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(1);
+  // Next may stream the robots tag twice; at least one is enough
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   await expect(page.getByRole('table')).toHaveCount(0);
 });

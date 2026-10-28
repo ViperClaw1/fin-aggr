@@ -57,7 +57,7 @@ Oct 25, 2026 · @Nikita · Статус: черновик для утвержд�
 | AC-5 | Моки не выдаются за данные: баннер DEMO DATA на всех страницах, `isMock: true` везде, кроме справочных констант со статусом `unverified` | Contract-тест фикстур, e2e |
 | AC-6 | Реклама изолирована: в органических контрактах нет коммерческих полей, `SponsoredSlot` не рендерится внутри таблиц | Contract-тест схем, depcruise |
 | AC-7 | Доступность: axe без serious/critical на P0-страницах, таблица и drawer управляются с клавиатуры | Playwright + axe |
-| AC-8 | Цели по производительности (подтвердить замером): Lighthouse mobile Performance не ниже 85 на `/compare/cd` со 120 продуктами, JS первой загрузки не больше 200 KB gzip без PDF-модуля | Lighthouse CI, bundle analyzer |
+| AC-8 | Цели по производительности (подтвердить замером): Lighthouse mobile Performance не ниже 85 на `/compare/cd` (60 CD из набора в 120 продуктов), JS первой загрузки не больше 200 KB gzip без PDF-модуля | Lighthouse CI, bundle analyzer |
 | AC-9 | `NEXT_PUBLIC_DATA_SOURCE=mock` или `http`: http-gateway отвечает `not_implemented`, контрактные тесты гоняются против любой реализации | Contract-тесты |
 | AC-10 | Каждое архитектурное правило линтера имеет файл-«канарейку», на котором линтер обязан падать | `pnpm lint:canaries` |
 

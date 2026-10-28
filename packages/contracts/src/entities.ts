@@ -1,5 +1,6 @@
 // Organic entities (spec §4). No commercial fields here (ADR-006); every object is strict.
 import { z } from 'zod';
+import { INSTITUTION_KINDS, PRODUCT_CATEGORIES } from './enums';
 import { Cents } from './money/cents';
 import { Rate } from './money/rate';
 import { Id, IsoDate } from './primitives';
@@ -7,7 +8,7 @@ import { fact, Provenance } from './provenance';
 import { Rule } from './rules';
 
 export const Regulator = z.enum(['FDIC', 'NCUA']);
-export const InstitutionKind = z.enum(['direct_bank', 'credit_union', 'fintech_partner']);
+export const InstitutionKind = z.enum(INSTITUTION_KINDS);
 
 export const Institution = z.strictObject({
   id: Id, // 'fdic:<cert>' or 'ncua:<charter>'
@@ -53,20 +54,8 @@ export const BankMetrics = z.strictObject({
 });
 export type BankMetrics = z.infer<typeof BankMetrics>;
 
-export const ProductCategory = z.enum([
-  'cd',
-  'savings',
-  'money_market',
-  'treasury',
-  'muni',
-  'credit_card',
-  'mortgage',
-  'auto_loan',
-  'personal_loan',
-  'refinance',
-]);
+export const ProductCategory = z.enum(PRODUCT_CATEGORIES);
 export type ProductCategory = z.infer<typeof ProductCategory>;
-export const STAGE1_CATEGORIES = ['cd', 'savings', 'treasury'] as const;
 
 const NonNegativeCents = Cents.refine((v) => v >= 0, { error: 'Must not be negative' });
 

@@ -1,21 +1,31 @@
-// Loads the compare data at build time (ADR-016 D1) with the client's own query options. Inside
-// 'use cache' the result joins the static shell, so it must be serializable: dehydrate() gives
-// plain objects and drops failed queries (only `success` dehydrates), which the client retries.
-import { dehydrate, type DehydratedState } from '@tanstack/react-query';
-import type { ProductCategory } from '@fa/contracts';
-import { makeQueryClient } from '@/shared/lib/query-client';
-import { compareInstitutionsQuery, compareProductsQuery } from '../model/queries';
+// Loads the compare data at build time (ADR-016 D1). Inside 'use cache' the result joins the static
+// shell and is passed to the table as props: the client never queries it, so it never loads the
+// gateway, and the table renders into the static HTML. A failure fails the build, never an empty page.
+import type { DatasetInfo, Institution, Product, ProductCategory } from '@fa/contracts';
 import { datasetInfoQuery } from '@/entities/fact/queries';
+import { institutionsQuery } from '@/entities/institution/queries';
+import { productsQuery } from '@/entities/product/queries';
+import { makeQueryClient } from '@/shared/lib/query-client';
 
-export async function prefetchCompare(category: ProductCategory): Promise<DehydratedState> {
+export interface CompareData {
+  products: Product[];
+  /** only what the table reads, to keep the page payload small */
+  institutions: Pick<Institution, 'id' | 'name' | 'kind'>[];
+  dataset: DatasetInfo;
+}
+
+export async function loadCompareData(category: ProductCategory): Promise<CompareData> {
   'use cache';
   const client = makeQueryClient();
-  // a failure stays out of the dehydrated state (see above), so it is swallowed here
-  const skip = (): undefined => undefined;
-  await Promise.all([
-    client.query(compareProductsQuery(category)).catch(skip),
-    client.query(compareInstitutionsQuery()).catch(skip),
-    client.query(datasetInfoQuery()).catch(skip),
+  const [products, institutions, dataset] = await Promise.all([
+    client.query(productsQuery({ category })),
+    // 40 institutions in the data set: one page
+    client.query(institutionsQuery({ limit: 100 })),
+    client.query(datasetInfoQuery()),
   ]);
-  return dehydrate(client);
+  return {
+    products: products.items,
+    institutions: institutions.items.map(({ id, name, kind }) => ({ id, name, kind })),
+    dataset,
+  };
 }
