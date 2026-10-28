@@ -16,6 +16,8 @@ coverage/
 # next.js
 .next/
 out/
+# written by `next dev` when it detects an AI agent; content is not ours
+apps/web/AGENTS.md
 
 # production
 build/

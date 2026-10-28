@@ -47,6 +47,9 @@ upgrade-insecure-requests;
 - Static rendering, PPR and CDN caching are preserved.
 - Adding analytics or any third-party script reopens this decision. That change needs a new ADR, and the nonce route (dynamic pages) becomes the likely choice for the affected routes.
 - `style-src 'unsafe-inline'` stays while Next and Tailwind inject inline styles.
+- The production CSP stays without `'unsafe-eval'`, so zod runs in `jitless` mode: `z.config({ jitless: true })` in `packages/contracts/src/primitives.ts` (added in E4). Without it, zod's JIT probe `Function("")` caused a `script-src` violation on every page load, and the AC-4 e2e test was flaky.
+- Cost: schemas are parsed without JIT compilation, which is slower. For gateway responses of a few hundred objects this should be milliseconds; confirm with the Lighthouse measurement in E5/E7 (AC-8).
+- The setting is global: it applies to everything that imports `@fa/contracts`, including `engine` and tests. This is acceptable. If it is removed, the e2e test "the page loads without CSP violations" fails.
 
 ## Open points
 - Experiment (separate PR): enable `experimental.sri` on the Turbopack build and check that scripts get `integrity` and the app runs with `script-src 'self'`. If it works and is stable enough, supersede this ADR with a strict policy.

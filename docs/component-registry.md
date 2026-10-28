@@ -10,6 +10,8 @@ Search here before creating a component. Add a row for every exported UI compone
 | DataTable | shared/ui | Accessible table with caption | `caption`, `columns`, `rows` | comparison widgets |
 | DemoDataBanner | shared/ui/demo-banner | DEMO DATA notice, not dismissable (AC-5) | none | app/layout |
 | Skeleton, EmptyState, ErrorState | shared/ui/states | Loading, empty and error states; retry only for a retryable `GatewayError` | `label`, `className`; `title`, `children`; `error`, `title`, `onRetry` | everywhere |
+| MoneyInput, PercentInput | shared/ui/inputs | Text field parsed on blur into `Cents` or `Rate`, error by `MoneyParseError` code | `label`, `hint`, `defaultValue`, `allowNegative` (money), `onValueChange` | features, widgets |
+| StateSelect | shared/ui/inputs | Native select of 50 states and DC (`shared/config` `US_STATES`) | `label`, `value` (code or `''`), `onChange` | features, widgets |
 | SponsoredSlot | app | Labeled ad slot (app layer only) | `slotId` | pages |
 
 ## Modules (slices without UI yet)

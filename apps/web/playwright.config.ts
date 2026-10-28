@@ -19,11 +19,12 @@ export default defineConfig({
     {
       name: 'components',
       testDir: './e2e/components',
+      // a cold dev server compiles on first visit; in CI keep it off the parallel path
+      ...(CI ? { workers: 1 } : {}),
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://localhost:${String(DEV_PORT)}`,
-        // the first visit compiles the route
-        navigationTimeout: 90_000,
+        navigationTimeout: 60_000,
       },
     },
   ],

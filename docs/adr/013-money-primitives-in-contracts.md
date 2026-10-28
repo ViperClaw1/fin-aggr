@@ -12,7 +12,7 @@
 ## Decision
 Move to `packages/contracts/src/money/`:
 - Brands and schemas: `Cents` (safe integer), `Rate` (decimal string, `0 <= r <= 1`, canonical form, no exponent, no leading `+`).
-- Parsing: `parseCents`, `parseRate(fraction)` (`"0.0435"`), `rateFromPercent(percent)` (`"4.35"` -> `"0.0435"`, decimal point shifted on the string). They throw `MoneyParseError` with a `code`; forms use the schemas' `safeParse`. `engine` throws `EngineError` when a `Rate` is out of bounds.
+- Parsing: `parseCents`, `parseRate(fraction)` (`"0.0435"`), `rateFromPercent(percent)` (`"4.35"` -> `"0.0435"`, decimal point shifted on the string). They throw `MoneyParseError` with a `code`; the UI catches `MoneyParseError` and maps its `code` to a message (`shared/ui/inputs`, E4). String-level safe variants in `contracts` are added only if E5 forms need them. `engine` throws `EngineError` when a `Rate` is out of bounds.
 - Formatting: `formatUsd(cents)` (`"$1,234.56"`, `"-$0.05"`), `formatRate(rate)` (`"0.0435"` → `"4.35%"`). Percent is the only display form; an options argument is added when a second form is needed.
 - `parseCents` accepts an optional `-` and `$`. Decimals past the second must be zeros (`"1.500"` → 150); any other third decimal is `too_many_decimals`, never rounded.
 - Formatting uses integer and string operations only (`BigInt` or string split). `Intl` may be applied only to an already exact integer-part string. No `number` division, no `toFixed`, no `parseFloat`.
