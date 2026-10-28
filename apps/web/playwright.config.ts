@@ -19,8 +19,9 @@ export default defineConfig({
     {
       name: 'components',
       testDir: './e2e/components',
-      // a cold dev server compiles on first visit; in CI keep it off the parallel path
-      ...(CI ? { workers: 1 } : {}),
+      // a cold dev server compiles on first visit; in CI run after the production project, one worker,
+      // so it never competes for CPU with it. Locally the projects stay independent.
+      ...(CI ? { workers: 1, dependencies: ['chromium'] } : {}),
       use: {
         ...devices['Desktop Chrome'],
         baseURL: `http://localhost:${String(DEV_PORT)}`,
