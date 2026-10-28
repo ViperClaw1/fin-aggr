@@ -1,0 +1,44 @@
+# ADR-016: Client data loading and First Load JS
+
+- Status: proposed
+- Date: 2026-10-28
+- Relates to: ADR-005 (gateway), ADR-008 (rendering), ADR-013 (money in contracts), ADR-015 (CSP)
+
+## Context
+AC-8: First Load JS of `/compare/cd` (120 products) at most 200 KB gzip without the PDF module. React and Next alone take about 150 KB. A zod chunk (about 34 KB gzip) is on every route today.
+
+Measured with `pnpm bundle:report` (Next's `route-bundle-stats.json`, gzip of each first-load chunk), 2026-10-28, before any change:
+
+| Route | First Load JS, KB gzip |
+| --- | --- |
+| `/` | 179.0 |
+| `/_not-found` | 179.0 |
+| `/dev/components` (404 in production) | 188.1 |
+
+How zod reaches the client, established by reading the code; to be confirmed in `next analyze` and recorded here with each commit:
+- (a) `money/parse.ts` imports the `Cents` and `Rate` schemas as values, so any `parseCents` or `parseRate` in UI code pulls zod. Inputs in the profile drawer will sit in the layout, so on every page.
+- (b) `@fa/contracts` declares no `sideEffects`, and `primitives.ts` runs `z.config({ jitless: true })` (ADR-015), a real side effect.
+- (c) The profile store parses `ProfileDraft` in the root providers (`HydrateProfile`).
+- (d) `getGateway()` imports `createMockGateway` statically; the mock checks every response with the schemas. Not on any route yet; it will be with the first client query in E5.
+
+Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 2026-09-30`, and the UI counts freshness from the wall clock, so the demo text depends on the build date (invariant 5).
+
+## Decision
+- **D1. The catalog loads on the server at build time** (extends ADR-008). `/compare/[category]` and `/product/[id]` prefetch with the same `queryOptions` in a server component, inside a `'use cache'` function so the result joins the static shell (Next 16.4 Cache Components), and pass `dehydrate(...)` to `HydrationBoundary`. The returned state must be serializable: plain objects, no class instances. On first render the client does not call the gateway; filters run in memory (`filterProducts`).
+- **D2. The gateway loads lazily.** `getGateway()` returns a thin object at once; each method awaits `import('./gateway.mock')` or `import('./gateway.http')` and calls it. Both still check responses with the schemas. A failed `import()` becomes `GatewayError('unavailable', …, true)`, so the existing retry policy applies. The `DataGateway` type and the ESLint GATEWAY rule do not change.
+- **D3. Money parsing without zod at runtime** (ADR-013 amendment). `money/parse.ts` brands with plain checks and imports `Cents` and `Rate` as types only; the schemas stay as they are, so no renames. depcruise rule: `money/{parse,format,compare,errors}.ts` never import `zod` or the schema modules as values, with a canary.
+- **D4. Declare side effects.** `packages/contracts/package.json`: `"sideEffects": ["./src/primitives.ts"]`. Every schema module imports `primitives.ts`, so the zod setting is kept. Check: the AC-4 e2e "page loads without CSP violations".
+- **D5. Lazy profile schema.** The guarded storage in `entities/profile/model/persist.ts` imports `ProfileDraft` and the `migrate` chain with `import()` on read. Hydration is already deferred (`skipHydration`, own `hydrated` flag). Lands with `edit-profile` in E5, where the e2e "profile survives a reload" checks it.
+- **D6. `now` for mock data comes from the data set.** Additive `getDatasetInfo(): Promise<{ asOf: IsoDate; isMock: boolean }>` on `DataGateway` (REST `GET /v1/meta`), useful for a real backend too. Mock mode counts freshness from `asOf`; http mode from `shared/lib/clock`. Fixtures spread `retrievedAt` by seed, per kind of fact, never after `AS_OF`: APY 0–14 days back, terms 0–150 days, bank metrics from their report `asOf`. A fixture test checks that each kind has both fresh and stale examples for `STALE_AFTER_DAYS`.
+- **D7. Budget as a CI gate.** `tools/bundle-budget.mjs` reports per route now (CI step after `build`). Once `/compare/cd` with 120 products exists it fails above 200 KB gzip on that route.
+
+## Alternatives considered
+- Split `Cents` into `CentsSchema` and a type: about 100 `Cents.parse` / `Rate.parse` call sites and dozens of schema compositions to rename for the same runtime result as D3.
+- A mock-only `asOf` constant in `shared/api`: simpler, but the mock and a real backend would differ.
+- `zod/mini` for client schemas: changes every schema; next step only if D1–D5 are not enough.
+- One `retrievedAt` window of 45 days: no stale terms or bank metrics in the demo.
+
+## Consequences
+- Commit order, each with `pnpm bundle:report` before and after recorded here: report script (this ADR) → D4 → D3 → D2 → D6 → D5 (with edit-profile) → D1 (with compare-table), then D7 and status `accepted`.
+- New e2e after D1: on `/compare/cd` the first load requests no mock or fixture chunk, and the data is in the HTML.
+- If the numbers after D1–D5 still exceed the budget, AC-8 itself is revisited rather than cutting features silently.

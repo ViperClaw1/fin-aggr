@@ -4,6 +4,10 @@ const PORT = 3100;
 // the component stand exists only in development (spec §6 rule 7), so it gets its own dev server
 const DEV_PORT = 3101;
 const CI = process.env['CI'] !== undefined;
+// Next 16 allows one `next dev` per app folder: with your own dev server running, point the
+// component project at it (E2E_DEV_URL=http://localhost:3000) and no second one is started.
+const EXTERNAL_DEV_URL = process.env['E2E_DEV_URL'];
+const DEV_URL = EXTERNAL_DEV_URL ?? `http://localhost:${String(DEV_PORT)}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,7 +28,7 @@ export default defineConfig({
       ...(CI ? { workers: 1, dependencies: ['chromium'] } : {}),
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: `http://localhost:${String(DEV_PORT)}`,
+        baseURL: DEV_URL,
         navigationTimeout: 60_000,
       },
     },
@@ -36,12 +40,16 @@ export default defineConfig({
       url: `http://localhost:${String(PORT)}`,
       reuseExistingServer: !CI,
     },
-    {
-      // dev output goes to .next/dev, so it does not touch the production build
-      command: `pnpm dev --port ${String(DEV_PORT)}`,
-      url: `http://localhost:${String(DEV_PORT)}/dev/components`,
-      reuseExistingServer: !CI,
-      timeout: 180_000,
-    },
+    ...(EXTERNAL_DEV_URL === undefined
+      ? [
+          {
+            // dev output goes to .next/dev, so it does not touch the production build
+            command: `pnpm dev --port ${String(DEV_PORT)}`,
+            url: `${DEV_URL}/dev/components`,
+            reuseExistingServer: !CI,
+            timeout: 180_000,
+          },
+        ]
+      : []),
   ],
 });

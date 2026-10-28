@@ -17,7 +17,8 @@
     "test": "vitest run --coverage && node tools/golden-count.mjs",
     "e2e": "pnpm --filter @fa/web e2e",
     "bench": "vitest bench --run",
-    "golden:check": "node tools/golden-check.mjs"
+    "golden:check": "node tools/golden-check.mjs",
+    "bundle:report": "node tools/bundle-budget.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
