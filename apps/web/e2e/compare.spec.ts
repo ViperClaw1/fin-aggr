@@ -23,8 +23,9 @@ test('after hydration no script with the mock gateway or fixtures is loaded', as
   });
   await page.goto('/compare/cd');
   await expect(page.getByRole('table', { name: 'Certificates of deposit' })).toBeVisible();
-  // freshness text appears once datasetInfo is read from the hydrated cache
-  await expect(page.getByText(/days? ago|today/i).first()).toBeVisible();
+  // freshness text appears once datasetInfo is read from the hydrated cache; it sits in the closed
+  // source tooltip (T3), so it is in the DOM, not on screen
+  await expect(page.getByText(/days? ago|today/i).first()).toBeAttached();
   await page.waitForLoadState('networkidle');
   const bodies = await Promise.all(scripts);
   expect(bodies.length).toBeGreaterThan(0);
@@ -74,6 +75,8 @@ test('without a profile the order is top APY, said in words', async ({ page }) =
 
 test('three clicks on a header return to the default order', async ({ page }) => {
   await page.goto('/compare/cd');
+  // the header buttons are in the static HTML before they work: wait for hydration
+  await expect(page.getByLabel('Search bank or product')).toBeEnabled();
   const header = table(page).getByRole('button', { name: /Top APY/ });
   await header.click();
   await expect(page).toHaveURL(/sort=apy\.asc/);

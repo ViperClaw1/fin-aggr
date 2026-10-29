@@ -83,6 +83,7 @@ test.describe('on a 375 px screen', () => {
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    expect(overflow).toBe(0);
+    // <= 0: the reserved scrollbar gutter (globals.css) makes the page narrower, never wider
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 });

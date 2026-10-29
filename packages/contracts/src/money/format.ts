@@ -13,6 +13,12 @@ export function formatUsd(value: Cents): string {
   return `${negative ? '-' : ''}$${dollars}.${cents}`;
 }
 
+/** For display: "$5,000" for whole dollars, "$5,000.50" otherwise. Totals keep formatUsd. */
+export function formatUsdShort(value: Cents): string {
+  const text = formatUsd(value);
+  return text.endsWith('.00') ? text.slice(0, -3) : text;
+}
+
 /** Unsigned decimal fraction string → percent text; the point moves two places right on the string. */
 function percentText(fractionText: string): string {
   const [whole = '0', fraction = ''] = fractionText.split('.');
@@ -25,6 +31,16 @@ function percentText(fractionText: string): string {
 /** "0.0435" → "4.35%". Exact: the decimal point moves two places right on the string. */
 export function formatRate(rate: Rate): string {
   return percentText(rate);
+}
+
+/**
+ * For a column of rates: at least two decimals, so "5%" and "4.5%" line up with "4.42%". Pads,
+ * never rounds: "0.027385" stays "2.7385%". Inputs keep formatRate (exact round trip).
+ */
+export function formatRateDisplay(rate: SignedRate | Rate): string {
+  const text = formatSignedRate(rate);
+  const [num = '', frac] = text.slice(0, -1).split('.');
+  return `${num}.${(frac ?? '').padEnd(2, '0')}%`;
 }
 
 /**

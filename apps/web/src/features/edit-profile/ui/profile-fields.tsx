@@ -34,6 +34,7 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
       />
       <MoneyInput
         label="Taxable income"
+        placeholder="e.g. $85,000"
         name="taxableIncome"
         hint="Per year, before the interest you compare here."
         defaultValue={draft.taxableIncome}
@@ -43,6 +44,7 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
       />
       <PercentInput
         label="City income tax rate, %"
+        placeholder="0.00"
         name="cityMarginalRate"
         hint="Leave empty if your city has no income tax."
         defaultValue={draft.cityMarginalRate}
@@ -61,6 +63,7 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
       />
       <WholeNumberField
         label="Age"
+        placeholder="Years"
         name="age"
         hint="Optional. Some products have age limits."
         defaultValue={draft.age}
@@ -68,8 +71,18 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
           write({ age: v ?? undefined });
         }}
       />
+      <ScenarioFields draft={draft} write={write} />
+    </>
+  );
+}
+
+/** The scenario: empty fields fall back to DEFAULT_SCENARIO, shown as the placeholder and hint. */
+function ScenarioFields({ draft, write }: ProfileFieldsProps) {
+  return (
+    <>
       <MoneyInput
         label="Amount to deposit"
+        placeholder={formatUsd(DEFAULT_SCENARIO.principal)}
         name="principal"
         hint={`Leave empty to use ${formatUsd(DEFAULT_SCENARIO.principal)}.`}
         defaultValue={draft.scenario?.principal}
@@ -79,6 +92,7 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
       />
       <WholeNumberField
         label="Holding period, months"
+        placeholder={String(DEFAULT_SCENARIO.holdingMonths)}
         name="holdingMonths"
         hint={`Leave empty to use ${String(DEFAULT_SCENARIO.holdingMonths)} months.`}
         defaultValue={draft.scenario?.holdingMonths}

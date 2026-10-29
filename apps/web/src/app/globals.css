@@ -1,9 +1,11 @@
 @import 'tailwindcss';
 
-/* Text/background pairs meet WCAG AA (4.5:1) in both schemes; axe checks both in e2e.
-   --border is also the input outline, so it keeps 3:1 against the background (WCAG 1.4.11). */
+/* Text/background pairs meet WCAG AA (4.5:1) in both themes; axe checks them in e2e.
+   --border is also the input outline, so it keeps 3:1 against the background (WCAG 1.4.11).
+   Light is the default whatever the system says; the header switch sets data-theme="dark" on
+   <html> for the visit (not saved: see features/toggle-theme). */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --background: #ffffff;
   --surface: #f5f5f5;
   --foreground: #171717;
@@ -13,32 +15,45 @@
   --focus: #1d4ed8;
   --accent: #1d4ed8;
   --accent-foreground: #ffffff;
+  /* filled buttons and chips: white text on it is 4.5:1 or more in both themes */
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-foreground: #ffffff;
   --ok: #14532d;
   --ok-bg: #dcfce7;
   --warn: #78350f;
   --warn-bg: #fef3c7;
   --danger: #7f1d1d;
   --danger-bg: #fee2e2;
+
+  /* Stacking order, lowest first: the sticky first column, the header cell where it meets the sticky
+     header row, popovers above both. A modal <dialog> is in the top layer and needs no z-index. */
+  --z-sticky: 10;
+  --z-sticky-corner: 20;
+  --z-popover: 30;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --surface: #141414;
-    --foreground: #ededed;
-    --muted: #a3a3a3;
-    --border: #6b6b6b;
-    --divider: #262626;
-    --focus: #93c5fd;
-    --accent: #93c5fd;
-    --accent-foreground: #0a0a0a;
-    --ok: #bbf7d0;
-    --ok-bg: #052e16;
-    --warn: #fde68a;
-    --warn-bg: #451a03;
-    --danger: #fecaca;
-    --danger-bg: #450a0a;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --surface: #141414;
+  --foreground: #ededed;
+  --muted: #a3a3a3;
+  --border: #6b6b6b;
+  --divider: #262626;
+  --focus: #93c5fd;
+  --accent: #93c5fd;
+  --accent-foreground: #0a0a0a;
+  /* filled buttons and chips: white text on it is 4.5:1 or more in both themes */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --ok: #bbf7d0;
+  --ok-bg: #052e16;
+  --warn: #fde68a;
+  --warn-bg: #451a03;
+  --danger: #fecaca;
+  --danger-bg: #450a0a;
 }
 
 @theme inline {
@@ -51,6 +66,9 @@
   --color-focus: var(--focus);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
   --color-warn: var(--warn);
@@ -59,6 +77,42 @@
   --color-danger-bg: var(--danger-bg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* the widest content: compare tables, the header and the footer (1440px); text pages are narrower */
+  --container-page: 90rem;
+
+  /* Type scale (T18): 12/14/16/18/20/24/30/36 px with line heights. The default scale is reset, so a
+     size off the scale (text-5xl, text-[13px] aside) generates nothing. */
+  --text-*: initial;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  /* Radii: badges and chips 4px, controls 6px, panels 8px (rounded-full is not a token) */
+  --radius-*: initial;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+
+  /* Shadows: only floating panels (popovers) lift off the page */
+  --shadow-*: initial;
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+
+  /* Motion: every transition-* utility uses these unless it names its own */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
 body {
@@ -68,9 +122,61 @@ body {
   accent-color: var(--accent);
 }
 
+/* The scrollbar's room is always kept: hiding the scrollbar under a modal (below) no longer
+   widens the page, so nothing behind the dialog shifts sideways. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* a modal dialog keeps the page behind it still */
 html:has(dialog:modal) {
   overflow: hidden;
+}
+
+/* Everything that reacts to a click says so; Tailwind's reset leaves buttons with the arrow. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  select:not(:disabled),
+  label:has(> input:not(:disabled)),
+  input[type='checkbox']:not(:disabled),
+  input[type='file']:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+}
+
+/* A dialog that slides in from the right (the profile panel): 250 ms in and out. Browsers without
+   @starting-style or allow-discrete open and close it at once, which is fine. */
+.sheet {
+  translate: 100% 0;
+  transition:
+    translate 250ms var(--default-transition-timing-function),
+    display 250ms allow-discrete,
+    overlay 250ms allow-discrete;
+}
+.sheet[open] {
+  translate: 0 0;
+}
+@starting-style {
+  .sheet[open] {
+    translate: 100% 0;
+  }
+}
+.sheet::backdrop {
+  background: rgb(0 0 0 / 0);
+  transition:
+    background-color 250ms,
+    display 250ms allow-discrete,
+    overlay 250ms allow-discrete;
+}
+.sheet[open]::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+@starting-style {
+  .sheet[open]::backdrop {
+    background: rgb(0 0 0 / 0);
+  }
 }
 
 :focus-visible {
@@ -85,10 +191,10 @@ html:has(dialog:modal) {
     @apply h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-base text-foreground placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger sm:text-sm;
   }
   .btn {
-    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium whitespace-nowrap hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0;
   }
   .btn-primary {
-    @apply border-accent bg-accent text-accent-foreground hover:bg-accent hover:opacity-90;
+    @apply border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover;
   }
   .btn-sm {
     @apply h-8 px-3;

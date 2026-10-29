@@ -78,7 +78,7 @@ export function ProfileDrawer() {
         aria-labelledby={titleId}
         onClose={close}
         // a right-hand sheet the height of the screen; only its body scrolls, the title bar stays
-        className="m-0 ml-auto h-dvh max-h-none w-full max-w-md overflow-hidden border-l border-divider bg-background p-0 text-foreground backdrop:bg-black/60"
+        className="sheet m-0 ml-auto h-dvh max-h-none w-full max-w-md overflow-hidden border-l border-divider bg-background p-0 text-foreground"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between gap-4 border-b border-divider px-4 py-3 sm:px-6">

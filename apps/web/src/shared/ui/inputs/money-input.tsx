@@ -7,6 +7,7 @@ import { parseMoneyInput } from './parse-input';
 interface MoneyInputProps {
   label: string;
   hint?: string;
+  placeholder?: string;
   name?: string;
   defaultValue?: Cents | undefined;
   /** Fees and refunds may be negative; balances may not. */
@@ -17,6 +18,7 @@ interface MoneyInputProps {
 export function MoneyInput({
   label,
   hint,
+  placeholder,
   name,
   defaultValue,
   allowNegative = false,
@@ -26,6 +28,7 @@ export function MoneyInput({
     <DecimalInput
       label={label}
       hint={hint}
+      placeholder={placeholder}
       name={name}
       defaultText={defaultValue === undefined ? '' : formatUsd(defaultValue)}
       parse={(text) => parseMoneyInput(text, allowNegative)}

@@ -26,14 +26,16 @@ export function MetricCard({ label, value, hint, tone = 'neutral', toneLabel }: 
       role="group"
       aria-labelledby={`${id}-label`}
       aria-describedby={hint === undefined ? undefined : `${id}-hint`}
-      className={`rounded border-2 p-4 ${style.box}`}
+      className={`rounded-sm border-2 p-4 ${style.box}`}
     >
       <p id={`${id}-label`} className="text-sm text-muted">
         {label}
       </p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
       {toneLabel === undefined ? null : (
-        <p className={`mt-2 inline-block rounded px-2 py-0.5 text-sm font-medium ${style.badge}`}>
+        <p
+          className={`mt-2 inline-block rounded-sm px-2 py-0.5 text-sm font-medium ${style.badge}`}
+        >
           {style.icon === '' ? null : <span aria-hidden="true">{style.icon} </span>}
           {toneLabel}
         </p>

@@ -8,6 +8,8 @@ interface DecimalInputProps<T> {
   hint?: string | undefined;
   /** Lets a form find the field, e.g. to focus it. */
   name?: string | undefined;
+  /** Shown while empty: a format or an example, never a value the user did not choose. */
+  placeholder?: string | undefined;
   defaultText: string;
   parse: (text: string) => ParseResult<T>;
   /** Called on blur with a valid value, or `null` when the field is cleared. */
@@ -19,6 +21,7 @@ export function DecimalInput<T>({
   label,
   hint,
   name,
+  placeholder,
   defaultText,
   parse,
   onValueChange,
@@ -41,6 +44,7 @@ export function DecimalInput<T>({
       <input
         id={id}
         name={name}
+        placeholder={placeholder}
         type="text"
         inputMode="decimal"
         autoComplete="off"

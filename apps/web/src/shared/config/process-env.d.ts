@@ -4,5 +4,6 @@ declare namespace NodeJS {
     readonly NEXT_PUBLIC_DATA_SOURCE?: string;
     readonly NEXT_PUBLIC_FA_SEED?: string;
     readonly NEXT_PUBLIC_MOCK_FAILURE_RATE?: string;
+    readonly NEXT_PUBLIC_SITE_URL?: string;
   }
 }

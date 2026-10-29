@@ -111,7 +111,9 @@ function FilterFormView({ terms, withProfile, filters, setFilters, disabled }: V
   return (
     <form
       aria-label="Filters"
-      className="panel flex flex-col p-3 lg:p-4"
+      // from lg the sidebar stays in view while the results scroll; taller than the screen, it
+      // scrolls on its own (the grid's items-start lets it stick)
+      className="panel flex flex-col p-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:p-4"
       onSubmit={(e) => {
         e.preventDefault();
       }}
@@ -135,18 +137,11 @@ function FilterFormView({ terms, withProfile, filters, setFilters, disabled }: V
         aria-busy={disabled}
         className={`${open ? 'flex' : 'hidden'} mt-4 min-w-0 flex-col gap-5 lg:flex`}
       >
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`${id}-search`} className="text-sm font-medium">
-            Search bank or product
-          </label>
-          <input
-            id={`${id}-search`}
-            type="search"
-            value={filters.search}
-            onChange={(e) => void setFilters({ search: e.currentTarget.value })}
-            className="control"
-          />
-        </div>
+        <SearchField
+          id={`${id}-search`}
+          value={filters.search}
+          onChange={(search) => void setFilters({ search })}
+        />
         {terms.length === 0 ? null : (
           <CheckboxGroup
             legend="Term"
@@ -165,11 +160,13 @@ function FilterFormView({ terms, withProfile, filters, setFilters, disabled }: V
         <div key={revision} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <PercentInput
             label="Minimum APY, %"
+            placeholder="Any"
             defaultValue={filters.minApy}
             onValueChange={(v) => void setFilters({ minApy: v })}
           />
           <MoneyInput
             label="Maximum to open"
+            placeholder="Any"
             defaultValue={filters.maxOpening ?? undefined}
             onValueChange={(v) => void setFilters({ maxOpening: v })}
           />
@@ -221,7 +218,7 @@ interface CheckboxGroupProps<T extends string | number> {
 // the checkbox is transparent and covers the chip, so a click (and a test's check()) lands on it;
 // the chip shows its checked and focus state
 const CHIP =
-  'relative inline-flex h-8 cursor-pointer items-center rounded-md border border-border px-3 text-sm tabular-nums has-checked:border-accent has-checked:bg-accent has-checked:text-accent-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus has-disabled:cursor-not-allowed has-disabled:opacity-60';
+  'relative inline-flex h-8 cursor-pointer items-center rounded-md border border-border px-3 text-sm tabular-nums has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus has-disabled:cursor-not-allowed has-disabled:opacity-60';
 
 function CheckboxGroup<T extends string | number>({
   legend,
@@ -251,5 +248,25 @@ function CheckboxGroup<T extends string | number>({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function SearchField(p: { id: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={p.id} className="text-sm font-medium">
+        Search bank or product
+      </label>
+      <input
+        id={p.id}
+        type="search"
+        placeholder="Bank or product name"
+        value={p.value}
+        onChange={(e) => {
+          p.onChange(e.currentTarget.value);
+        }}
+        className="control"
+      />
+    </div>
   );
 }

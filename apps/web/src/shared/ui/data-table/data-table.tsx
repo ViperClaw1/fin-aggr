@@ -120,7 +120,7 @@ function HeaderCell<T>(p: {
   onSort: (id: string) => void;
 }) {
   const { column, sort } = p;
-  const base = `${p.first ? 'sticky left-0 z-20' : ''} border-y border-divider bg-surface px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
+  const base = `${p.first ? 'sticky left-0 z-(--z-sticky-corner)' : ''} border-y border-divider bg-surface px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (
       <th scope="col" className={base}>
@@ -172,7 +172,7 @@ function Body<T>(
                 // the sticky first column wraps on phones, or a long name would cover the screen
                 const wrap =
                   i === 0 ? 'w-40 min-w-40 sm:w-auto sm:whitespace-nowrap' : 'whitespace-nowrap';
-                const cls = `px-3 py-3 ${wrap} group-hover:bg-surface ${alignClass(c.align)}`;
+                const cls = `px-3 py-2 ${wrap} group-hover:bg-surface ${alignClass(c.align)}`;
                 if (i > 0) {
                   return (
                     <td key={c.id} className={cls}>
@@ -184,7 +184,7 @@ function Body<T>(
                   <th
                     key={c.id}
                     scope="row"
-                    className={`sticky left-0 z-10 bg-background font-normal ${cls}`}
+                    className={`sticky left-0 z-(--z-sticky) bg-background font-normal ${cls}`}
                   >
                     <div className="flex items-start gap-2">
                       {p.renderExpanded === undefined ? null : (
@@ -254,7 +254,10 @@ function SkeletonRows({ span }: { span: number }) {
         <tr key={key} className="border-b border-divider">
           <td colSpan={span} className="px-3 py-2">
             {i === 0 ? <span className="sr-only">Loading</span> : null}
-            <div aria-hidden="true" className="h-5 rounded bg-border motion-safe:animate-pulse" />
+            <div
+              aria-hidden="true"
+              className="h-5 rounded-sm bg-border motion-safe:animate-pulse"
+            />
           </td>
         </tr>
       ))}

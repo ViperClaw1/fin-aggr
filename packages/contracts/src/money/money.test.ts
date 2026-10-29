@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { Cents } from './cents';
 import { MoneyParseError, type MoneyParseErrorCode } from './errors';
 import { compareRate } from './compare';
-import { formatRate, formatSignedRate, formatUsd } from './format';
+import {
+  formatRate,
+  formatRateDisplay,
+  formatSignedRate,
+  formatUsd,
+  formatUsdShort,
+} from './format';
 import {
   centsFromInteger,
   centsFromSafeInteger,
@@ -275,5 +281,31 @@ describe('formatSignedRate', () => {
     ['-12.5', '−1250%'],
   ])('%s → %s', (rate, text) => {
     expect(formatSignedRate(SignedRate.parse(rate))).toBe(text);
+  });
+});
+
+describe('formatRateDisplay', () => {
+  it.each([
+    ['0.05', '5.00%'],
+    ['0.045', '4.50%'],
+    ['0.0442', '4.42%'],
+    ['0.027385', '2.7385%'],
+    ['0', '0.00%'],
+    ['-0.0312', '−3.12%'],
+    ['-0.05', '−5.00%'],
+  ])('%s → %s', (rate, text) => {
+    expect(formatRateDisplay(SignedRate.parse(rate))).toBe(text);
+  });
+});
+
+describe('formatUsdShort', () => {
+  it.each([
+    [500000, '$5,000'],
+    [0, '$0'],
+    [500050, '$5,000.50'],
+    [-1200, '-$12'],
+    [5, '$0.05'],
+  ])('%i → %s', (cents, text) => {
+    expect(formatUsdShort(Cents.parse(cents))).toBe(text);
   });
 });

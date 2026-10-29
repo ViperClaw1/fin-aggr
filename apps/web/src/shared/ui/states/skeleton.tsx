@@ -7,7 +7,7 @@ interface SkeletonProps {
 
 export function Skeleton({ label = 'Loading', className = 'h-6 w-full' }: SkeletonProps) {
   return (
-    <div role="status" className={`rounded bg-border motion-safe:animate-pulse ${className}`}>
+    <div role="status" className={`rounded-sm bg-border motion-safe:animate-pulse ${className}`}>
       <span className="sr-only">{label}</span>
     </div>
   );

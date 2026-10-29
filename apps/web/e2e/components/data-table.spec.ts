@@ -108,7 +108,8 @@ test.describe('on a 375 px screen', () => {
     const pageOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    expect(pageOverflow).toBe(0);
+    // <= 0: the reserved scrollbar gutter (globals.css) makes the page narrower, never wider
+    expect(pageOverflow).toBeLessThanOrEqual(0);
     const region = page.getByRole('region', { name: MAIN });
     expect(await region.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     await page.getByLabel('Hide APY column').focus();

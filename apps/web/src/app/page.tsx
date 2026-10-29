@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 const CATEGORIES = [
   { href: '/compare/cd', title: 'CDs', text: 'Certificates of deposit by term and rate.' },

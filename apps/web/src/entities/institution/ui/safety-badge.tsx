@@ -18,7 +18,7 @@ export function SafetyBadge({ kind, partners = [] }: SafetyBadgeProps) {
   const text = SAFETY_TEXT[kind];
   const style = STYLE[kind];
   return (
-    <div className={`inline-flex items-center rounded border px-2 py-0.5 text-sm ${style.box}`}>
+    <div className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-sm ${style.box}`}>
       <Disclosure
         summary={
           <>

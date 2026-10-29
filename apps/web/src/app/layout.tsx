@@ -1,9 +1,12 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { ThemeToggle } from '@/features/toggle-theme';
+import { env } from '@/shared/config';
 import { DemoDataBanner } from '@/shared/ui/demo-banner';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
+import { SiteFooter } from '@/widgets/site-footer';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -17,9 +20,26 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const DESCRIPTION =
+  'Compare CDs, savings accounts and Treasuries by what you keep after tax. Demo data.';
+
+// Pages set their own title, description and canonical path; the rest is inherited. noindex while
+// the data is synthetic (decided 2026-10-29): no made-up rates in search results. OG images come
+// from the opengraph-image files.
 export const metadata: Metadata = {
-  title: 'FA',
-  description: 'Deposit comparison by after-tax yield (demo data)',
+  metadataBase: new URL(env.siteUrl),
+  title: { default: 'FA · Compare deposits after tax', template: '%s · FA' },
+  description: DESCRIPTION,
+  applicationName: 'FA',
+  robots: { index: false, follow: false },
+  openGraph: { type: 'website', siteName: 'FA', locale: 'en_US', description: DESCRIPTION },
+  twitter: { card: 'summary_large_image' },
+};
+
+export const viewport: Viewport = {
+  // light is the default theme whatever the system says (globals.css); the dark one is opt-in
+  colorScheme: 'light',
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -30,17 +50,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <DemoDataBanner />
         <Providers>
           <header className="border-b border-divider">
-            <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
+            <div className="mx-auto flex h-14 max-w-page items-center justify-between gap-3 px-4 sm:px-8">
               <Link href="/" prefetch={false} className="text-lg font-semibold tracking-tight">
                 FA<span className="sr-only"> home</span>
               </Link>
               {/* reads ?profile=: the fallback is prerendered, the route stays static */}
-              <Suspense fallback={<ProfileDrawerFallback />}>
-                <ProfileDrawer />
-              </Suspense>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Suspense fallback={<ProfileDrawerFallback />}>
+                  <ProfileDrawer />
+                </Suspense>
+              </div>
             </div>
           </header>
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>

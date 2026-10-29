@@ -36,7 +36,7 @@ export function ChoiceField<T extends string>({
         }}
         className="control"
       >
-        <option value="">Select</option>
+        <option value="">Select {label.toLowerCase()}</option>
         {codes.map((code) => (
           <option key={code} value={code}>
             {labels[code]}
@@ -51,6 +51,7 @@ interface WholeNumberFieldProps {
   label: string;
   name: string;
   hint?: string;
+  placeholder?: string;
   defaultValue: number | null | undefined;
   /** Called on blur with a valid value, or `null` when the field is cleared. */
   onValueChange: (value: number | null) => void;
@@ -60,6 +61,7 @@ export function WholeNumberField({
   label,
   name,
   hint,
+  placeholder,
   defaultValue,
   onValueChange,
 }: WholeNumberFieldProps) {
@@ -83,6 +85,7 @@ export function WholeNumberField({
         name={name}
         type="text"
         inputMode="numeric"
+        placeholder={placeholder}
         autoComplete="off"
         defaultValue={
           defaultValue === null || defaultValue === undefined ? '' : String(defaultValue)

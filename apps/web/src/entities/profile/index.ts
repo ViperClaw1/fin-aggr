@@ -7,7 +7,7 @@ export {
 } from './model/drawer-url';
 export { DEFAULT_SCENARIO, REQUIRED_FIELDS } from './model/defaults';
 export { defaultAssumptions, missingFields } from './model/complete';
-export { PROFILE_PRIVACY_TEXT } from './model/privacy-texts';
+export { PROFILE_PRIVACY_TEXT } from '@/shared/config';
 export {
   rehydrateProfile,
   useCompleteProfile,

@@ -7,6 +7,7 @@ import { parsePercentInput } from './parse-input';
 interface PercentInputProps {
   label: string;
   hint?: string;
+  placeholder?: string;
   name?: string;
   defaultValue?: Rate | null | undefined;
   onValueChange: (value: Rate | null) => void;
@@ -16,6 +17,7 @@ interface PercentInputProps {
 export function PercentInput({
   label,
   hint,
+  placeholder,
   name,
   defaultValue,
   onValueChange,
@@ -24,6 +26,7 @@ export function PercentInput({
     <DecimalInput
       label={label}
       hint={hint}
+      placeholder={placeholder}
       name={name}
       defaultText={
         defaultValue === undefined || defaultValue === null ? '' : formatRate(defaultValue)

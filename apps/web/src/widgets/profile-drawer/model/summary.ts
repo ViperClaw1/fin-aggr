@@ -8,7 +8,7 @@ import { missingFields, REQUIRED_FIELDS } from '@/entities/profile';
 export function profileSummary(draft: ProfileDraft): string {
   const missing = missingFields(draft).length;
   const total = REQUIRED_FIELDS.length;
-  if (missing === total) return 'Add your profile';
+  if (missing === total) return 'No profile yet';
   if (missing === 0) return `Profile: ${draft.stateCode ?? ''} · complete`;
   return `Profile: ${String(total - missing)} of ${String(total)} filled`;
 }

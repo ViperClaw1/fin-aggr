@@ -1,6 +1,7 @@
 // DRAFT: promises about the user's data, pending Nikita's approval (E5 plan, legal texts). One
-// copy for the drawer, the erase question and /privacy, so they never differ. True while the e2e
-// AC-4 sentinel passes; revisit in stage 2 (backend, analytics).
+// copy for the drawer, the erase question, the footer and /privacy, so they never differ. In shared:
+// server components read it without the profile entity (its client-only URL state). True while the
+// e2e AC-4 sentinel passes; revisit in stage 2 (backend, analytics).
 export const PROFILE_PRIVACY_TEXT = {
   staysLocal: 'Your profile stays in this browser. It is never sent to our servers.',
   eraseQuestion:

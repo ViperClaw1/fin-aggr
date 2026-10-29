@@ -11,7 +11,7 @@ const COMPLETE = {
 
 describe('profileSummary', () => {
   it('invites to add a profile while no required field is filled', () => {
-    expect(profileSummary({ age: 40 })).toBe('Add your profile');
+    expect(profileSummary({ age: 40 })).toBe('No profile yet');
   });
   it('counts the filled required fields', () => {
     expect(profileSummary({ stateCode: 'NY', taxableIncome: Cents.parse(1) })).toBe(

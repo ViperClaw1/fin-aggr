@@ -1,7 +1,7 @@
 // Columns of the compare table. Sortable columns use the feature's SortKey as their id, so the URL
 // can only name a column the feature knows. The net columns exist only with a complete profile;
 // their values are calculations under assumptions, marked with data-assumption (AC-3).
-import { compareRate, formatUsd } from '@fa/contracts';
+import { compareRate, formatUsd, formatUsdShort } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
 import { FactValue } from '@/entities/fact';
 import { INSTITUTION_KIND_LABEL } from '@/entities/institution';
@@ -63,6 +63,8 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
           fact={{ value: headlineApy(p), provenance: p.provenance }}
           render={(rate) => <RateValue rate={rate} />}
           now={now}
+          compact
+          align="end"
         />
       ),
       compare: (a, b) => compareRate(headlineApy(a.product), headlineApy(b.product)),
@@ -71,7 +73,8 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
     {
       id: 'minOpening',
       header: 'Minimum to open',
-      cell: (r) => formatUsd(r.product.minOpening),
+      cell: (r) =>
+        r.product.minOpening === 0 ? 'No minimum' : formatUsdShort(r.product.minOpening),
       compare: (a, b) => a.product.minOpening - b.product.minOpening,
       align: 'end',
     },

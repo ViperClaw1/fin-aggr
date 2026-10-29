@@ -10,7 +10,7 @@ const profileButton = (page: Page) => page.locator('header button[aria-haspopup=
 const drawer = (page: Page) => page.getByRole('dialog', { name: 'Your profile' });
 
 async function openDrawer(page: Page) {
-  await expect(profileButton(page)).toHaveText('Add your profile');
+  await expect(profileButton(page)).toHaveText('No profile yet');
   await profileButton(page).click();
   await expect(drawer(page)).toBeVisible();
 }
@@ -101,12 +101,12 @@ test('erasing asks first and clears the profile', async ({ page }) => {
   await expect(drawer(page).getByRole('button', { name: 'Cancel' })).toBeFocused();
   await drawer(page).getByRole('button', { name: 'Erase', exact: true }).click();
   await expect(drawer(page).getByLabel('State of residence')).toHaveValue('');
-  await expect(profileButton(page)).toHaveText('Add your profile');
+  await expect(profileButton(page)).toHaveText('No profile yet');
 });
 
 test('the drawer works from the keyboard', async ({ page }) => {
   await page.goto('/');
-  await expect(profileButton(page)).toHaveText('Add your profile');
+  await expect(profileButton(page)).toHaveText('No profile yet');
   await profileButton(page).focus();
   await page.keyboard.press('Enter');
   await expect(drawer(page).getByLabel('Filing status')).toBeFocused();
@@ -152,7 +152,7 @@ for (const path of ['/', '/compare/cd']) {
       if (response.request().resourceType() === 'script') scripts.push(response.text());
     });
     await page.goto(path);
-    await expect(profileButton(page)).toHaveText('Add your profile');
+    await expect(profileButton(page)).toHaveText('No profile yet');
     await page.waitForLoadState('networkidle');
     const before = await Promise.all(scripts);
     expect(before.filter((b) => b.includes(FORM_MARKER))).toHaveLength(0);

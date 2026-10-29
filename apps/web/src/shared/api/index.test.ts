@@ -52,7 +52,12 @@ describe('createLazyGateway (ADR-016 D2)', () => {
 
 describe('loadGateway', () => {
   it('on the server the mock never fails, whatever the failure rate', async () => {
-    const env = { dataSource: 'mock', seed: 20261025, mockFailureRate: 1 } as const;
+    const env = {
+      dataSource: 'mock',
+      seed: 20261025,
+      mockFailureRate: 1,
+      siteUrl: 'https://fin-aggr.vercel.app',
+    } as const;
     const gateway = await loadGateway(env, true);
     await expect(gateway.listSources()).resolves.not.toHaveLength(0);
   });

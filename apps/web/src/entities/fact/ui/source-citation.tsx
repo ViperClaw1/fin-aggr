@@ -32,7 +32,7 @@ export function SourceCitation({
   const where = doc === undefined ? domain : `${domain}, p. ${String(doc.page)}`;
   const box =
     variant === 'chip'
-      ? 'inline-flex flex-wrap items-center gap-x-2 rounded border border-border px-2 py-0.5 text-xs'
+      ? 'inline-flex flex-wrap items-center gap-x-2 rounded-sm border border-border px-2 py-0.5 text-xs'
       : 'inline-flex flex-wrap items-center gap-x-2 text-xs';
   return (
     <div className={box} data-citation={p.sourceId}>
