@@ -12,6 +12,7 @@ import {
   effectiveSort,
   filterProducts,
   filterRanked,
+  FilterForm,
   useProductFilters,
   useProductSort,
   type InstitutionIndex,
@@ -50,6 +51,8 @@ interface UrlState {
   filters: Filters;
   sort: ProductSort | null;
   onSortChange: (sort: ProductSort | null) => void;
+  /** the filter form reads the URL, so the prerendered fallback has none */
+  withForm: boolean;
 }
 
 /**
@@ -59,7 +62,11 @@ interface UrlState {
 export function CompareTable(props: Props) {
   const noop = () => undefined;
   return (
-    <Suspense fallback={<Table {...props} filters={NO_FILTERS} sort={null} onSortChange={noop} />}>
+    <Suspense
+      fallback={
+        <Table {...props} filters={NO_FILTERS} sort={null} onSortChange={noop} withForm={false} />
+      }
+    >
       <UrlTable {...props} />
     </Suspense>
   );
@@ -71,6 +78,7 @@ function UrlTable(props: Props) {
   return (
     <Table
       {...props}
+      withForm
       filters={filters}
       sort={sort}
       onSortChange={(next) => {
@@ -97,9 +105,17 @@ function Table(props: Props & UrlState) {
     [filtered, ranked, filters.hide],
   );
   const withProfile = ranked !== null;
+  const terms = useMemo(
+    () =>
+      [...new Set(products.flatMap((p) => (p.termMonths === null ? [] : [p.termMonths])))].sort(
+        (a, b) => a - b,
+      ),
+    [products],
+  );
   const sort = effectiveSort(props.sort, shownSortKeys(withProfile));
   return (
     <div className="flex flex-col gap-2">
+      {props.withForm ? <FilterForm terms={terms} withProfile={withProfile} /> : null}
       <p className="text-sm text-muted" aria-live="polite">
         {sort === null ? defaultOrderNote(withProfile) : null}
       </p>

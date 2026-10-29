@@ -1,6 +1,7 @@
-// The filter form joins the public API with the full compare-table in E5.
+// Public API of filter-products: URL filters and sort, in-memory filtering, the filter form.
 export { filterProducts, filterRanked, type InstitutionIndex } from './model/filter';
 export { PRODUCT_FILTER_KEYS, useProductFilters } from './model/search-params';
+export { FilterForm } from './ui/filter-form';
 export {
   effectiveSort,
   PRODUCT_SORT_KEY,

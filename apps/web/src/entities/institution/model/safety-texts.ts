@@ -20,3 +20,8 @@ export const SAFETY_TEXT: Record<InstitutionKind, { title: string; detail: strin
       'This company is not a bank. Deposits are held at partner banks. Ask the company how your deposits are protected.',
   },
 };
+
+/** The kind in words, one copy for badges and filters. */
+export const INSTITUTION_KIND_LABEL = Object.fromEntries(
+  Object.entries(SAFETY_TEXT).map(([kind, { title }]) => [kind, title]),
+) as Record<InstitutionKind, string>;

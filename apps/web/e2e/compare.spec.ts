@@ -143,3 +143,24 @@ test('with a profile the table ranks after tax, net values marked as assumptions
     );
   expect(shown).toEqual(expected);
 });
+
+test('the filter form writes the URL, Reset clears it', async ({ page }) => {
+  await page.goto('/compare/cd');
+  const form = page.getByRole('form', { name: 'Filters' });
+  await form.getByRole('group', { name: 'Term' }).getByLabel('12 mo').check();
+  await expect(page).toHaveURL(/term=12/);
+  const terms = await table(page).locator('tbody tr td:nth-child(3)').allInnerTexts();
+  expect(new Set(terms)).toEqual(new Set(['12 mo']));
+
+  await form.getByLabel('Search bank or product').fill('Granite');
+  await expect(page).toHaveURL(/search=Granite/);
+  await form.getByRole('button', { name: 'Reset filters' }).click();
+  await expect(page).not.toHaveURL(/term=|search=/);
+  await expect(table(page).locator('tbody tr')).toHaveCount(60);
+});
+
+test('compare with the filter form has no serious or critical axe violations', async ({ page }) => {
+  await page.goto('/compare/cd');
+  await expect(page.getByRole('form', { name: 'Filters' })).toBeVisible();
+  await expectNoA11yViolations(page);
+});
