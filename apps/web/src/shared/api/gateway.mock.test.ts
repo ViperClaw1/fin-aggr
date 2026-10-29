@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TAX_YEAR } from '@/shared/config';
 import { gatewayContract } from './contract-suite';
 import { createMockGateway, type MockGatewayOptions } from './gateway.mock';
 
@@ -9,6 +10,11 @@ gatewayContract('mock gateway', () => createMockGateway(base));
 describe('mock gateway behaviour', () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('has tax tables for TAX_YEAR, so a new year needs new fixtures first', async () => {
+    const tables = await createMockGateway(base).getTaxTables(TAX_YEAR);
+    expect(tables.taxYear).toBe(TAX_YEAR);
   });
 
   it('is deterministic for a seed', async () => {
