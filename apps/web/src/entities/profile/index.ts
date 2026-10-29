@@ -1,6 +1,11 @@
 // Public API of the profile slice. The profile never leaves the browser (ADR-004).
-// Export/import and the pure draft views (model/serialize, model/complete) join with their
-// first consumer, the profile forms in E4.
+export {
+  PROFILE_DRAWER_KEY,
+  PROFILE_FORM_FIELDS,
+  useProfileDrawer,
+  type ProfileFormField,
+} from './model/drawer-url';
+export { DEFAULT_SCENARIO } from './model/defaults';
 export {
   rehydrateProfile,
   useCompleteProfile,
@@ -9,3 +14,4 @@ export {
   useProfileHydrated,
   useProfileStatus,
 } from './model/hooks';
+export { exportProfile, MAX_IMPORT_BYTES, parseImport, type ImportResult } from './model/serialize';

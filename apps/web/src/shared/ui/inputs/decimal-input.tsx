@@ -6,6 +6,8 @@ import { INPUT_ERROR_MESSAGES, type InputErrorCode, type ParseResult } from './p
 interface DecimalInputProps<T> {
   label: string;
   hint?: string | undefined;
+  /** Lets a form find the field, e.g. to focus it. */
+  name?: string | undefined;
   defaultText: string;
   parse: (text: string) => ParseResult<T>;
   /** Called on blur with a valid value, or `null` when the field is cleared. */
@@ -16,6 +18,7 @@ interface DecimalInputProps<T> {
 export function DecimalInput<T>({
   label,
   hint,
+  name,
   defaultText,
   parse,
   onValueChange,
@@ -37,6 +40,7 @@ export function DecimalInput<T>({
       )}
       <input
         id={id}
+        name={name}
         type="text"
         inputMode="decimal"
         autoComplete="off"

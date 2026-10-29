@@ -7,10 +7,11 @@ interface StateSelectProps {
   label: string;
   /** A two-letter code, or `''` when nothing is selected. */
   value: string;
+  name?: string;
   onChange: (code: string) => void;
 }
 
-export function StateSelect({ label, value, onChange }: StateSelectProps) {
+export function StateSelect({ label, value, name, onChange }: StateSelectProps) {
   const id = useId();
   return (
     <div className="flex flex-col gap-1">
@@ -19,6 +20,7 @@ export function StateSelect({ label, value, onChange }: StateSelectProps) {
       </label>
       <select
         id={id}
+        name={name}
         value={value}
         onChange={(e) => {
           onChange(e.currentTarget.value);

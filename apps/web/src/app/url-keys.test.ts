@@ -2,10 +2,12 @@
 // share never carry profile fields (ADR-004), and filters never take the citation keys.
 import { Profile } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
+import { PROFILE_DRAWER_KEY } from '@/entities/profile';
 import { PRODUCT_FILTER_KEYS } from '@/features/filter-products';
 import { CITATION_KEYS } from '@/features/open-citation';
 
 const profileKeys = [...Object.keys(Profile.shape), ...Object.keys(Profile.shape.scenario.shape)];
+const allKeys: string[] = [...PRODUCT_FILTER_KEYS, ...CITATION_KEYS, PROFILE_DRAWER_KEY];
 
 describe('URL keys', () => {
   it('filters use exactly the agreed keys', () => {
@@ -16,11 +18,13 @@ describe('URL keys', () => {
   it('the citation owns doc, page and q', () => {
     expect([...CITATION_KEYS].sort()).toEqual(['doc', 'page', 'q']);
   });
-  it('filter and citation keys do not collide', () => {
-    expect(PRODUCT_FILTER_KEYS.filter((k) => (CITATION_KEYS as string[]).includes(k))).toEqual([]);
+  it('the profile drawer owns profile', () => {
+    expect(PROFILE_DRAWER_KEY).toBe('profile');
+  });
+  it('no two owners share a key', () => {
+    expect(new Set(allKeys).size).toBe(allKeys.length);
   });
   it('no URL key is a profile field, including the scenario (ADR-004)', () => {
-    const keys: string[] = [...PRODUCT_FILTER_KEYS, ...CITATION_KEYS];
-    expect(keys.filter((k) => profileKeys.includes(k))).toEqual([]);
+    expect(allKeys.filter((k) => profileKeys.includes(k))).toEqual([]);
   });
 });
