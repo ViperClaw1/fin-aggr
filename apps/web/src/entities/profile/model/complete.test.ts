@@ -43,6 +43,9 @@ describe('toCompleteProfile', () => {
   it('an explicit undefined does not erase a default', () => {
     expect(toCompleteProfile({ ...REQUIRED, age: undefined })?.age).toBeNull();
   });
+  it('calculates a year without tax tables (an imported 2025) with 2026', () => {
+    expect(toCompleteProfile({ ...REQUIRED, taxYear: 2025 })?.taxYear).toBe(2026);
+  });
 });
 
 describe('missingFields and defaultAssumptions', () => {
@@ -53,14 +56,24 @@ describe('missingFields and defaultAssumptions', () => {
       'residency',
     ]);
   });
-  it('names the default scenario and tax year as editable assumptions', () => {
+  it('names the default scenario as editable and the tax year as not editable', () => {
     expect(defaultAssumptions({})).toEqual([
       {
         id: 'default_scenario',
         text: 'Scenario: $10,000.00 for 12 months until you change it.',
         editable: true,
       },
-      { id: 'default_tax_year', text: 'Tax year 2026.', editable: true },
+      { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
+    ]);
+  });
+  it('says when the profile year has no tables', () => {
+    const draft = { taxYear: 2025, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
+    expect(defaultAssumptions(draft)).toEqual([
+      {
+        id: 'default_tax_year',
+        text: 'Tax year 2026 (2025 tables not available).',
+        editable: false,
+      },
     ]);
   });
   it('has no assumptions once the scenario and tax year are set', () => {

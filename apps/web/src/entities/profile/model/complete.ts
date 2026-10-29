@@ -25,14 +25,18 @@ const scenarioOf = (draft: ProfileDraft): Profile['scenario'] => ({
 export const missingFields = (draft: ProfileDraft): Required[] =>
   REQUIRED_FIELDS.filter((field) => draft[field] === undefined);
 
-/** The full profile with defaults filled in, or null while a required field is missing or invalid. */
+/**
+ * The full profile with defaults filled in, or null while a required field is missing or invalid.
+ * Tax tables exist for DEFAULT_TAX_YEAR only, and the profile's year never goes to the gateway
+ * (ADR-004), so any other year (an imported file) is calculated with DEFAULT_TAX_YEAR.
+ */
 export function toCompleteProfile(draft: ProfileDraft): Profile | null {
   const candidate = {
     version: 1,
-    taxYear: DEFAULT_TAX_YEAR,
     cityMarginalRate: null,
     age: null,
     ...defined(draft),
+    taxYear: DEFAULT_TAX_YEAR,
     scenario: scenarioOf(draft),
   };
   // zod-free: this runs on every render (ADR-016 D3)
@@ -51,12 +55,16 @@ export function defaultAssumptions(draft: ProfileDraft): Assumption[] {
       editable: true,
     });
   }
-  if (draft.taxYear === undefined)
+  // Not editable: there are tables for one year only, so the form has no year field to open.
+  if (draft.taxYear !== DEFAULT_TAX_YEAR) {
+    const missing =
+      draft.taxYear === undefined ? '' : ` (${String(draft.taxYear)} tables not available)`;
     out.push({
       id: 'default_tax_year',
-      text: `Tax year ${String(DEFAULT_TAX_YEAR)}.`,
-      editable: true,
+      text: `Tax year ${String(DEFAULT_TAX_YEAR)}${missing}.`,
+      editable: false,
     });
+  }
   return out;
 }
 
