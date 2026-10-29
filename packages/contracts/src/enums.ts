@@ -16,3 +16,12 @@ export const PRODUCT_CATEGORIES = [
 ] as const;
 
 export const STAGE1_CATEGORIES = ['cd', 'savings', 'treasury'] as const;
+
+/** Rule field names (rules.ts ProfileField), for the engine's runtime order without zod. */
+export const RULE_PROFILE_FIELDS = [
+  'residency',
+  'stateOfResidence',
+  'age',
+  'filingStatus',
+  'depositAmount',
+] as const;

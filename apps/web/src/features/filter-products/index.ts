@@ -1,5 +1,10 @@
-// The filter form and filterRanked join the public API with the full compare-table in E5.
-export { filterProducts, type InstitutionIndex } from './model/filter';
+// The filter form joins the public API with the full compare-table in E5.
+export { filterProducts, filterRanked, type InstitutionIndex } from './model/filter';
 export { PRODUCT_FILTER_KEYS, useProductFilters } from './model/search-params';
-// useProductSort, effectiveSort and SortKey join with their first consumer, the full compare table
-export { PRODUCT_SORT_KEY } from './model/sort';
+export {
+  effectiveSort,
+  PRODUCT_SORT_KEY,
+  useProductSort,
+  type ProductSort,
+  type SortKey,
+} from './model/sort';

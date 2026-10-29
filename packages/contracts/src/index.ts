@@ -31,7 +31,7 @@ export {
   RateTier,
   Regulator,
 } from './entities';
-export { INSTITUTION_KINDS, STAGE1_CATEGORIES } from './enums';
+export { INSTITUTION_KINDS, RULE_PROFILE_FIELDS, STAGE1_CATEGORIES } from './enums';
 export {
   DatasetInfo,
   FilingStatus,

@@ -1,5 +1,11 @@
 // Eligibility with Kleene three-valued logic and a trace (spec §5, ADR-010, E2 decision 5).
-import { ProfileField, type Product, type Profile, type Rule } from '@fa/contracts';
+import {
+  RULE_PROFILE_FIELDS,
+  type ProfileField,
+  type Product,
+  type Profile,
+  type Rule,
+} from '@fa/contracts';
 import { EngineError } from './errors';
 
 export type Tri = true | false | 'unknown';
@@ -178,7 +184,7 @@ export function evaluateEligibility(rule: Rule, ctx: EligibilityContext): Eligib
   return {
     status: STATUS[String(trace.result) as keyof typeof STATUS],
     // stable: the schema's field order, not the order the tree visits them
-    missingFields: ProfileField.options.filter((f) => missing.has(f)),
+    missingFields: RULE_PROFILE_FIELDS.filter((f) => missing.has(f)),
     trace,
   };
 }

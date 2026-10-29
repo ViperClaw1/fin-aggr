@@ -1,14 +1,9 @@
 import { z } from 'zod';
+import { RULE_PROFILE_FIELDS } from './enums';
 
 // Rule field names differ from Profile (stateOfResidence ← stateCode, depositAmount ← scenario.principal).
 // engine's toEligibilityContext maps them with an explicit allowlist, never by spreading the profile.
-export const ProfileField = z.enum([
-  'residency',
-  'stateOfResidence',
-  'age',
-  'filingStatus',
-  'depositAmount',
-]);
+export const ProfileField = z.enum(RULE_PROFILE_FIELDS);
 export type ProfileField = z.infer<typeof ProfileField>;
 
 interface Label {

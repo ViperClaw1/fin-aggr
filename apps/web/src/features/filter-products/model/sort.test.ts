@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { effectiveSort, sortParser, type ProductSort } from './sort';
 
-const BY_APY: ProductSort = { columnId: 'apy', direction: 'desc' };
+const NET: ProductSort = { columnId: 'netYield', direction: 'desc' };
 
 describe('sortParser', () => {
   it('reads a key and a direction', () => {
@@ -11,20 +11,20 @@ describe('sortParser', () => {
     expect(sortParser.parse(value)).toBeNull();
   });
   it('writes key.direction', () => {
-    expect(sortParser.serialize(BY_APY)).toBe('apy.desc');
+    expect(sortParser.serialize({ columnId: 'apy', direction: 'desc' })).toBe('apy.desc');
   });
 });
 
 describe('effectiveSort', () => {
   it('keeps a sort on a shown column', () => {
-    const net: ProductSort = { columnId: 'netYield', direction: 'desc' };
-    expect(effectiveSort(net, ['apy', 'netYield'], BY_APY)).toEqual(net);
+    expect(effectiveSort(NET, ['apy', 'netYield'])).toEqual(NET);
   });
-  it('falls back while the column is not shown (profile incomplete)', () => {
-    const net: ProductSort = { columnId: 'netYield', direction: 'desc' };
-    expect(effectiveSort(net, ['apy', 'term'], BY_APY)).toEqual(BY_APY);
+  it('is the default order (null) while the column is not shown, the request untouched', () => {
+    const requested = { ...NET };
+    expect(effectiveSort(requested, ['apy', 'term'])).toBeNull();
+    expect(requested).toEqual(NET);
   });
-  it('falls back without a sort in the URL', () => {
-    expect(effectiveSort(null, ['apy'], BY_APY)).toEqual(BY_APY);
+  it('is the default order (null) without a sort, so a header cycle ends there', () => {
+    expect(effectiveSort(null, ['apy'])).toBeNull();
   });
 });
