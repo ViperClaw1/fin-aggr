@@ -15,7 +15,7 @@ import { profileStore } from './model/store';
 function Probe() {
   const view = {
     draft: useProfileDraft(),
-    complete: useCompleteProfile(),
+    complete: useCompleteProfile(2026),
     hydrated: useProfileHydrated(),
     status: useProfileStatus(),
     actions: Object.keys(useProfileActions()),

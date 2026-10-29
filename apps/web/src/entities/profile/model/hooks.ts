@@ -23,9 +23,9 @@ export const useProfileStatus = () =>
   );
 
 /** Derived outside the selector: a new object per call inside it would loop useSyncExternalStore. */
-export function useCompleteProfile(): Profile | null {
+export function useCompleteProfile(tablesYear: number): Profile | null {
   const draft = useProfileDraft();
-  return useMemo(() => toCompleteProfile(draft), [draft]);
+  return useMemo(() => toCompleteProfile(draft, tablesYear), [draft, tablesYear]);
 }
 
 /** Writes. Only features/edit-profile may import this (ESLint PROFILE_WRITE). */

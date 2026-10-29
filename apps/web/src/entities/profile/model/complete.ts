@@ -6,7 +6,7 @@ import {
   type Profile,
   type ProfileDraft,
 } from '@fa/contracts';
-import { DEFAULT_SCENARIO, DEFAULT_TAX_YEAR, REQUIRED_FIELDS } from './defaults';
+import { DEFAULT_SCENARIO, REQUIRED_FIELDS } from './defaults';
 
 type Required = (typeof REQUIRED_FIELDS)[number];
 
@@ -27,16 +27,17 @@ export const missingFields = (draft: ProfileDraft): Required[] =>
 
 /**
  * The full profile with defaults filled in, or null while a required field is missing or invalid.
- * Tax tables exist for DEFAULT_TAX_YEAR only, and the profile's year never goes to the gateway
- * (ADR-004), so any other year (an imported file) is calculated with DEFAULT_TAX_YEAR.
+ * The calculation uses the year of the tax tables it was given (`tablesYear`, loaded at build):
+ * the profile's own year never goes to the gateway (ADR-004), so another year (an imported file)
+ * is calculated with the tables' year.
  */
-export function toCompleteProfile(draft: ProfileDraft): Profile | null {
+export function toCompleteProfile(draft: ProfileDraft, tablesYear: number): Profile | null {
   const candidate = {
     version: 1,
     cityMarginalRate: null,
     age: null,
     ...defined(draft),
-    taxYear: DEFAULT_TAX_YEAR,
+    taxYear: tablesYear,
     scenario: scenarioOf(draft),
   };
   // zod-free: this runs on every render (ADR-016 D3)
@@ -44,7 +45,7 @@ export function toCompleteProfile(draft: ProfileDraft): Profile | null {
 }
 
 /** Values the user did not enter but the results depend on. */
-export function defaultAssumptions(draft: ProfileDraft): Assumption[] {
+export function defaultAssumptions(draft: ProfileDraft, tablesYear: number): Assumption[] {
   const out: Assumption[] = [];
   const { principal, holdingMonths } = draft.scenario ?? {};
   if (principal === undefined || holdingMonths === undefined) {
@@ -57,12 +58,12 @@ export function defaultAssumptions(draft: ProfileDraft): Assumption[] {
   }
   // Always shown, never editable: there are tables for one year only, so the form has no year field.
   const missing =
-    draft.taxYear === undefined || draft.taxYear === DEFAULT_TAX_YEAR
+    draft.taxYear === undefined || draft.taxYear === tablesYear
       ? ''
       : ` (${String(draft.taxYear)} tables not available)`;
   out.push({
     id: 'default_tax_year',
-    text: `Tax year ${String(DEFAULT_TAX_YEAR)}${missing}.`,
+    text: `Tax year ${String(tablesYear)}${missing}.`,
     editable: false,
   });
   return out;

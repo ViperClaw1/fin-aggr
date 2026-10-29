@@ -10,15 +10,18 @@ const REQUIRED: ProfileDraft = {
   residency: 'us_citizen',
 };
 
+// the year of the tax tables the caller loaded
+const Y = 2026;
+
 describe('toCompleteProfile', () => {
   it('is null until all four required fields are present', () => {
     for (const field of Object.keys(REQUIRED) as (keyof ProfileDraft)[]) {
       const rest = Object.fromEntries(Object.entries(REQUIRED).filter(([k]) => k !== field));
-      expect(toCompleteProfile(rest)).toBeNull();
+      expect(toCompleteProfile(rest, Y)).toBeNull();
     }
   });
   it('fills the defaults: tax year 2026, no city rate, no age, $10,000 for 12 months', () => {
-    expect(toCompleteProfile(REQUIRED)).toEqual({
+    expect(toCompleteProfile(REQUIRED, Y)).toEqual({
       ...REQUIRED,
       version: 1,
       taxYear: 2026,
@@ -28,12 +31,15 @@ describe('toCompleteProfile', () => {
     });
   });
   it('keeps what the user entered, including half a scenario', () => {
-    const p = toCompleteProfile({
-      ...REQUIRED,
-      age: 40,
-      cityMarginalRate: Rate.parse('0.03'),
-      scenario: { holdingMonths: 6 },
-    });
+    const p = toCompleteProfile(
+      {
+        ...REQUIRED,
+        age: 40,
+        cityMarginalRate: Rate.parse('0.03'),
+        scenario: { holdingMonths: 6 },
+      },
+      Y,
+    );
     expect([p?.age, p?.cityMarginalRate, p?.scenario]).toEqual([
       40,
       '0.03',
@@ -41,10 +47,13 @@ describe('toCompleteProfile', () => {
     ]);
   });
   it('an explicit undefined does not erase a default', () => {
-    expect(toCompleteProfile({ ...REQUIRED, age: undefined })?.age).toBeNull();
+    expect(toCompleteProfile({ ...REQUIRED, age: undefined }, Y)?.age).toBeNull();
   });
-  it('calculates a year without tax tables (an imported 2025) with 2026', () => {
-    expect(toCompleteProfile({ ...REQUIRED, taxYear: 2025 })?.taxYear).toBe(2026);
+  it('calculates a year without tax tables (an imported 2025) with the tables year', () => {
+    expect(toCompleteProfile({ ...REQUIRED, taxYear: 2025 }, Y)?.taxYear).toBe(2026);
+  });
+  it('takes the year from the loaded tables, not a constant (2027 tables)', () => {
+    expect(toCompleteProfile(REQUIRED, 2027)?.taxYear).toBe(2027);
   });
 });
 
@@ -57,7 +66,7 @@ describe('missingFields and defaultAssumptions', () => {
     ]);
   });
   it('names the default scenario as editable and the tax year as not editable', () => {
-    expect(defaultAssumptions({})).toEqual([
+    expect(defaultAssumptions({}, Y)).toEqual([
       {
         id: 'default_scenario',
         text: 'Scenario: $10,000.00 for 12 months until you change it.',
@@ -68,7 +77,7 @@ describe('missingFields and defaultAssumptions', () => {
   });
   it('says when the profile year has no tables', () => {
     const draft = { taxYear: 2025, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
-    expect(defaultAssumptions(draft)).toEqual([
+    expect(defaultAssumptions(draft, Y)).toEqual([
       {
         id: 'default_tax_year',
         text: 'Tax year 2026 (2025 tables not available).',
@@ -76,9 +85,19 @@ describe('missingFields and defaultAssumptions', () => {
       },
     ]);
   });
+  it('names the tables year: a 2026 profile with 2027 tables', () => {
+    const draft = { taxYear: 2026, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
+    expect(defaultAssumptions(draft, 2027)).toEqual([
+      {
+        id: 'default_tax_year',
+        text: 'Tax year 2027 (2026 tables not available).',
+        editable: false,
+      },
+    ]);
+  });
   it('keeps only the tax year once the scenario and tax year are set', () => {
     const draft = { taxYear: 2026, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
-    expect(defaultAssumptions(draft)).toEqual([
+    expect(defaultAssumptions(draft, Y)).toEqual([
       { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
     ]);
   });
