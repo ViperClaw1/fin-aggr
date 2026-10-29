@@ -2,16 +2,26 @@ import { Cents } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
 import { profileSummary } from './summary';
 
+const COMPLETE = {
+  filingStatus: 'single',
+  stateCode: 'NY',
+  taxableIncome: Cents.parse(8500000),
+  residency: 'us_citizen',
+} as const;
+
 describe('profileSummary', () => {
-  it('invites to add a profile when state and income are empty', () => {
-    expect(profileSummary({ filingStatus: 'single' })).toBe('Add your profile');
+  it('invites to add a profile while no required field is filled', () => {
+    expect(profileSummary({ age: 40 })).toBe('Add your profile');
   });
-  it('shows the state and the income', () => {
-    expect(profileSummary({ stateCode: 'NY', taxableIncome: Cents.parse(8500000) })).toBe(
-      'Profile: NY, $85,000.00',
+  it('counts the filled required fields', () => {
+    expect(profileSummary({ stateCode: 'NY', taxableIncome: Cents.parse(1) })).toBe(
+      'Profile: 2 of 4 filled',
     );
   });
-  it('shows what is there when one of them is missing', () => {
-    expect(profileSummary({ stateCode: 'NY' })).toBe('Profile: NY');
+  it('shows the state of a complete profile', () => {
+    expect(profileSummary(COMPLETE)).toBe('Profile: NY · complete');
+  });
+  it('never shows the income', () => {
+    expect(profileSummary(COMPLETE)).not.toMatch(/85|\$/);
   });
 });

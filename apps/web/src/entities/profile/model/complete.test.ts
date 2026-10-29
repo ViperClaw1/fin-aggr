@@ -76,9 +76,11 @@ describe('missingFields and defaultAssumptions', () => {
       },
     ]);
   });
-  it('has no assumptions once the scenario and tax year are set', () => {
+  it('keeps only the tax year once the scenario and tax year are set', () => {
     const draft = { taxYear: 2026, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
-    expect(defaultAssumptions(draft)).toEqual([]);
+    expect(defaultAssumptions(draft)).toEqual([
+      { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
+    ]);
   });
 });
 

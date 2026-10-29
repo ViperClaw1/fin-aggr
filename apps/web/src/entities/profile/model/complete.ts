@@ -55,16 +55,16 @@ export function defaultAssumptions(draft: ProfileDraft): Assumption[] {
       editable: true,
     });
   }
-  // Not editable: there are tables for one year only, so the form has no year field to open.
-  if (draft.taxYear !== DEFAULT_TAX_YEAR) {
-    const missing =
-      draft.taxYear === undefined ? '' : ` (${String(draft.taxYear)} tables not available)`;
-    out.push({
-      id: 'default_tax_year',
-      text: `Tax year ${String(DEFAULT_TAX_YEAR)}${missing}.`,
-      editable: false,
-    });
-  }
+  // Always shown, never editable: there are tables for one year only, so the form has no year field.
+  const missing =
+    draft.taxYear === undefined || draft.taxYear === DEFAULT_TAX_YEAR
+      ? ''
+      : ` (${String(draft.taxYear)} tables not available)`;
+  out.push({
+    id: 'default_tax_year',
+    text: `Tax year ${String(DEFAULT_TAX_YEAR)}${missing}.`,
+    editable: false,
+  });
   return out;
 }
 

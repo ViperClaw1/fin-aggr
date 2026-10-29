@@ -19,11 +19,33 @@ export type ProfileFormField = (typeof PROFILE_FORM_FIELDS)[number];
 
 export const PROFILE_DRAWER_KEY = 'profile';
 
-// Opening pushes a history entry, so Back closes the drawer.
-const field = parseAsStringLiteral(PROFILE_FORM_FIELDS).withOptions({ history: 'push' });
+const field = parseAsStringLiteral(PROFILE_FORM_FIELDS);
+
+// Whether this page pushed the open entry. One per tab, like the history it describes.
+let pushed = false;
 
 /**
- * The field the drawer is open on, or null when closed. The component using it sits inside
- * <Suspense> (.claude/rules/web.md).
+ * The field the drawer is open on (null when closed), `open` and `close`. Opening pushes a
+ * history entry; closing steps back over it, so Back after closing leaves the page. A drawer that
+ * arrived open (a link, a reload) has no entry of ours to step back over: closing replaces.
+ * The component using it sits inside <Suspense> (.claude/rules/web.md).
  */
-export const useProfileDrawer = () => useQueryState(PROFILE_DRAWER_KEY, field);
+export function useProfileDrawer() {
+  const [current, setField] = useQueryState(PROFILE_DRAWER_KEY, field);
+  const open = (to: ProfileFormField) => {
+    if (current === null) pushed = true;
+    void setField(to, { history: current === null ? 'push' : 'replace' });
+  };
+  const close = () => {
+    // already closed by Back: the browser has stepped over our entry itself
+    if (current === null) {
+      pushed = false;
+      return;
+    }
+    if (pushed) {
+      pushed = false;
+      window.history.back();
+    } else void setField(null, { history: 'replace' });
+  };
+  return { field: current, open, close };
+}

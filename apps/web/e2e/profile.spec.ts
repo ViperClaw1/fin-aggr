@@ -27,11 +27,12 @@ test('the profile survives a reload', async ({ page }) => {
   await drawer(page).getByLabel('Filing status').selectOption('single');
   await drawer(page).getByLabel('State of residence').selectOption('NY');
   await fillIncome(page, '85000');
-  await expect(profileButton(page)).toHaveText('Profile: NY, $85,000.00');
+  await drawer(page).getByLabel('Residency').selectOption('us_citizen');
+  await expect(profileButton(page)).toHaveText('Profile: NY · complete');
 
   // ?profile= is still in the URL, so the drawer opens again on its own
   await page.reload();
-  await expect(profileButton(page)).toHaveText('Profile: NY, $85,000.00');
+  await expect(profileButton(page)).toHaveText('Profile: NY · complete');
   await expect(drawer(page).getByLabel('Filing status')).toHaveValue('single');
   await expect(drawer(page).getByLabel('Taxable income')).toHaveValue('$85,000.00');
 });
@@ -56,6 +57,40 @@ test('a broken file and a file over 16 KB are rejected, the profile is kept', as
   });
   await expect(drawer(page).getByText(/Import failed: .*larger than 16 KB/)).toBeVisible();
   await expect(drawer(page).getByLabel('State of residence')).toHaveValue('CA');
+});
+
+const VALID_FILE = {
+  name: 'profile.json',
+  mimeType: 'application/json',
+  buffer: Buffer.from(
+    JSON.stringify({ format: 'fa-profile', version: 1, profile: { stateCode: 'TX' } }),
+  ),
+};
+
+test('importing over a filled profile asks first; Cancel keeps it', async ({ page }) => {
+  await page.goto('/');
+  await openDrawer(page);
+  await drawer(page).getByLabel('State of residence').selectOption('CA');
+  const input = drawer(page).getByLabel('Import profile');
+
+  await input.setInputFiles(VALID_FILE);
+  await expect(drawer(page).getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await drawer(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(input).toBeFocused();
+  await expect(drawer(page).getByLabel('State of residence')).toHaveValue('CA');
+
+  await input.setInputFiles(VALID_FILE);
+  await drawer(page).getByRole('button', { name: 'Replace' }).click();
+  await expect(drawer(page).getByText('Profile imported.')).toBeVisible();
+  await expect(drawer(page).getByLabel('State of residence')).toHaveValue('TX');
+});
+
+test('importing into an empty profile does not ask', async ({ page }) => {
+  await page.goto('/');
+  await openDrawer(page);
+  await drawer(page).getByLabel('Import profile').setInputFiles(VALID_FILE);
+  await expect(drawer(page).getByText('Profile imported.')).toBeVisible();
+  await expect(drawer(page).getByLabel('State of residence')).toHaveValue('TX');
 });
 
 test('erasing asks first and clears the profile', async ({ page }) => {
@@ -83,9 +118,25 @@ test('the drawer works from the keyboard', async ({ page }) => {
   await expect(page).not.toHaveURL(/[?&]profile=/);
 });
 
-test('?profile=<field> opens the drawer on that field', async ({ page }) => {
+test('after closing, Back leaves the page instead of reopening the drawer', async ({ page }) => {
+  await page.goto('/');
+  await page.goto('/compare/cd');
+  await openDrawer(page);
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/compare\/cd$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('?profile=<field> opens the drawer on that field; closing replaces the URL', async ({
+  page,
+}) => {
+  await page.goto('/');
   await page.goto('/?profile=cityMarginalRate');
   await expect(drawer(page).getByLabel('City income tax rate, %')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(drawer(page)).toBeHidden();
+  await expect(page).not.toHaveURL(/[?&]profile=/);
 });
 
 test('the open drawer has no serious or critical axe violations', async ({ page }) => {
@@ -126,11 +177,11 @@ test('the profile never leaves the browser (AC-4 sentinel)', async ({ page }) =>
   await openDrawer(page);
   await drawer(page).getByLabel('State of residence').selectOption('NY');
   await fillIncome(page, '987654');
-  await expect(profileButton(page)).toHaveText('Profile: NY, $987,654.00');
+  await expect(profileButton(page)).toHaveText('Profile: 2 of 4 filled');
 
   for (const path of ['/compare/cd', '/compare/savings', '/']) {
     await page.goto(path);
-    await expect(profileButton(page)).toHaveText('Profile: NY, $987,654.00');
+    await expect(profileButton(page)).toHaveText('Profile: 2 of 4 filled');
   }
   await page.waitForLoadState('networkidle');
   expect(leaks).toEqual([]);

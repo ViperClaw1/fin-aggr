@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useId, useRef } from 'react';
 import {
   PROFILE_FORM_FIELDS,
+  PROFILE_PRIVACY_TEXT,
   useProfileDraft,
   useProfileDrawer,
   useProfileHydrated,
@@ -31,7 +32,7 @@ export function ProfileDrawerFallback() {
 }
 
 export function ProfileDrawer() {
-  const [field, setField] = useProfileDrawer();
+  const { field, open, close } = useProfileDrawer();
   const draft = useProfileDraft();
   const hydrated = useProfileHydrated();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -51,7 +52,7 @@ export function ProfileDrawer() {
         aria-haspopup="dialog"
         className={BUTTON}
         onClick={() => {
-          void setField(PROFILE_FORM_FIELDS[0]);
+          open(PROFILE_FORM_FIELDS[0]);
         }}
       >
         {hydrated ? profileSummary(draft) : 'Profile'}
@@ -59,10 +60,7 @@ export function ProfileDrawer() {
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
-        onClose={() => {
-          // replace: closing does not add a history entry to step back into
-          void setField(null, { history: 'replace' });
-        }}
+        onClose={close}
         className="ml-auto mr-0 h-dvh max-h-none w-full max-w-md bg-background p-0 text-foreground backdrop:bg-black/50"
       >
         <div className="flex flex-col gap-4 p-4 sm:p-6">
@@ -80,9 +78,7 @@ export function ProfileDrawer() {
               Close
             </button>
           </div>
-          <p className="text-sm text-muted">
-            Your profile stays in this browser. It is never sent to our servers.
-          </p>
+          <p className="text-sm text-muted">{PROFILE_PRIVACY_TEXT.staysLocal}</p>
           {field === null ? null : <ProfileForm focusField={field} />}
         </div>
       </dialog>

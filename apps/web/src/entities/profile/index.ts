@@ -5,7 +5,9 @@ export {
   useProfileDrawer,
   type ProfileFormField,
 } from './model/drawer-url';
-export { DEFAULT_SCENARIO } from './model/defaults';
+export { DEFAULT_SCENARIO, REQUIRED_FIELDS } from './model/defaults';
+export { missingFields } from './model/complete';
+export { PROFILE_PRIVACY_TEXT } from './model/privacy-texts';
 export {
   rehydrateProfile,
   useCompleteProfile,
