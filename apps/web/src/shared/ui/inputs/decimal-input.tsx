@@ -30,11 +30,11 @@ export function DecimalInput<T>({
     .join(' ');
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       {hint === undefined ? null : (
-        <p id={`${id}-hint`} className="text-sm text-muted">
+        <p id={`${id}-hint`} className="text-xs text-muted">
           {hint}
         </p>
       )}
@@ -52,7 +52,7 @@ export function DecimalInput<T>({
           setError(result.ok ? null : result.code);
           if (result.ok) onValueChange(result.value);
         }}
-        className="rounded border border-border bg-background px-2 py-1 aria-invalid:border-danger"
+        className="control"
       />
       {error === null ? null : (
         <p id={`${id}-error`} className="text-sm text-danger">

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { DemoDataBanner } from '@/shared/ui/demo-banner';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
@@ -28,11 +29,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full">
         <DemoDataBanner />
         <Providers>
-          <header className="mx-auto flex max-w-5xl justify-end px-4 pt-4 sm:px-8">
-            {/* reads ?profile=: the fallback is prerendered, the route stays static */}
-            <Suspense fallback={<ProfileDrawerFallback />}>
-              <ProfileDrawer />
-            </Suspense>
+          <header className="border-b border-divider">
+            <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
+              <Link href="/" prefetch={false} className="text-lg font-semibold tracking-tight">
+                FA<span className="sr-only"> home</span>
+              </Link>
+              {/* reads ?profile=: the fallback is prerendered, the route stays static */}
+              <Suspense fallback={<ProfileDrawerFallback />}>
+                <ProfileDrawer />
+              </Suspense>
+            </div>
           </header>
           {children}
         </Providers>

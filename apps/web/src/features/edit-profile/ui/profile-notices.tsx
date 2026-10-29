@@ -32,11 +32,7 @@ export function ProfileNotices() {
           className="flex items-start justify-between gap-3 rounded border border-border p-3"
         >
           <p>{RESET_TEXT[resetReason]}</p>
-          <button
-            type="button"
-            onClick={acknowledgeReset}
-            className="rounded border border-border px-2 py-1"
-          >
+          <button type="button" onClick={acknowledgeReset} className="btn btn-sm">
             OK
           </button>
         </div>

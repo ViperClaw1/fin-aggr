@@ -1,11 +1,15 @@
 @import 'tailwindcss';
 
-/* Text/background pairs meet WCAG AA (4.5:1) in both schemes; axe checks both in e2e. */
+/* Text/background pairs meet WCAG AA (4.5:1) in both schemes; axe checks both in e2e.
+   --border is also the input outline, so it keeps 3:1 against the background (WCAG 1.4.11). */
 :root {
+  color-scheme: light dark;
   --background: #ffffff;
+  --surface: #f5f5f5;
   --foreground: #171717;
   --muted: #525252;
-  --border: #d4d4d4;
+  --border: #8f8f8f;
+  --divider: #e5e5e5;
   --focus: #1d4ed8;
   --accent: #1d4ed8;
   --accent-foreground: #ffffff;
@@ -20,9 +24,11 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
+    --surface: #141414;
     --foreground: #ededed;
     --muted: #a3a3a3;
-    --border: #404040;
+    --border: #6b6b6b;
+    --divider: #262626;
     --focus: #93c5fd;
     --accent: #93c5fd;
     --accent-foreground: #0a0a0a;
@@ -37,9 +43,11 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-divider: var(--divider);
   --color-focus: var(--focus);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -56,12 +64,38 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  accent-color: var(--accent);
+}
+
+/* a modal dialog keeps the page behind it still */
+html:has(dialog:modal) {
+  overflow: hidden;
 }
 
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* Shared control looks: one height for inputs, selects and buttons (2.5rem, a comfortable touch
+   target). Classes, not components, so every layer uses them without an import. */
+@layer components {
+  .control {
+    @apply h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-base text-foreground placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger sm:text-sm;
+  }
+  .btn {
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium whitespace-nowrap hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-accent-foreground hover:bg-accent hover:opacity-90;
+  }
+  .btn-sm {
+    @apply h-8 px-3;
+  }
+  .panel {
+    @apply rounded-lg border border-divider bg-surface;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

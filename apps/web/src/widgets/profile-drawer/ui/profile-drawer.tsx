@@ -5,7 +5,7 @@
 // field focused; Escape or Close clears the key, and the dialog returns focus where it was.
 // The form loads on the first opening only, so its fields stay out of the first load.
 import dynamic from 'next/dynamic';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import {
   PROFILE_FORM_FIELDS,
   PROFILE_PRIVACY_TEXT,
@@ -21,7 +21,7 @@ const ProfileForm = dynamic(() => import('@/features/edit-profile').then((m) => 
   loading: () => <Skeleton label="Loading the profile form" className="h-64 w-full" />,
 });
 
-const BUTTON = 'rounded border border-border px-3 py-1.5';
+const BUTTON = 'btn btn-sm max-w-[60vw] truncate';
 
 export function ProfileDrawerFallback() {
   return (
@@ -38,12 +38,28 @@ export function ProfileDrawer() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
+  // layout effect: the dialog opens before the form's own effect focuses the field; with a passive
+  // effect showModal() ran after it on a reopening (form chunk cached) and moved focus to Close
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;
     if (field !== null && !dialog.open) dialog.showModal();
     if (field === null && dialog.open) dialog.close();
   }, [field]);
+
+  // a click on the backdrop lands on the <dialog> itself (the panel covers the rest): it closes,
+  // like Escape. A native listener: jsx-a11y rejects click handlers on a dialog element.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog === null) return undefined;
+    const onClick = (e: MouseEvent): void => {
+      if (e.target === dialog) dialog.close();
+    };
+    dialog.addEventListener('click', onClick);
+    return () => {
+      dialog.removeEventListener('click', onClick);
+    };
+  }, []);
 
   return (
     <>
@@ -61,16 +77,17 @@ export function ProfileDrawer() {
         ref={dialogRef}
         aria-labelledby={titleId}
         onClose={close}
-        className="ml-auto mr-0 h-dvh max-h-none w-full max-w-md bg-background p-0 text-foreground backdrop:bg-black/50"
+        // a right-hand sheet the height of the screen; only its body scrolls, the title bar stays
+        className="m-0 ml-auto h-dvh max-h-none w-full max-w-md overflow-hidden border-l border-divider bg-background p-0 text-foreground backdrop:bg-black/60"
       >
-        <div className="flex flex-col gap-4 p-4 sm:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <h2 id={titleId} className="text-xl font-semibold">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between gap-4 border-b border-divider px-4 py-3 sm:px-6">
+            <h2 id={titleId} className="text-lg font-semibold">
               Your profile
             </h2>
             <button
               type="button"
-              className={BUTTON}
+              className="btn btn-sm"
               onClick={() => {
                 dialogRef.current?.close();
               }}
@@ -78,8 +95,10 @@ export function ProfileDrawer() {
               Close
             </button>
           </div>
-          <p className="text-sm text-muted">{PROFILE_PRIVACY_TEXT.staysLocal}</p>
-          {field === null ? null : <ProfileForm focusField={field} />}
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+            <p className="text-sm text-muted">{PROFILE_PRIVACY_TEXT.staysLocal}</p>
+            {field === null ? null : <ProfileForm focusField={field} />}
+          </div>
         </div>
       </dialog>
     </>

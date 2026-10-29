@@ -5,24 +5,27 @@
 // the URL and run in memory. With a complete profile the rows are ranked after tax in the browser
 // (ADR-008); the profile never leaves it (ADR-004). The filter form and row summaries come next.
 import type { ProductCategory } from '@fa/contracts';
-import { Suspense, useMemo } from 'react';
-import { useCompleteProfile } from '@/entities/profile';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { PROFILE_FORM_FIELDS, useCompleteProfile, useProfileDrawer } from '@/entities/profile';
 import { useNetYield } from '@/features/compute-net-yield';
 import {
   effectiveSort,
   filterProducts,
   filterRanked,
   FilterForm,
+  FilterFormStatic,
   useProductFilters,
   useProductSort,
-  type InstitutionIndex,
   type ProductSort,
 } from '@/features/filter-products';
 import { DataTable } from '@/shared/ui/data-table';
 import { freshnessNow } from '@/entities/fact';
 import type { CompareData } from '../api/prefetch';
+import { needsData } from '../model/needs-data';
 import { defaultOrder } from '../model/order';
 import { columns, shownSortKeys } from './columns';
+import { NeedsDataNote } from './needs-data-note';
+import { RowDetails, type InstitutionDetails } from './row-details';
 
 const CAPTION: Record<string, string> = {
   cd: 'Certificates of deposit',
@@ -51,46 +54,73 @@ interface UrlState {
   filters: Filters;
   sort: ProductSort | null;
   onSortChange: (sort: ProductSort | null) => void;
-  /** the filter form reads the URL, so the prerendered fallback has none */
+  /** opens the profile drawer; null before hydration (the button shows disabled) */
+  onOpenProfile: (() => void) | null;
+  /** the filter form reads the URL; the prerendered fallback shows it disabled */
   withForm: boolean;
 }
 
+interface Url {
+  filters: Filters;
+  sort: ProductSort | null;
+  setSort: (sort: ProductSort | null) => void;
+  openProfile: () => void;
+}
+const noop = () => undefined;
+
 /**
- * Reading the URL suspends during prerendering, so the fallback is the same table without URL
- * state: the static HTML holds the whole catalog by top APY; URL state applies after hydration.
+ * Reading the URL suspends during prerendering. Only the reader (UrlSync, renders nothing) sits
+ * inside <Suspense>; the table stays outside, so the client hydrates the prerendered table instead
+ * of throwing it away and building 60 rows again (Lighthouse TBT, E5 step 2). Until UrlSync reports
+ * after hydration, the table shows the static state: the whole catalog by top APY.
  */
 export function CompareTable(props: Props) {
-  const noop = () => undefined;
+  const [url, setUrl] = useState<Url | null>(null);
   return (
-    <Suspense
-      fallback={
-        <Table {...props} filters={NO_FILTERS} sort={null} onSortChange={noop} withForm={false} />
-      }
-    >
-      <UrlTable {...props} />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <UrlSync onChange={setUrl} />
+      </Suspense>
+      <Table
+        {...props}
+        filters={url?.filters ?? NO_FILTERS}
+        sort={url?.sort ?? null}
+        onSortChange={url?.setSort ?? noop}
+        onOpenProfile={url?.openProfile ?? null}
+        withForm={url !== null}
+      />
+    </>
   );
 }
 
-function UrlTable(props: Props) {
+function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
   const [filters] = useProductFilters();
   const [sort, setSort] = useProductSort();
-  return (
-    <Table
-      {...props}
-      withForm
-      filters={filters}
-      sort={sort}
-      onSortChange={(next) => {
+  // `open` is a new function on every render (it closes over the current field): reported through
+  // a ref, or the effect below would re-run on every render and loop through setUrl
+  const { open } = useProfileDrawer();
+  const openRef = useRef(open);
+  useLayoutEffect(() => {
+    openRef.current = open;
+  });
+  useEffect(() => {
+    onChange({
+      filters,
+      sort,
+      setSort: (next) => {
         void setSort(next);
-      }}
-    />
-  );
+      },
+      openProfile: () => {
+        openRef.current(PROFILE_FORM_FIELDS[0]);
+      },
+    });
+  }, [filters, sort, setSort, onChange]);
+  return null;
 }
 
 function Table(props: Props & UrlState) {
   const { category, products, institutions, dataset, taxTables, filters } = props;
-  const index: InstitutionIndex = useMemo(
+  const index: InstitutionDetails = useMemo(
     () => new Map(institutions.map((i) => [i.id, i])),
     [institutions],
   );
@@ -113,24 +143,59 @@ function Table(props: Props & UrlState) {
     [products],
   );
   const sort = effectiveSort(props.sort, shownSortKeys(withProfile));
+  const needs = needsData(ranked);
+  const onOpenProfile = props.onOpenProfile;
   return (
-    <div className="flex flex-col gap-2">
-      {props.withForm ? <FilterForm terms={terms} withProfile={withProfile} /> : null}
-      <p className="text-sm text-muted" aria-live="polite">
-        {sort === null ? defaultOrderNote(withProfile) : null}
-      </p>
-      <DataTable
-        caption={CAPTION[category] ?? 'Products'}
-        columns={columns(index, freshnessNow(dataset), withProfile)}
-        rows={rows}
-        getRowId={(r) => r.product.id}
-        sort={sort}
-        onSortChange={(next) => {
-          props.onSortChange(next === null ? null : (next as ProductSort));
-        }}
-        status={rows.length === 0 ? 'empty' : 'ready'}
-        emptyTitle="No products match these filters"
-      />
+    // filters beside the results from lg; stacked above them below it. minmax(0,1fr): the table
+    // column may shrink below the table's width, so the table scrolls instead of the page
+    <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+      {props.withForm ? (
+        <FilterForm terms={terms} withProfile={withProfile} />
+      ) : (
+        <FilterFormStatic terms={terms} />
+      )}
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          {/* one live region: a filter change announces the new count */}
+          <div aria-live="polite" className="min-w-0">
+            <h2 className="text-xl font-semibold tabular-nums">
+              {rows.length === 1 ? '1 product' : `${String(rows.length)} products`}
+            </h2>
+            <p className="text-sm text-muted">
+              {sort === null ? defaultOrderNote(withProfile) : 'Sorted by the chosen column.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={onOpenProfile === null}
+            onClick={() => {
+              onOpenProfile?.();
+            }}
+            className={`btn ${withProfile ? '' : 'btn-primary'}`}
+          >
+            {withProfile ? 'Edit profile' : 'Add your profile'}
+          </button>
+        </div>
+        {props.withForm && needs !== null ? <NeedsDataNote needs={needs} /> : null}
+        <DataTable
+          caption={CAPTION[category] ?? 'Products'}
+          columns={columns(index, freshnessNow(dataset), withProfile)}
+          rows={rows}
+          getRowId={(r) => r.product.id}
+          renderExpanded={(r) => (
+            <RowDetails row={r} institutions={index} taxYear={taxTables.taxYear} />
+          )}
+          expandLabel={(r) =>
+            `Show details: ${index.get(r.product.institutionId)?.name ?? 'Unknown bank'}, ${r.product.name}`
+          }
+          sort={sort}
+          onSortChange={(next) => {
+            props.onSortChange(next === null ? null : (next as ProductSort));
+          }}
+          status={rows.length === 0 ? 'empty' : 'ready'}
+          emptyTitle="No products match these filters. Remove some, or use Reset filters."
+        />
+      </div>
     </div>
   );
 }

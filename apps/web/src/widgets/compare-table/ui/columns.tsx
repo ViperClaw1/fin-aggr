@@ -4,6 +4,7 @@
 import { compareRate, formatUsd } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
 import { FactValue } from '@/entities/fact';
+import { INSTITUTION_KIND_LABEL } from '@/entities/institution';
 import { headlineApy } from '@/entities/product';
 import { CompatibilityBadge } from '@/entities/rule';
 import type { InstitutionIndex, SortKey } from '@/features/filter-products';
@@ -29,7 +30,20 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
     {
       id: 'bank',
       header: 'Bank',
-      cell: bank,
+      cell: (r) => {
+        const kind = institutions.get(r.product.institutionId)?.kind;
+        return (
+          <>
+            <span className="block font-medium">{bank(r)}</span>
+            {kind === undefined ? null : (
+              // data-secondary: a second line under the name, left out when a test reads the name
+              <span data-secondary className="block text-xs text-muted">
+                {INSTITUTION_KIND_LABEL[kind]}
+              </span>
+            )}
+          </>
+        );
+      },
       compare: (a, b) => bank(a).localeCompare(bank(b), 'en-US'),
     },
     { id: 'product', header: 'Product', cell: (r) => r.product.name },

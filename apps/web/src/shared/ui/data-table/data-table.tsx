@@ -74,11 +74,14 @@ export function DataTable<T>(props: DataTableProps<T>) {
         aria-labelledby={captionId}
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-focusable (WCAG 2.1.1, axe scrollable-region-focusable), spec §6 rule 6
         tabIndex={0}
-        // relative: absolutely positioned content (sr-only text) must not escape the scroll box
-        className="relative max-h-[70vh] overflow-auto rounded border border-border"
+        // No vertical scroll inside the page scroll (E5): the region scrolls sideways only, the
+        // first column stays. It never stops clipping: beside a filter sidebar no width is wide
+        // enough for every column, and an unclipped table pushes the page sideways.
+        // relative: sr-only text must not escape the scroll box.
+        className="@container relative overflow-x-auto rounded-lg border border-divider"
       >
         <table aria-busy={status === 'loading'} className="w-full border-collapse text-sm">
-          <caption id={captionId} className="p-2 text-left font-medium">
+          <caption id={captionId} className="px-3 py-3 text-left font-semibold">
             {caption}
           </caption>
           <thead>
@@ -111,13 +114,13 @@ export function DataTable<T>(props: DataTableProps<T>) {
 
 function HeaderCell<T>(p: {
   column: Column<T>;
-  /** The first column also sticks to the left, above the sticky row headers. */
+  /** The first column sticks to the left. */
   first: boolean;
   sort: SortState | null;
   onSort: (id: string) => void;
 }) {
   const { column, sort } = p;
-  const base = `sticky top-0 ${p.first ? 'left-0 z-20' : 'z-10'} border-b border-border bg-background px-3 py-2 font-medium whitespace-nowrap ${alignClass(column.align)}`;
+  const base = `${p.first ? 'sticky left-0 z-20' : ''} border-y border-divider bg-surface px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (
       <th scope="col" className={base}>
@@ -134,7 +137,7 @@ function HeaderCell<T>(p: {
         onClick={() => {
           p.onSort(column.id);
         }}
-        className="inline-flex items-center gap-1"
+        className="inline-flex items-center gap-1 hover:text-foreground"
       >
         {column.header}
         <span aria-hidden="true" className={direction === null ? 'text-muted' : ''}>
@@ -164,9 +167,12 @@ function Body<T>(
         const detailsId = `${p.idPrefix}-${id}-details`;
         return (
           <Fragment key={id}>
-            <tr className="border-b border-border">
+            <tr className="group border-b border-divider">
               {p.visible.map((c, i) => {
-                const cls = `px-3 py-2 whitespace-nowrap ${alignClass(c.align)}`;
+                // the sticky first column wraps on phones, or a long name would cover the screen
+                const wrap =
+                  i === 0 ? 'w-40 min-w-40 sm:w-auto sm:whitespace-nowrap' : 'whitespace-nowrap';
+                const cls = `px-3 py-3 ${wrap} group-hover:bg-surface ${alignClass(c.align)}`;
                 if (i > 0) {
                   return (
                     <td key={c.id} className={cls}>
@@ -178,31 +184,33 @@ function Body<T>(
                   <th
                     key={c.id}
                     scope="row"
-                    className={`sticky left-0 bg-background font-normal ${cls}`}
+                    className={`sticky left-0 z-10 bg-background font-normal ${cls}`}
                   >
-                    {p.renderExpanded === undefined ? null : (
-                      <button
-                        type="button"
-                        aria-expanded={open}
-                        aria-controls={detailsId}
-                        aria-label={`${open ? 'Hide' : 'Show'} details${p.expandLabel ? `: ${p.expandLabel(row)}` : ''}`}
-                        onClick={() => {
-                          p.onToggle(id);
-                        }}
-                        className="mr-2"
-                      >
-                        <span aria-hidden="true">{open ? '−' : '+'}</span>
-                      </button>
-                    )}
-                    {c.cell(row)}
+                    <div className="flex items-start gap-2">
+                      {p.renderExpanded === undefined ? null : (
+                        <ExpandButton
+                          open={open}
+                          controls={detailsId}
+                          label={`${open ? 'Hide' : 'Show'} details${p.expandLabel ? `: ${p.expandLabel(row)}` : ''}`}
+                          onClick={() => {
+                            p.onToggle(id);
+                          }}
+                        />
+                      )}
+                      <div className="min-w-0">{c.cell(row)}</div>
+                    </div>
                   </th>
                 );
               })}
             </tr>
             {open && p.renderExpanded ? (
-              <tr id={detailsId}>
-                <td colSpan={p.visible.length} className="bg-background px-3 py-3">
-                  {p.renderExpanded(row)}
+              <tr id={detailsId} className="border-b border-divider">
+                <td colSpan={p.visible.length} className="bg-surface px-3 py-4">
+                  {/* as wide as the visible part of the region and pinned to its left edge: on a
+                      table wider than the screen the details stay readable without scrolling */}
+                  <div className="sticky left-3 max-w-[calc(100cqw-1.5rem)]">
+                    {p.renderExpanded(row)}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -213,11 +221,37 @@ function Body<T>(
   );
 }
 
+function ExpandButton(p: { open: boolean; controls: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={p.open}
+      aria-controls={p.controls}
+      aria-label={p.label}
+      onClick={p.onClick}
+      className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border text-muted hover:text-foreground"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className={`size-4 transition-transform ${p.open ? 'rotate-180' : ''}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </button>
+  );
+}
+
 function SkeletonRows({ span }: { span: number }) {
   return (
     <tbody>
       {SKELETON_ROWS.map((key, i) => (
-        <tr key={key} className="border-b border-border">
+        <tr key={key} className="border-b border-divider">
           <td colSpan={span} className="px-3 py-2">
             {i === 0 ? <span className="sr-only">Loading</span> : null}
             <div aria-hidden="true" className="h-5 rounded bg-border motion-safe:animate-pulse" />

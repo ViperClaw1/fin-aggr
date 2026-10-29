@@ -90,7 +90,7 @@ export function ProfileFile({ disabled, onReplaced }: ProfileFileProps) {
           type="file"
           accept="application/json,.json"
           disabled={disabled}
-          className="text-sm"
+          className="max-w-full min-w-0 text-sm text-muted file:mr-3 file:h-10 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-background file:px-4 file:font-medium file:text-foreground disabled:opacity-60"
           onChange={(e) => {
             const input = e.currentTarget;
             const file = input.files?.[0];

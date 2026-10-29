@@ -4,7 +4,7 @@
 // returns focus where it belongs once the question is gone.
 import { useEffect, useId, useRef } from 'react';
 
-export const BUTTON = 'rounded border border-border px-3 py-1.5 disabled:opacity-50';
+export const BUTTON = 'btn';
 
 interface InlineConfirmProps {
   question: string;
@@ -23,13 +23,13 @@ export function InlineConfirm({ question, confirmLabel, onConfirm, onCancel }: I
     <div
       role="group"
       aria-labelledby={id}
-      className="flex flex-col gap-2 rounded border border-danger p-3"
+      className="flex flex-col gap-3 rounded-md border border-danger p-3"
     >
       <p id={id}>{question}</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className="rounded border border-danger bg-danger-bg px-3 py-1.5 font-medium text-danger"
+          className="btn border-danger bg-danger-bg text-danger hover:bg-danger-bg"
           onClick={onConfirm}
         >
           {confirmLabel}

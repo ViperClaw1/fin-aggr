@@ -15,7 +15,7 @@ export function StateSelect({ label, value, name, onChange }: StateSelectProps) 
   const id = useId();
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       <select
@@ -25,7 +25,7 @@ export function StateSelect({ label, value, name, onChange }: StateSelectProps) 
         onChange={(e) => {
           onChange(e.currentTarget.value);
         }}
-        className="rounded border border-border bg-background px-2 py-1"
+        className="control"
       >
         <option value="">Select a state</option>
         {US_STATES.map((s) => (

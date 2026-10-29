@@ -4,8 +4,6 @@
 import { useId, useState } from 'react';
 import { parseWholeNumber } from '../model/whole-number';
 
-const CONTROL = 'rounded border border-border bg-background px-2 py-1';
-
 interface ChoiceFieldProps<T extends string> {
   label: string;
   name: string;
@@ -25,7 +23,7 @@ export function ChoiceField<T extends string>({
   const codes = Object.keys(labels) as T[];
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       <select
@@ -36,7 +34,7 @@ export function ChoiceField<T extends string>({
           const code = codes.find((c) => c === e.currentTarget.value);
           onChange(code);
         }}
-        className={CONTROL}
+        className="control"
       >
         <option value="">Select</option>
         {codes.map((code) => (
@@ -72,11 +70,11 @@ export function WholeNumberField({
     .join(' ');
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       {hint === undefined ? null : (
-        <p id={`${id}-hint`} className="text-sm text-muted">
+        <p id={`${id}-hint`} className="text-xs text-muted">
           {hint}
         </p>
       )}
@@ -96,7 +94,7 @@ export function WholeNumberField({
           setInvalid(!result.ok);
           if (result.ok) onValueChange(result.value);
         }}
-        className={`${CONTROL} aria-invalid:border-danger`}
+        className="control"
       />
       {invalid ? (
         <p id={`${id}-error`} className="text-sm text-danger">

@@ -12,7 +12,7 @@ import { makeQueryClient } from '@/shared/lib/query-client';
 export interface CompareData {
   products: Product[];
   /** only what the table reads, to keep the page payload small */
-  institutions: Pick<Institution, 'id' | 'name' | 'kind'>[];
+  institutions: Pick<Institution, 'id' | 'name' | 'kind' | 'partnerInstitutionIds'>[];
   dataset: DatasetInfo;
   /** for the after-tax ranking in the browser; the profile never reaches this request (ADR-004) */
   taxTables: TaxTables;
@@ -30,7 +30,12 @@ export async function loadCompareData(category: ProductCategory): Promise<Compar
   ]);
   return {
     products: products.items,
-    institutions: institutions.items.map(({ id, name, kind }) => ({ id, name, kind })),
+    institutions: institutions.items.map(({ id, name, kind, partnerInstitutionIds }) => ({
+      id,
+      name,
+      kind,
+      partnerInstitutionIds,
+    })),
     dataset,
     taxTables,
   };

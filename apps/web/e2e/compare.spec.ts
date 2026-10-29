@@ -137,7 +137,14 @@ test('with a profile the table ranks after tax, net values marked as assumptions
       rows.map((r) =>
         [...r.querySelectorAll<HTMLElement>('th, td')]
           .slice(0, 2)
-          .map((c) => c.innerText)
+          // the bank cell also holds the expand button and the institution kind: read the name
+          .map((c) => {
+            const copy = c.cloneNode(true) as HTMLElement;
+            copy.querySelectorAll('button, [data-secondary]').forEach((b) => {
+              b.remove();
+            });
+            return copy.textContent.trim();
+          })
           .join('|'),
       ),
     );
@@ -163,4 +170,162 @@ test('compare with the filter form has no serious or critical axe violations', a
   await page.goto('/compare/cd');
   await expect(page.getByRole('form', { name: 'Filters' })).toBeVisible();
   await expectNoA11yViolations(page);
+});
+
+// AC-8 / CLS: the prerendered page holds the disabled form, so hydration does not move the table
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test(`the table does not move on hydration at ${String(viewport.width)}px`, async ({
+    browser,
+  }) => {
+    const top = async (javaScriptEnabled: boolean) => {
+      const context = await browser.newContext({ viewport, javaScriptEnabled });
+      const page = await context.newPage();
+      await page.goto('/compare/cd');
+      if (javaScriptEnabled) await expect(page.getByLabel('Search bank or product')).toBeEnabled();
+      const box = await table(page).boundingBox();
+      await context.close();
+      return box?.y;
+    };
+    const before = await top(false);
+    expect(before).toBeDefined();
+    expect(await top(true)).toBe(before);
+  });
+}
+
+test('an expanded row shows the institution; with a profile, the math and its assumptions', async ({
+  page,
+}) => {
+  await page.goto('/compare/cd');
+  // the button is in the static HTML before it works: wait for hydration
+  await expect(page.getByLabel('Search bank or product')).toBeEnabled();
+  const first = table(page)
+    .getByRole('button', { name: /^Show details: / })
+    .first();
+  // the name changes to "Hide details" once open: hold the button by what it controls
+  const controls = (await first.getAttribute('aria-controls')) ?? '';
+  await first.click();
+  await expect(table(page).locator(`[aria-controls="${controls}"]`)).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect(table(page).getByText('Add your profile to see the after-tax math.')).toBeVisible();
+
+  await page.goto('/compare/cd?profile=filingStatus');
+  const drawer = page.getByRole('dialog', { name: 'Your profile' });
+  await drawer.getByLabel('Filing status').selectOption('single');
+  await drawer.getByLabel('State of residence').selectOption('NY');
+  const income = drawer.getByLabel('Taxable income');
+  await income.fill('85000');
+  await income.blur();
+  await drawer.getByLabel('Residency').selectOption('us_citizen');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(RANKED)).toBeVisible();
+
+  await table(page)
+    .getByRole('button', { name: /^Show details: / })
+    .first()
+    .click();
+  const math = table(page).getByRole('region', { name: 'How this is calculated' });
+  await expect(math).toBeVisible();
+  await expect(math).toHaveAttribute('data-assumption', '');
+  await expect(math.getByText('Tax year 2026.')).toBeVisible();
+  await expect(math.getByText(/Scenario: \$10,000\.00 for 12 months/)).toBeVisible();
+});
+
+// E5 step 2: no scroll box inside the page scroll; the region scrolls sideways only
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(`at ${String(viewport.width)}px the table scrolls with the page, not inside a box`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/compare/cd');
+    const region = page.getByRole('region', { name: 'Certificates of deposit' });
+    const box = await region.evaluate((el) => ({
+      clipsHeight: el.scrollHeight > el.clientHeight + 1,
+      pageOverflowsX: document.documentElement.scrollWidth > window.innerWidth,
+    }));
+    expect(box).toEqual({ clipsHeight: false, pageOverflowsX: false });
+  });
+}
+
+test('on a phone the header row is not sticky, the first column is', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/compare/cd');
+  const headers = table(page).getByRole('columnheader');
+  const positions = await headers.evaluateAll((cells) =>
+    cells.map((c) => getComputedStyle(c).position),
+  );
+  expect(positions[0]).toBe('sticky');
+  expect(positions.slice(1).every((p) => p !== 'sticky')).toBe(true);
+});
+
+test('at 1024px with a profile (all columns) the page does not scroll sideways', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await page.goto('/compare/cd?profile=filingStatus');
+  const drawer = page.getByRole('dialog', { name: 'Your profile' });
+  await drawer.getByLabel('Filing status').selectOption('single');
+  await drawer.getByLabel('State of residence').selectOption('NY');
+  const income = drawer.getByLabel('Taxable income');
+  await income.fill('85000');
+  await income.blur();
+  await drawer.getByLabel('Residency').selectOption('us_citizen');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(RANKED)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
+// AC-6: the ad slot is labeled, in the static HTML, above the table and never inside it
+test('the sponsored slot is labeled, prerendered and outside the table', async ({
+  page,
+  request,
+}) => {
+  const html = await (await request.get('/compare/cd')).text();
+  expect(html).toContain('data-sponsored="compare_top"');
+
+  await page.goto('/compare/cd');
+  const slot = page.getByRole('complementary', { name: 'Sponsored' });
+  await expect(slot).toBeVisible();
+  await expect(slot.getByText(/^Sponsored · /).first()).toBeVisible();
+  await expect(slot.getByRole('link').first()).toHaveAttribute('rel', /sponsored/);
+  await expect(page.locator('table [data-sponsored], table aside')).toHaveCount(0);
+  const slotBox = await slot.boundingBox();
+  const tableBox = await table(page).boundingBox();
+  expect((slotBox?.y ?? 0) + (slotBox?.height ?? 0)).toBeLessThanOrEqual(tableBox?.y ?? 0);
+});
+
+test('no product matches the filters: the empty state says how to get them back', async ({
+  page,
+}) => {
+  await page.goto('/compare/cd?search=zzzz-no-such-bank');
+  await expect(
+    page.getByText('No products match these filters. Remove some, or use Reset filters.'),
+  ).toBeVisible();
+});
+
+test('products that need more data name the field and open the drawer on it', async ({ page }) => {
+  await page.goto('/compare/cd?profile=filingStatus');
+  const drawer = page.getByRole('dialog', { name: 'Your profile' });
+  await drawer.getByLabel('Filing status').selectOption('single');
+  await drawer.getByLabel('State of residence').selectOption('NY');
+  const income = drawer.getByLabel('Taxable income');
+  await income.fill('85000');
+  await income.blur();
+  await drawer.getByLabel('Residency').selectOption('us_citizen');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(RANKED)).toBeVisible();
+
+  const note = page.getByRole('status').filter({ hasText: /more data from your profile/ });
+  await expect(note).toBeVisible();
+  await note.getByRole('button', { name: 'Add age' }).click();
+  await expect(drawer.getByLabel('Age')).toBeFocused();
 });
