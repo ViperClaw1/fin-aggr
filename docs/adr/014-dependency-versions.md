@@ -27,9 +27,9 @@ Deferred (pinned when first used, in the ADR or PR that adds them):
 
 Tailwind 4 sets the browser floor: Safari 16.4+, Chrome 111+. Accepted for the US Stage 1 audience. Tailwind is wired through `turbopack.rules` in `next.config.ts` with `@tailwindcss/turbopack`. If Tailwind or Next change the supported integration, this ADR is revisited.
 
-## Proposed amendment (E6, ADR-018, 2026-10-30): not installed yet
+## Amendment (E6, ADR-018, 2026-10-30): installed
 
-Pinned when ADR-018 is accepted. Do not add the packages before that.
+Accepted with ADR-018. Exact versions, no `^`/`~`. `pdfkit` is imported by `tools/build-docs.mjs`. `pdfjs-dist` is imported by the fixture PDF test; the viewer imports it in step 2.
 
 | Package | Version | Where |
 | --- | --- | --- |

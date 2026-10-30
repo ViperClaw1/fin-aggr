@@ -29,23 +29,23 @@
 ### CSP, без ослабления ADR-015
 
 - Воркер pdf.js с того же адреса, что и сайт (`new URL('pdfjs-dist/…/pdf.worker.min.mjs', import.meta.url)`). Его покрывает `script-src 'self'`.
-- `isEvalSupported: false`: pdf.js не вызывает `new Function` для шрифтов, `'unsafe-eval'` не нужен.
+- В типах 6.4.299 нет `isEvalSupported`. `getDocument` вызывается с `useWasm: false` (по умолчанию `true`), чтобы воркер не грузил WASM. `'unsafe-eval'` и `'wasm-unsafe-eval'` не добавляем.
 - В наших PDF нет картинок JPX/JBIG2: их декодерам нужен WASM и `'wasm-unsafe-eval'`.
 - Шрифты встроены в PDF, либо `standardFontDataUrl` указывает на наш адрес. Иначе pdf.js подменит шрифт, и слой текста разойдётся с картинкой.
 - `connect-src 'self'` не меняется: PDF грузятся с нашего домена.
 
-Как в pdf.js 6 подключаются воркер, `TextLayer` и параметры `getDocument`, смотреть в типах и документации внутри `node_modules` после установки. Точные имена файлов воркера в план не записывать, пока их не видно в пакете.
+Воркер в установленном 6.4.299: `pdfjs-dist/build/pdf.worker.min.mjs`. `TextLayer` и остальные параметры `getDocument` читать из `types/src/pdf.d.ts`, когда пишется просмотрщик.
 
 ## Шаг 0. ADR (0,25 дня)
 
-Сделано, ждёт согласия:
+Сделано:
 
-- `docs/adr/018-pdf-viewer-and-synthetic-documents.md`, статус `proposed`.
-- В ADR-014 поправка со статусом proposed: версии записаны, пакеты не установлены.
-
-Пакеты ставятся только после «да» на ADR-018.
+- ADR-018 принят. `pdfjs-dist` 6.4.299 стоит в зависимостях `@fa/web`, `pdfkit` 0.20.2 — в devDependencies корня. Воркер: `pdfjs-dist/build/pdf.worker.min.mjs`.
+- Версии записаны в ADR-014. Оба пакета ещё никто не импортирует, поэтому `knip.json` держит их в `ignoreDependencies`, пока не появятся скрипт и просмотрщик.
 
 ## Шаг 1. Синтетические PDF (1 день)
+
+Сделано: `tools/build-docs.mjs`, `predev` и `prebuild` у `@fa/web`, каталог в `.gitignore`, тест `apps/web/src/mock-docs.test.ts`.
 
 `tools/build-docs.mjs`:
 
@@ -147,6 +147,12 @@ e2e, production-сборка:
 
 ## До шага 1
 
-Сдвиг вёрстки при сохранённом профиле закрыт (ADR-017). Скрипт в корневом `layout` снимает `data-has-profile` через 3 с, e2e «a blocked page script still reveals the catalog within 3 seconds» это проверяет. До шага 1 остаётся сравнить LCP с профилем и без.
+Сдвиг вёрстки при сохранённом профиле закрыт (ADR-017). Скрипт в корневом `layout` снимает `data-has-profile` через 3 с, e2e «a blocked page script still reveals the catalog within 3 seconds» это проверяет.
+
+Lighthouse, https://fin-aggr.vercel.app/, мобильный, 2026-10-30, по одному прогону.
+
+`/`, без профиля: LCP 2,0 с, FCP 1,2 с, TBT 1 490 мс, CLS 0, Speed Index 3,5 с, оценка 72. С полным профилем: LCP 1,5 с, FCP 1,1 с, TBT 1 040 мс, CLS 0,002, Speed Index 1,7 с, оценка 77.
+
+`/compare/cd`, без профиля: LCP 2,0 с, FCP 1,3 с, TBT 1 390 мс, CLS 0,001, Speed Index 2,0 с, оценка 74. С полным профилем: LCP 1,9 с, FCP 1,7 с, TBT 1 530 мс, CLS 0,007, Speed Index 2,2 с, оценка 73. CLS 0,128 из спеки §8 — замер до ADR-017.
 
 CI на `fb5936e` падал: AC-4 кликал `a[href="/compare/cd"]`, таких ссылок на главной три. На `7cde5e4` клик идёт по «Compare CDs» внутри `main`, гейты зелёные.

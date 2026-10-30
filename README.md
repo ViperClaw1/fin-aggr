@@ -23,4 +23,6 @@ Public build-time variables, read only in `apps/web/src/shared/config/env.ts`. A
 | `NEXT_PUBLIC_FA_SEED` | non-negative integer; same seed, same data | `20261025` |
 | `NEXT_PUBLIC_MOCK_FAILURE_RATE` | share of mock requests failing with `unavailable`, `0`..`1` | `0` |
 
+`pnpm dev` and `pnpm build` write `apps/web/public/mock-docs/` before the app starts. The script reads `NEXT_PUBLIC_FA_SEED` (default `20261025`, the same value as the fixtures) and skips the work when those files are already present for that seed. The directory is gitignored. Delete it to regenerate after a quote changes.
+
 Agent setup: [AGENTS.md](AGENTS.md) (shared), [docs/claude-config.md](docs/claude-config.md) (Claude Code), [docs/cursor-config.md](docs/cursor-config.md) (Cursor).

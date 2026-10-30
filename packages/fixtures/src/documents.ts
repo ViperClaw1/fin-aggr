@@ -1,4 +1,4 @@
-// 8 synthetic documents (our own text, PDFs arrive in E6) and 5 facts per document (40 total).
+// 8 synthetic documents (our own text; tools/build-docs.mjs writes the PDFs) and 5 facts per document.
 import {
   IsoDate,
   type DocumentMeta,

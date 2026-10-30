@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../tools/build-docs.mjs",
     "dev": "next dev",
+    "prebuild": "node ../../tools/build-docs.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
@@ -17,6 +19,7 @@
     "@tanstack/react-query": "5.105.0",
     "next": "16.4.3",
     "nuqs": "2.10.2",
+    "pdfjs-dist": "6.4.299",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zustand": "5.0.16"
