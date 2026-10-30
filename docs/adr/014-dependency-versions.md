@@ -27,6 +27,17 @@ Deferred (pinned when first used, in the ADR or PR that adds them):
 
 Tailwind 4 sets the browser floor: Safari 16.4+, Chrome 111+. Accepted for the US Stage 1 audience. Tailwind is wired through `turbopack.rules` in `next.config.ts` with `@tailwindcss/turbopack`. If Tailwind or Next change the supported integration, this ADR is revisited.
 
+## Proposed amendment (E6, ADR-018, 2026-10-30): not installed yet
+
+Pinned when ADR-018 is accepted. Do not add the packages before that.
+
+| Package | Version | Where |
+| --- | --- | --- |
+| pdfjs-dist | 6.4.299 | dependency of `@fa/web` |
+| pdfkit | 0.20.2 | root devDependency, `tools/build-docs.mjs` only |
+
+Checked with `pnpm view` on 2026-10-30. `pdf-lib` 1.17.1 was rejected (last release 2022).
+
 ## Amendment (E4, 2026-10-28): `@tanstack/react-table` removed
 `@tanstack/react-table` is removed: +11.5 KB gzip to the First Load JS of the home page for three simple capabilities (sorting, column hiding, row expansion), with about 10 KB left before the AC-8 budget (home First Load JS 190.3 KB gzip per `route-bundle-stats.json`). `DataTable` is our own component over a native `<table>`. Bring the library back through a new ADR if column filters, grouping or virtualization are needed.
 

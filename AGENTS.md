@@ -3,7 +3,7 @@
 Общие инструкции для ИИ-агентов (Cursor, Claude Code, Codex). Единственный источник: правки вносить сюда. `CLAUDE.md` подключает этот файл.
 
 Монорепо pnpm: `apps/web` (Next.js App Router, TypeScript strict), `packages/contracts` (zod-схемы, `DataGateway`), `packages/engine` (чистые расчёты), `packages/fixtures` (детерминированные моки).
-Спека этапа 1: `specs/Finance Aggregator Spec.md`. Читать по необходимости, целиком не загружать. План текущего эпика: `docs/plan-e5.md`.
+Спека этапа 1: `specs/Finance Aggregator Spec.md`. Читать по необходимости, целиком не загружать. План текущего эпика: `docs/plan-e6.md`.
 
 ## Команды
 - `pnpm dev`: приложение (`NEXT_PUBLIC_DATA_SOURCE=mock`)
