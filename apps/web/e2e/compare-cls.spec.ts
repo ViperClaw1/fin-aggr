@@ -55,3 +55,23 @@ test('a saved profile keeps CLS under 0.1 and the catalog top still', async ({ p
   expect(moved.delta).toBeLessThan(1);
   expect(moved.cls).toBeLessThan(0.1);
 });
+
+test('a blocked page script still reveals the catalog within 3 seconds', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('fa.profile', '{"state":{"draft":{}},"version":1}');
+  });
+  await page.route('**/_next/static/chunks/**', (route) => {
+    if (route.request().resourceType() === 'stylesheet') {
+      void route.continue();
+      return;
+    }
+    void route.abort();
+  });
+  await page.goto('/compare/cd', { waitUntil: 'commit' });
+  const root = page.locator('html');
+  const table = page.getByRole('table', { name: 'Certificates of deposit' });
+  await expect(root).toHaveAttribute('data-has-profile', '');
+  await expect(root).not.toHaveAttribute('data-has-profile', '', { timeout: 5_000 });
+  await expect(table).toBeVisible();
+  await expect(page.getByLabel('Search bank or product')).toBeDisabled();
+});

@@ -216,6 +216,11 @@ html[data-has-profile] [data-catalog-slot] > [data-catalog] {
 html[data-has-profile] [data-catalog] {
   visibility: hidden;
 }
+/* The cover stretches to the table, so the painted block is already full height (LCP). */
+html[data-has-profile] [data-catalog-pending] {
+  height: 100%;
+  background: var(--surface);
+}
 html:not([data-has-profile]) [data-catalog-pending] {
   display: none;
 }

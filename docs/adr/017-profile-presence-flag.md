@@ -11,7 +11,7 @@ The profile values must stay in the browser: no request, log, or gateway paramet
 
 ## Decision
 
-One blocking inline script in the root layout may call `localStorage.getItem('fa.profile')` and, when the key is present, set `data-has-profile` on `<html>`. It does not read the value, write storage, or send the network. While the attribute is set, the compare catalog stays covered until the row order is final, then a layout effect removes the attribute. Net interest, Net yield, and Fit stay in the markup with a placeholder when there is no complete profile.
+One blocking inline script in the root layout may call `localStorage.getItem('fa.profile')` and, when the key is present, set `data-has-profile` on `<html>`. It does not read the value, write storage, or send the network. While the attribute is set, the compare catalog is covered by a placeholder stretched to the same height; the table stays in the grid so the slot does not jump. A layout effect removes the attribute when the row order is final. The same script removes it after 3 seconds anyway, so a failed or blocked hydration cannot leave the catalog hidden. That cap is also the bound on how long a returning visitor's largest paint can wait on the covered table: the placeholder is painted at the table's height immediately. Net interest, Net yield, and Fit stay in the markup with a placeholder when there is no complete profile.
 
 Every other use of `localStorage` stays in `entities/profile/model/persist.ts`.
 

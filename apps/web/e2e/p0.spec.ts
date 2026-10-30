@@ -80,17 +80,25 @@ test('a sentinel income never leaves the browser while following links (AC-4)', 
   await income.blur();
   await page.keyboard.press('Escape');
 
-  await page.locator('a[href="/compare/cd"]').click();
+  const main = page.getByRole('main');
+  await main.getByRole('link', { name: 'Compare CDs' }).click();
   await expect(page).toHaveURL(/\/compare\/cd$/);
   await page.locator('table a[href^="/product/"]').first().click();
   await expect(page).toHaveURL(/\/product\//);
   await page.locator('a[href^="/banks/"]').first().click();
   await expect(page).toHaveURL(/\/banks\//);
   await page.getByRole('link', { name: 'FA home' }).click();
-  await page.locator('a[href="/tools/fdic-coverage"]').click();
+  await main.getByRole('link', { name: 'Plan coverage' }).click();
   await expect(page).toHaveURL(/\/tools\/fdic-coverage$/);
   await page.getByRole('link', { name: 'FA home' }).click();
-  await page.locator('a[href="/tools/after-tax-yield"]').click();
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByText('Tools', { exact: true })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'After-tax yield' })
+    .click();
   await expect(page).toHaveURL(/\/tools\/after-tax-yield$/);
   const footer = page.getByRole('contentinfo');
   await footer.getByRole('link', { name: 'Methodology' }).click();
@@ -99,4 +107,20 @@ test('a sentinel income never leaves the browser while following links (AC-4)', 
   await expect(page).toHaveURL(/\/privacy$/);
   await page.waitForLoadState('networkidle');
   expect(leaks).toEqual([]);
+});
+
+test('the Compare menu closes after a choice and after a click outside', async ({ page }) => {
+  const nav = page.getByRole('navigation', { name: 'Primary' });
+  const compare = nav.getByText('Compare', { exact: true });
+  const menu = nav.locator('details').filter({ hasText: 'Compare' });
+  await page.goto('/');
+  await compare.click();
+  await expect(menu).toHaveJSProperty('open', true);
+  await page.getByRole('heading', { level: 1 }).click();
+  await expect(menu).toHaveJSProperty('open', false);
+
+  await compare.click();
+  await nav.getByRole('link', { name: 'CDs', exact: true }).click();
+  await expect(page).toHaveURL(/\/compare\/cd$/);
+  await expect(menu).toHaveJSProperty('open', false);
 });

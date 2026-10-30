@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
-import Script from 'next/script';
 import { Suspense } from 'react';
 import { ThemeToggle } from '@/features/toggle-theme';
 import { env, PROFILE_STORAGE_KEY } from '@/shared/config';
@@ -44,17 +43,26 @@ export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
-/** Sets data-has-profile before first paint when a draft is stored. Sees presence only (ADR-017). */
-const profilePresenceScript = `try{if(localStorage.getItem(${JSON.stringify(PROFILE_STORAGE_KEY)}))document.documentElement.setAttribute("data-has-profile","")}catch(e){}`;
+/** Sets data-has-profile before first paint when a draft is stored. Sees presence only.
+ *  Drops the flag after 3s so a failed hydration cannot hide the catalog (ADR-017).
+ *  A real inline script: next/script waits for a chunk, which is the failure this covers. */
+const profilePresenceScript = `try{if(localStorage.getItem(${JSON.stringify(PROFILE_STORAGE_KEY)})){document.documentElement.setAttribute("data-has-profile","");setTimeout(function(){document.documentElement.removeAttribute("data-has-profile")},3000)}}catch(e){}`;
+
+function ProfilePresenceScript() {
+  return (
+    <script
+      // eslint-disable-next-line no-restricted-syntax, react/no-danger -- presence flag must run without a Next chunk, docs/adr/017-profile-presence-flag.md
+      dangerouslySetInnerHTML={{ __html: profilePresenceScript }}
+    />
+  );
+}
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       {/* block, not flex: a flex column makes `mx-auto` children shrink-wrap their content */}
       <body className="min-h-full">
-        <Script id="profile-presence" strategy="beforeInteractive">
-          {profilePresenceScript}
-        </Script>
+        <ProfilePresenceScript />
         <DemoDataBanner />
         <Providers>
           <header className="sticky top-0 z-30 border-b border-divider bg-background">
