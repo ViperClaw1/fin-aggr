@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const itemClass =
   'flex min-h-10 items-center gap-1 rounded px-2.5 font-medium text-muted no-underline hover:bg-divider hover:text-foreground';
@@ -23,65 +23,74 @@ function Chevron() {
   );
 }
 
+const MENUS = [
+  {
+    label: 'Compare',
+    items: [
+      { href: '/compare/cd', label: 'CDs' },
+      { href: '/compare/savings', label: 'Savings' },
+      { href: '/compare/treasury', label: 'Treasuries' },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { href: '/tools/fdic-coverage', label: 'FDIC coverage' },
+      { href: '/tools/after-tax-yield', label: 'After-tax yield' },
+    ],
+  },
+] as const;
+
+function NavMenu({ label, items }: (typeof MENUS)[number]) {
+  const root = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const menu = root.current;
+      if (menu?.open !== true) return;
+      if (event.target instanceof Node && menu.contains(event.target)) return;
+      menu.open = false;
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, []);
+  const close = () => {
+    const menu = root.current;
+    if (menu !== null) menu.open = false;
+  };
+  return (
+    <details ref={root} className="relative">
+      <summary
+        className={`${itemClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+      >
+        {label} <Chevron />
+      </summary>
+      <div className="grid min-w-44 rounded-md border border-border bg-background p-1.5 shadow-lg md:absolute md:top-11 md:left-0">
+        {items.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            prefetch={false}
+            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
+            onClick={close}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function Links() {
   return (
     <>
-      <details className="relative">
-        <summary
-          className={`${itemClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
-        >
-          Compare <Chevron />
-        </summary>
-        <div className="grid min-w-44 rounded-md border border-border bg-background p-1.5 shadow-lg md:absolute md:top-11 md:left-0">
-          <Link
-            href="/compare/cd"
-            prefetch={false}
-            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
-          >
-            CDs
-          </Link>
-          <Link
-            href="/compare/savings"
-            prefetch={false}
-            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
-          >
-            Savings
-          </Link>
-          <Link
-            href="/compare/treasury"
-            prefetch={false}
-            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
-          >
-            Treasuries
-          </Link>
-        </div>
-      </details>
+      <NavMenu {...MENUS[0]} />
       <Link href="/banks" prefetch={false} className={itemClass}>
         Banks
       </Link>
-      <details className="relative">
-        <summary
-          className={`${itemClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
-        >
-          Tools <Chevron />
-        </summary>
-        <div className="grid min-w-44 rounded-md border border-border bg-background p-1.5 shadow-lg md:absolute md:top-11 md:left-0">
-          <Link
-            href="/tools/fdic-coverage"
-            prefetch={false}
-            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
-          >
-            FDIC coverage
-          </Link>
-          <Link
-            href="/tools/after-tax-yield"
-            prefetch={false}
-            className="rounded px-2.5 py-2.5 no-underline hover:bg-divider"
-          >
-            After-tax yield
-          </Link>
-        </div>
-      </details>
+      <NavMenu {...MENUS[1]} />
       <Link href="/methodology" prefetch={false} className={itemClass}>
         Methodology
       </Link>
