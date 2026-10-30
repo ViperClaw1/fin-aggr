@@ -8,6 +8,7 @@ import { env, PROFILE_STORAGE_KEY } from '@/shared/config';
 import { DemoDataBanner } from '@/shared/ui/demo-banner';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
 import { SiteFooter } from '@/widgets/site-footer';
+import { SiteNav } from '@/widgets/site-nav';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -56,13 +57,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </Script>
         <DemoDataBanner />
         <Providers>
-          <header className="border-b border-divider">
-            <div className="mx-auto flex h-14 max-w-page items-center justify-between gap-3 px-4 sm:px-8">
-              <Link href="/" prefetch={false} className="text-lg font-semibold tracking-tight">
+          <header className="sticky top-0 z-30 border-b border-divider bg-background">
+            <div className="mx-auto flex min-h-16 max-w-page flex-wrap items-center gap-x-8 gap-y-2 px-4 sm:px-8">
+              <Link
+                href="/"
+                prefetch={false}
+                className="font-mono text-xl font-bold tracking-tight"
+              >
                 FA<span className="sr-only"> home</span>
               </Link>
+              <SiteNav />
               {/* reads ?profile=: the fallback is prerendered, the route stays static */}
-              <div className="flex items-center gap-2">
+              <div className="order-3 ml-auto flex items-center gap-2 md:order-2 md:ml-0">
                 <ThemeToggle />
                 <Suspense fallback={<ProfileDrawerFallback />}>
                   <ProfileDrawer />

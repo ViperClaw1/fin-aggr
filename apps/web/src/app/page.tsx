@@ -5,7 +5,7 @@ export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 export default function HomePage() {
   return (
-    <main className="mx-auto max-w-page px-4 py-8 sm:px-8">
+    <main className="mx-auto max-w-page px-4 sm:px-8">
       <Landing />
     </main>
   );

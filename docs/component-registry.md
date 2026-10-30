@@ -29,7 +29,8 @@ Search here before creating a component. Add a row for every exported UI compone
 | AccountRows | features/plan-coverage | Account rows (bank, single/joint, amount). Add focuses the new bank field; Remove returns focus to Add. Not stored (ADR-004) | `rows`, `institutions`, `onAdd`, `onRemove`, `onChange`, `takeFocus` | widgets/coverage-planner |
 | CoveragePlanner | widgets/coverage-planner | Limit from InsuranceRules through FactValue (unverified, said in words), the account form, per-bank BulletChart of amount against the category limit, insured and not-insured totals, ExplainMath and engine warnings. DRAFT insurance wording | `institutions`, `rules` from `loadCoverageData` | app/tools/fdic-coverage |
 | YieldComparator | widgets/yield-comparator | Best eligible CD, savings and Treasury after tax (`useNetYield` per category). Without a profile, a prompt that opens the drawer. The scenario is edited from an assumption | `products`, `taxTables` from `loadYieldData` | app/tools/after-tax-yield |
-| Landing | widgets/landing | Home: the value, three entries (compare, coverage, after-tax yield), "How we make money" linking to /disclosure. That block is a DRAFT | none | app/page |
+| Landing | widgets/landing | Home: hero, three questions (compare, bank health, coverage), how it works, commercial model linking to /disclosure. That block is a DRAFT | none | app/page |
+| SiteNav | widgets/site-nav | Primary header links: Compare (CDs, savings, Treasuries), Banks, Tools (coverage, after-tax yield), Methodology. Menu collapses them on a narrow screen | none | app/layout |
 | SiteFooter | widgets/site-footer | Footer: links to /methodology, /disclosure, /privacy; the demo-data notice (`DEMO_DATA_TEXT`, same words as the banner) and the privacy line; the data set date. Async server component, date loaded at build (`loadDataset`, `'use cache'`) | none | app/layout |
 
 ## Modules (slices without UI yet)
