@@ -6,7 +6,7 @@ export {
   type ProfileFormField,
 } from './model/drawer-url';
 export { DEFAULT_SCENARIO, REQUIRED_FIELDS } from './model/defaults';
-export { defaultAssumptions, missingFields } from './model/complete';
+export { defaultAssumptions, missingFields, toEngineProfile } from './model/complete';
 export { PROFILE_PRIVACY_TEXT } from '@/shared/config';
 export {
   rehydrateProfile,

@@ -65,11 +65,16 @@ describe('missingFields and defaultAssumptions', () => {
       'residency',
     ]);
   });
-  it('names the default scenario as editable and the tax year as not editable', () => {
+  it('names the default scenario and the unset city rate as editable, and the tax year as not', () => {
     expect(defaultAssumptions({}, Y)).toEqual([
       {
         id: 'default_scenario',
         text: 'Scenario: $10,000.00 for 12 months until you change it.',
+        editable: true,
+      },
+      {
+        id: 'city_marginal_rate',
+        text: 'City income tax rate is not set, so local tax is zero until you change it.',
         editable: true,
       },
       { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
@@ -78,6 +83,11 @@ describe('missingFields and defaultAssumptions', () => {
   it('says when the profile year has no tables', () => {
     const draft = { taxYear: 2025, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
     expect(defaultAssumptions(draft, Y)).toEqual([
+      {
+        id: 'city_marginal_rate',
+        text: 'City income tax rate is not set, so local tax is zero until you change it.',
+        editable: true,
+      },
       {
         id: 'default_tax_year',
         text: 'Tax year 2026 (2025 tables not available).',
@@ -89,14 +99,34 @@ describe('missingFields and defaultAssumptions', () => {
     const draft = { taxYear: 2026, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
     expect(defaultAssumptions(draft, 2027)).toEqual([
       {
+        id: 'city_marginal_rate',
+        text: 'City income tax rate is not set, so local tax is zero until you change it.',
+        editable: true,
+      },
+      {
         id: 'default_tax_year',
         text: 'Tax year 2027 (2026 tables not available).',
         editable: false,
       },
     ]);
   });
-  it('keeps only the tax year once the scenario and tax year are set', () => {
+  it('keeps the city rate editable once the scenario and tax year are set', () => {
     const draft = { taxYear: 2026, scenario: { principal: Cents.parse(5), holdingMonths: 3 } };
+    expect(defaultAssumptions(draft, Y)).toEqual([
+      {
+        id: 'city_marginal_rate',
+        text: 'City income tax rate is not set, so local tax is zero until you change it.',
+        editable: true,
+      },
+      { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
+    ]);
+  });
+  it('drops the city assumption once a city rate is set', () => {
+    const draft = {
+      taxYear: 2026,
+      cityMarginalRate: Rate.parse('0.01'),
+      scenario: { principal: Cents.parse(5), holdingMonths: 3 },
+    };
     expect(defaultAssumptions(draft, Y)).toEqual([
       { id: 'default_tax_year', text: 'Tax year 2026.', editable: false },
     ]);

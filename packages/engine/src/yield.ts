@@ -79,6 +79,11 @@ const A = {
 const WARN_NOT_RENEWED = 'The rate is not renewed after the term: interest stops at maturity.';
 const WARN_NEGATIVE = 'The early withdrawal penalty is larger than the interest earned.';
 
+/** Every yield assumption, including ones that only some products carry. */
+export function yieldAssumptionCatalog(): readonly Assumption[] {
+  return [A.niitAmt, A.penaltyBase, A.simpleYield, A.roundingPerLine, A.treasury, A.dayCount];
+}
+
 function assumptionsFor(product: YieldProduct): Assumption[] {
   return [
     A.niitAmt,

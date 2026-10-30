@@ -3,6 +3,7 @@
 // their values are calculations under assumptions, marked with data-assumption (AC-3).
 import { compareRate, formatUsd, formatUsdShort } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
+import Link from 'next/link';
 import { FactValue } from '@/entities/fact';
 import { INSTITUTION_KIND_LABEL } from '@/entities/institution';
 import { headlineApy } from '@/entities/product';
@@ -46,7 +47,15 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
       },
       compare: (a, b) => bank(a).localeCompare(bank(b), 'en-US'),
     },
-    { id: 'product', header: 'Product', cell: (r) => r.product.name },
+    {
+      id: 'product',
+      header: 'Product',
+      cell: (r) => (
+        <Link href={`/product/${r.product.id}`} prefetch={false} className="underline">
+          {r.product.name}
+        </Link>
+      ),
+    },
     {
       id: 'term',
       header: 'Term',

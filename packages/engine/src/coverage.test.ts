@@ -1,7 +1,12 @@
 import { Cents, InsuranceRules } from '@fa/contracts';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { planCoverage, type CoverageCandidate, type CoverageInput } from './coverage';
+import {
+  categoryLimit,
+  planCoverage,
+  type CoverageCandidate,
+  type CoverageInput,
+} from './coverage';
 import { INSURANCE } from './test-data';
 
 const BANK: CoverageCandidate = {
@@ -16,6 +21,14 @@ const base: CoverageInput = {
   rules: INSURANCE,
   interestReservePerAllocation: Cents.parse(0),
 };
+
+describe('categoryLimit', () => {
+  it('is the single-owner limit, and twice that for joint', () => {
+    // independent calc: the fixture limit is 25_000_000 cents ($250,000); × 2 owners = 50_000_000
+    expect(categoryLimit(INSURANCE, 'FDIC', 'single')).toBe(25_000_000);
+    expect(categoryLimit(INSURANCE, 'NCUA', 'joint')).toBe(50_000_000);
+  });
+});
 
 describe('rules and errors', () => {
   it('merges duplicates of one institution, keeping the earliest preference', () => {

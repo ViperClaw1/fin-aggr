@@ -13,6 +13,7 @@ export {
 } from './rules';
 export { rankProducts, type RankedProduct } from './rank';
 export {
+  categoryLimit,
   planCoverage,
   type Allocation,
   type CoverageCandidate,
@@ -20,3 +21,4 @@ export {
   type CoveragePlan,
   type OwnershipCategory,
 } from './coverage';
+export { allAssumptions } from './assumptions';

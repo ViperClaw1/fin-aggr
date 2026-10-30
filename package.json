@@ -18,7 +18,9 @@
     "e2e": "pnpm --filter @fa/web e2e",
     "bench": "vitest bench --run",
     "golden:check": "node tools/golden-check.mjs",
-    "bundle:report": "node tools/bundle-budget.mjs"
+    "bundle:report": "node tools/bundle-budget.mjs",
+    "rules:sync": "node tools/sync-agent-rules.mjs",
+    "rules:check": "node tools/sync-agent-rules.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

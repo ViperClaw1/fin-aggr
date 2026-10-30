@@ -1,0 +1,11 @@
+# Files Cursor does not index or hand to the agent (best effort; secrets also stay in .gitignore).
+.env*
+!.env.example
+apps/web/.env*
+coverage/
+.next/
+apps/web/.next/
+playwright-report/
+test-results/
+apps/web/playwright-report/
+apps/web/test-results/

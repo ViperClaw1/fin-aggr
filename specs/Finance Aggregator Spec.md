@@ -746,6 +746,14 @@ export function planCoverage(input: CoverageInput): CoveragePlan;
 | `citation-viewer` | `widgets/citation-viewer` | PDF-просмотрщик (ленивый), экспортирует `CitationViewerHost` |
 | `sponsored-slot` | `widgets/sponsored-slot` | Рекламный блок с пометкой и раскрытием |
 
+Отклонения реализации E5 от этого реестра:
+
+- Один продукт считает `useProductMath` поверх `computeNetYield`. `useNetYield` остаётся ранжированием списка и без полного профиля возвращает null, поэтому не показывает шаги и допущения по умолчанию.
+- Допущение городской ставки `city_marginal_rate` задаётся в профиле, не в `engine`. Год (`default_tax_year`) не редактируется. Кнопка Edit есть только у допущения, которому сопоставлено поле формы.
+- Сегмент `/banks/[id]` кодирует двоеточие подчёркиванием (`fdic_5821`): Windows не создаёт каталог сборки с `:`.
+- `fine-print` и `citation-viewer` остаются в E6. Факты документа, кроме повторённого штрафа, показаны в условиях продукта. `onOpen` уже пишет `?doc=&page=&q=`.
+- У `BulletChart` третья шкала `percent` (`min` может быть меньше нуля). Сумма активов форматируется `formatUsdFromThousands` в `contracts`. Совместный лимит считает `categoryLimit` в `engine`. Методология показывает `allAssumptions()`.
+
 ### Контракты пропсов ключевых компонентов
 
 ```ts

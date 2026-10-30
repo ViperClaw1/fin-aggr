@@ -1,3 +1,4 @@
+import { allAssumptions } from '@fa/engine';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -30,6 +31,15 @@ export default function MethodologyPage() {
           Each line is rounded to the cent once, at the end. Net yield is simple annual yield: net
           interest over the deposit, per year held.
         </li>
+      </ul>
+      <h2>Assumptions</h2>
+      <p>
+        The calculation states these assumptions. The list comes from the same code that computes.
+      </p>
+      <ul>
+        {allAssumptions().map((assumption) => (
+          <li key={assumption.id}>{assumption.text}</li>
+        ))}
       </ul>
       <h2>Ranking</h2>
       <p>

@@ -1,5 +1,6 @@
 // Display formatting on integers and strings only (ADR-013).
 import type { Cents } from './cents';
+import { centsFromSafeInteger } from './parse';
 import type { Rate, SignedRate } from './rate';
 
 const groupThousands = (digits: string): string => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -49,4 +50,52 @@ export function formatRateDisplay(rate: SignedRate | Rate): string {
  */
 export function formatSignedRate(rate: SignedRate | Rate): string {
   return rate.startsWith('-') ? `−${percentText(rate.slice(1))}` : percentText(rate);
+}
+
+/** One decimal, half-up, trailing ".0" dropped. `unit` is the size of 1.0 (1000 for millions). */
+function oneDecimal(value: number, unit: number): string {
+  const tenths = Math.floor((value * 10 + Math.floor(unit / 2)) / unit);
+  const whole = Math.floor(tenths / 10);
+  const frac = tenths % 10;
+  return frac === 0 ? String(whole) : `${String(whole)}.${String(frac)}`;
+}
+
+/**
+ * An integer count of thousands of US dollars: 1_200_000 → "$1.2B", 50_000 → "$50M".
+ * Below $1M the exact dollar amount is shown. Not a Cents value (ADR-013).
+ */
+export function formatUsdFromThousands(thousands: number): string {
+  if (!Number.isSafeInteger(thousands) || thousands < 0) {
+    throw new Error(
+      `formatUsdFromThousands expects a non-negative safe integer, got ${String(thousands)}`,
+    );
+  }
+  if (thousands >= 1_000_000) return `$${oneDecimal(thousands, 1_000_000)}B`;
+  if (thousands >= 1_000) {
+    const text = oneDecimal(thousands, 1_000);
+    // 999.95 million rounds to 1000.0 million, which is a billion
+    return text === '1000' ? '$1B' : `$${text}M`;
+  }
+  return formatUsdShort(centsFromSafeInteger(thousands * 100_000));
+}
+
+/**
+ * A display percent already in percent points (6.5 → "6.5%"). One decimal, half-up.
+ * Bank metrics arrive as numbers, not as Rate (spec §4). A non-finite value is "n/a".
+ */
+export function formatPercentPoints(points: number): string {
+  if (!Number.isFinite(points)) return 'n/a';
+  const negative = points < 0;
+  const tenths = Math.round(Math.abs(points) * 10);
+  if (tenths === 0) return '0%';
+  const whole = Math.floor(tenths / 10);
+  const frac = tenths % 10;
+  const body = frac === 0 ? String(whole) : `${String(whole)}.${String(frac)}`;
+  return `${negative ? '−' : ''}${body}%`;
+}
+
+/** A share of 1 (0.6 → "60%"). Display only; the number is not money. */
+export function formatShare(share: number): string {
+  if (!Number.isFinite(share)) return 'n/a';
+  return formatPercentPoints(share * 100);
 }

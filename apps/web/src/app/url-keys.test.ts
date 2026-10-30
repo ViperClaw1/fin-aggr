@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { PROFILE_DRAWER_KEY } from '@/entities/profile';
 import { PRODUCT_FILTER_KEYS, PRODUCT_SORT_KEY } from '@/features/filter-products';
 import { CITATION_KEYS } from '@/features/open-citation';
+import { BANK_SEARCH_KEYS } from '@/widgets/bank-search';
 
 const profileKeys = [...Object.keys(Profile.shape), ...Object.keys(Profile.shape.scenario.shape)];
 const allKeys: string[] = [
@@ -12,6 +13,7 @@ const allKeys: string[] = [
   PRODUCT_SORT_KEY,
   ...CITATION_KEYS,
   PROFILE_DRAWER_KEY,
+  ...BANK_SEARCH_KEYS,
 ];
 
 describe('URL keys', () => {
@@ -28,6 +30,9 @@ describe('URL keys', () => {
   });
   it('the profile drawer owns profile', () => {
     expect(PROFILE_DRAWER_KEY).toBe('profile');
+  });
+  it('bank search owns bank and bankKind', () => {
+    expect([...BANK_SEARCH_KEYS].sort()).toEqual(['bank', 'bankKind']);
   });
   it('no two owners share a key', () => {
     expect(new Set(allKeys).size).toBe(allKeys.length);

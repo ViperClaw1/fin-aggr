@@ -56,6 +56,14 @@ export function defaultAssumptions(draft: ProfileDraft, tablesYear: number): Ass
       editable: true,
     });
   }
+  // null and omitted both mean "not entered": local tax is then zero, and the user can set a rate.
+  if (draft.cityMarginalRate === null || draft.cityMarginalRate === undefined) {
+    out.push({
+      id: 'city_marginal_rate',
+      text: 'City income tax rate is not set, so local tax is zero until you change it.',
+      editable: true,
+    });
+  }
   // Always shown, never editable: there are tables for one year only, so the form has no year field.
   const missing =
     draft.taxYear === undefined || draft.taxYear === tablesYear

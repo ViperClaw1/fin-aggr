@@ -52,6 +52,16 @@ export function ChartsSection() {
           ]}
         />
       </div>
+      <div data-testid="bullet-percent">
+        <BulletChart
+          kind="percent"
+          label="Return on assets (synthetic)"
+          min={-2}
+          max={2}
+          value={-1}
+          marker={{ value: 0.4, label: 'Market median' }}
+        />
+      </div>
     </section>
   );
 }

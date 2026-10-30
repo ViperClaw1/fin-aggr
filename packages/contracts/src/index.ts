@@ -12,7 +12,10 @@ export {
   formatRate,
   formatRateDisplay,
   formatSignedRate,
+  formatPercentPoints,
+  formatShare,
   formatUsd,
+  formatUsdFromThousands,
   formatUsdShort,
 } from './money/format';
 // Brand checks without zod for client and engine code (ADR-016 D3)
@@ -37,7 +40,7 @@ export {
   RateTier,
   Regulator,
 } from './entities';
-export { INSTITUTION_KINDS, RULE_PROFILE_FIELDS, STAGE1_CATEGORIES } from './enums';
+export { INSTITUTION_KINDS, METRIC_KEYS, RULE_PROFILE_FIELDS, STAGE1_CATEGORIES } from './enums';
 export {
   DatasetInfo,
   FilingStatus,

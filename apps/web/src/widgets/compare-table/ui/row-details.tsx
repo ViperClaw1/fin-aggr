@@ -4,6 +4,7 @@
 // (CompatibilityBadge, full), and the after-tax math with every assumption (ExplainMath, AC-3).
 // The engine's steps and assumptions are shown as is; the profile adds the defaults it filled in.
 import type { Id, Institution } from '@fa/contracts';
+import Link from 'next/link';
 import { SafetyBadge } from '@/entities/institution';
 import { defaultAssumptions, useProfileDraft } from '@/entities/profile';
 import { CompatibilityBadge } from '@/entities/rule';
@@ -45,6 +46,15 @@ export function RowDetails({ row, institutions, taxYear }: RowDetailsProps) {
           headingLevel={3}
         />
       )}
+      <p>
+        <Link
+          href={`/product/${row.product.id}`}
+          prefetch={false}
+          className="text-sm text-accent underline"
+        >
+          Full breakdown
+        </Link>
+      </p>
     </div>
   );
 }

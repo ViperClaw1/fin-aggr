@@ -12,7 +12,8 @@ test('the CD table is rendered in the static HTML, freshness included', async ({
   const html = await (await request.get('/compare/cd')).text();
   // a rendered row, not only the serialized props (which also carry the names)
   expect(html).toMatch(/<caption[^>]*>Certificates of deposit<\/caption>/);
-  expect(html).toMatch(/<td[^>]*>12-Month CD<\/td>/);
+  // the name is a link to the product page, still in the static cell
+  expect(html).toMatch(/<td[^>]*>\s*<a [^>]*>12-Month CD<\/a><\/td>/);
   expect(html).toMatch(/\d+ days? ago|today/i);
 });
 

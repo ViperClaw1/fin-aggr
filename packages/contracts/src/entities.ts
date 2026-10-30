@@ -1,6 +1,6 @@
 // Organic entities (spec §4). No commercial fields here (ADR-006); every object is strict.
 import { z } from 'zod';
-import { INSTITUTION_KINDS, PRODUCT_CATEGORIES } from './enums';
+import { INSTITUTION_KINDS, METRIC_KEYS, PRODUCT_CATEGORIES } from './enums';
 import { Cents } from './money/cents';
 import { Rate } from './money/rate';
 import { Id, IsoDate } from './primitives';
@@ -22,15 +22,7 @@ export const Institution = z.strictObject({
 });
 export type Institution = z.infer<typeof Institution>;
 
-export const MetricKey = z.enum([
-  'tier1LeverageRatio',
-  'totalRiskBasedCapitalRatio',
-  'allowanceToLoans',
-  'loansToDeposits',
-  'liquidAssetsToAssets',
-  'noncurrentLoansRatio',
-  'returnOnAssets',
-]);
+export const MetricKey = z.enum(METRIC_KEYS);
 export type MetricKey = z.infer<typeof MetricKey>;
 
 // Percent values for display against the market; no money arithmetic on them.
@@ -40,6 +32,7 @@ export const MetricValue = z.strictObject({
   marketMean: z.number(),
   percentile: z.number().min(0).max(100),
 });
+export type MetricValue = z.infer<typeof MetricValue>;
 
 export const BankMetrics = z.strictObject({
   institutionId: Id,

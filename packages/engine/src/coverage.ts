@@ -120,6 +120,22 @@ function room(input: CoverageInput, c: CoverageCandidate, category: OwnershipCat
   return D.max(0, limit.times(owners).minus(decCents(input.interestReservePerAllocation)));
 }
 
+/** The category limit from the rules: the single-owner limit, times the assumed owners for joint. */
+export function categoryLimit(
+  rules: InsuranceRules,
+  regulator: Regulator,
+  category: OwnershipCategory,
+): Cents {
+  const base = decCents(rules.byRegulator[regulator].limitPerOwnerPerInstitutionPerCategory);
+  const owners = category === 'joint' ? rules.jointOwnersAssumed : 1;
+  return toCents(base.times(owners));
+}
+
+/** Every coverage assumption, including ones a given plan always carries. */
+export function coverageAssumptionCatalog(): readonly Assumption[] {
+  return ASSUMPTIONS;
+}
+
 export function planCoverage(input: CoverageInput): CoveragePlan {
   validate(input);
   const warnings: string[] = [];

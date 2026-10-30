@@ -1,7 +1,7 @@
 import { Cents, parseRate } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
 import type { BulletChartProps } from './bullet-chart';
-import { isOver, position } from './scale';
+import { barSpan, isOver, percentExtent, position, positionBetween } from './scale';
 
 const usd = (n: number) => Cents.parse(n);
 
@@ -45,6 +45,43 @@ describe('BulletChartProps', () => {
       value: parseRate('0.1'),
     };
     expect(bad.kind).toBe('usd');
+  });
+});
+
+describe('positionBetween and barSpan', () => {
+  it('places zero in the middle of a symmetric axis and clamps past the ends', () => {
+    expect(positionBetween(-2, -2, 2)).toBe(0);
+    expect(positionBetween(0, -2, 2)).toBe(50);
+    expect(positionBetween(2, -2, 2)).toBe(100);
+    expect(positionBetween(9, -2, 2)).toBe(100);
+    expect(positionBetween(-9, -2, 2)).toBe(0);
+  });
+
+  it('draws a negative value leftward from zero', () => {
+    expect(barSpan(-1, -2, 2)).toEqual({ x: 25, width: 25 });
+    expect(barSpan(1, -2, 2)).toEqual({ x: 50, width: 25 });
+  });
+
+  it('rejects a zero span', () => {
+    expect(() => positionBetween(1, 2, 2)).toThrow(/span must be > 0/);
+  });
+});
+
+describe('percentExtent', () => {
+  it('keeps a positive metric on a zero-based axis', () => {
+    const axis = percentExtent([4, 6, 5]);
+    expect(axis.min).toBe(0);
+    expect(axis.max).toBeGreaterThan(6);
+  });
+
+  it('pulls the minimum below zero when a value is negative', () => {
+    const axis = percentExtent([-1, 0.4]);
+    expect(axis.min).toBeLessThan(0);
+    expect(axis.max).toBeGreaterThan(0.4);
+  });
+
+  it('is a 0…1 axis when nothing was passed', () => {
+    expect(percentExtent([])).toEqual({ min: 0, max: 1 });
   });
 });
 
