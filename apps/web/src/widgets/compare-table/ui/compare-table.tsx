@@ -189,6 +189,7 @@ function Table(props: Props & UrlState) {
             `Show details: ${index.get(r.product.institutionId)?.name ?? 'Unknown bank'}, ${r.product.name}`
           }
           sort={sort}
+          sortDisabled={!props.withForm}
           onSortChange={(next) => {
             props.onSortChange(next === null ? null : (next as ProductSort));
           }}

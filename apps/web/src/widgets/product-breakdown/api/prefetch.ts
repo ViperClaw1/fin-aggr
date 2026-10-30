@@ -18,7 +18,7 @@ import { taxTablesQuery } from '@/entities/reference/queries';
 import { TAX_YEAR } from '@/shared/config';
 import { makeQueryClient } from '@/shared/lib/query-client';
 
-export interface ProductPartner {
+interface ProductPartner {
   id: Id;
   name: string;
 }

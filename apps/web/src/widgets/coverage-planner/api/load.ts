@@ -5,7 +5,7 @@ import { institutionsQuery } from '@/entities/institution/queries';
 import { insuranceRulesQuery } from '@/entities/reference/queries';
 import { makeQueryClient } from '@/shared/lib/query-client';
 
-export interface CoverageInstitution {
+interface CoverageInstitution {
   id: Id;
   name: string;
   kind: Institution['kind'];

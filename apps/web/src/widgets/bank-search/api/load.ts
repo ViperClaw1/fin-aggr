@@ -20,7 +20,7 @@ import { headlineApy } from '@/entities/product';
 import { productsQuery } from '@/entities/product/queries';
 import { makeQueryClient } from '@/shared/lib/query-client';
 
-export interface BankListItem {
+interface BankListItem {
   id: Id;
   name: string;
   kind: Institution['kind'];

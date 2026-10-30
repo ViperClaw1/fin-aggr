@@ -29,6 +29,11 @@ export interface DataTableProps<T> {
   /** Controlled sorting: pass both. */
   sort?: SortState | null;
   onSortChange?: (sort: SortState | null) => void;
+  /**
+   * Sort headers are in the static HTML before their handler exists. Disabled until the caller
+   * is hydrated, so an early click is not lost.
+   */
+  sortDisabled?: boolean;
   /** Hidden columns are not rendered at all. */
   hiddenColumnIds?: readonly string[];
   renderExpanded?: (row: T) => ReactNode;
@@ -87,7 +92,14 @@ export function DataTable<T>(props: DataTableProps<T>) {
           <thead>
             <tr>
               {visible.map((c, i) => (
-                <HeaderCell key={c.id} column={c} first={i === 0} sort={sort} onSort={onSort} />
+                <HeaderCell
+                  key={c.id}
+                  column={c}
+                  first={i === 0}
+                  sort={sort}
+                  onSort={onSort}
+                  disabled={props.sortDisabled === true}
+                />
               ))}
             </tr>
           </thead>
@@ -118,6 +130,7 @@ function HeaderCell<T>(p: {
   first: boolean;
   sort: SortState | null;
   onSort: (id: string) => void;
+  disabled: boolean;
 }) {
   const { column, sort } = p;
   const base = `${p.first ? 'sticky left-0 z-(--z-sticky-corner)' : ''} border-y border-divider bg-surface px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
@@ -134,10 +147,11 @@ function HeaderCell<T>(p: {
     <th scope="col" aria-sort={direction === null ? 'none' : ariaSort[direction]} className={base}>
       <button
         type="button"
+        disabled={p.disabled}
         onClick={() => {
           p.onSort(column.id);
         }}
-        className="inline-flex items-center gap-1 hover:text-foreground"
+        className="inline-flex items-center gap-1 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
       >
         {column.header}
         <span aria-hidden="true" className={direction === null ? 'text-muted' : ''}>

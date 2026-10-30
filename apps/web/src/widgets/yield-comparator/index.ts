@@ -1,2 +1,2 @@
-export { loadYieldData, type YieldData } from './api/load';
+export { loadYieldData } from './api/load';
 export { YieldComparator } from './ui/yield-comparator';

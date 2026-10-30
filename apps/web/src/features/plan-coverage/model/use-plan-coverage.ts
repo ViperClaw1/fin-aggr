@@ -30,7 +30,7 @@ export interface AccountDraft {
   amount: Cents | null;
 }
 
-export interface AllocationView {
+interface AllocationView {
   institutionId: Id;
   name: string;
   category: 'single' | 'joint';

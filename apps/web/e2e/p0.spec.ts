@@ -42,7 +42,10 @@ test('sponsored offers sit outside tables, lists and the product article', async
 
 test('the compare table and the profile drawer work from the keyboard', async ({ page }) => {
   await page.goto('/compare/cd');
+  // header buttons are in the static HTML and stay disabled until the filter form is live
+  await expect(page.getByLabel('Search bank or product')).toBeEnabled();
   const apy = page.getByRole('button', { name: 'Top APY' });
+  await expect(apy).toBeEnabled();
   await apy.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/[?&]sort=apy\.asc/);
