@@ -1,6 +1,7 @@
 // Columns of the compare table. Sortable columns use the feature's SortKey as their id, so the URL
-// can only name a column the feature knows. The net columns exist only with a complete profile;
-// their values are calculations under assumptions, marked with data-assumption (AC-3).
+// can only name a column the feature knows. Net columns are always in the markup so a saved profile
+// does not change the table width; without a complete profile their cells are a placeholder.
+// Calculated values are marked with data-assumption (AC-3).
 import { compareRate, formatUsd, formatUsdShort } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
 import Link from 'next/link';
@@ -23,6 +24,8 @@ export const shownSortKeys = (withProfile: boolean): SortKey[] =>
 
 // ineligible rows have no net result: they sort below every number
 const netInterest = (r: Row): number => r.ranked?.netYield?.netInterest ?? Number.MIN_SAFE_INTEGER;
+
+const netOf = (r: Row): NetYieldResult | null => r.ranked?.netYield ?? null;
 
 export function columns(institutions: InstitutionIndex, now: Date, withProfile: boolean) {
   const bank = (r: Row): string =>
@@ -88,47 +91,55 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
       align: 'end',
     },
   ];
-  return withProfile ? [...base, ...NET_COLUMNS] : base;
+  return [...base, ...netColumns(withProfile)];
 }
 
-const netOf = (r: Row): NetYieldResult | null => r.ranked?.netYield ?? null;
+const PENDING = (
+  <>
+    —<span className="sr-only"> Add your profile to see this.</span>
+  </>
+);
 
-const NET_COLUMNS: TableColumn[] = [
-  {
-    id: 'netInterest',
-    header: 'Net interest',
-    cell: (r) => {
-      const net = netOf(r);
-      return net === null ? (
-        'Not eligible'
-      ) : (
-        <span data-assumption>{formatUsd(net.netInterest)}</span>
-      );
+function netColumns(withProfile: boolean): TableColumn[] {
+  const compare = withProfile ? (a: Row, b: Row) => netInterest(a) - netInterest(b) : undefined;
+  return [
+    {
+      id: 'netInterest',
+      header: 'Net interest',
+      cell: (r) => {
+        const net = netOf(r);
+        if (r.ranked === null) return PENDING;
+        return net === null ? (
+          'Not eligible'
+        ) : (
+          <span data-assumption>{formatUsd(net.netInterest)}</span>
+        );
+      },
+      ...(compare === undefined ? {} : { compare }),
+      align: 'end',
     },
-    compare: (a, b) => netInterest(a) - netInterest(b),
-    align: 'end',
-  },
-  {
-    id: 'netYield',
-    header: 'Net yield',
-    cell: (r) => {
-      const net = netOf(r);
-      return net === null ? (
-        'Not eligible'
-      ) : (
-        <span data-assumption>
-          <RateValue rate={net.netSimpleAnnualYield} />
-        </span>
-      );
+    {
+      id: 'netYield',
+      header: 'Net yield',
+      cell: (r) => {
+        const net = netOf(r);
+        if (r.ranked === null) return PENDING;
+        return net === null ? (
+          'Not eligible'
+        ) : (
+          <span data-assumption>
+            <RateValue rate={net.netSimpleAnnualYield} />
+          </span>
+        );
+      },
+      ...(compare === undefined ? {} : { compare }),
+      align: 'end',
     },
-    // same order as net interest for one scenario (same principal and months)
-    compare: (a, b) => netInterest(a) - netInterest(b),
-    align: 'end',
-  },
-  {
-    id: 'eligibility',
-    header: 'Fit',
-    cell: (r) =>
-      r.ranked === null ? null : <CompatibilityBadge result={r.ranked.eligibility} compact />,
-  },
-];
+    {
+      id: 'eligibility',
+      header: 'Fit',
+      cell: (r) =>
+        r.ranked === null ? PENDING : <CompatibilityBadge result={r.ranked.eligibility} compact />,
+    },
+  ];
+}

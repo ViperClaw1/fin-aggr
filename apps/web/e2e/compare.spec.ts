@@ -71,7 +71,9 @@ const RANKED = 'Ranked for your profile: eligible first, then by net interest af
 test('without a profile the order is top APY, said in words', async ({ page }) => {
   await page.goto('/compare/cd');
   await expect(page.getByText(BY_APY)).toBeVisible();
-  await expect(table(page).getByRole('columnheader', { name: /Net interest/ })).toHaveCount(0);
+  await expect(table(page).getByRole('columnheader', { name: 'Net interest' })).toBeVisible();
+  await expect(table(page).getByRole('columnheader', { name: 'Net yield' })).toBeVisible();
+  await expect(table(page).getByRole('columnheader', { name: 'Fit' })).toBeVisible();
 });
 
 test('three clicks on a header return to the default order', async ({ page }) => {

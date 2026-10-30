@@ -1,4 +1,5 @@
-// The only place in apps/web that touches localStorage (ADR-004, ESLint no-restricted-globals).
+// The only module that reads or writes localStorage (ADR-004). The root layout may also
+// test whether the key exists, without reading the value (ADR-017).
 // Storage failures (quota, blocked storage) never reach the user's action: the profile keeps
 // working in memory and `onError` reports it.
 

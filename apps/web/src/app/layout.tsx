@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
+import Script from 'next/script';
 import { Suspense } from 'react';
 import { ThemeToggle } from '@/features/toggle-theme';
-import { env } from '@/shared/config';
+import { env, PROFILE_STORAGE_KEY } from '@/shared/config';
 import { DemoDataBanner } from '@/shared/ui/demo-banner';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
 import { SiteFooter } from '@/widgets/site-footer';
@@ -42,11 +43,17 @@ export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
+/** Sets data-has-profile before first paint when a draft is stored. Sees presence only (ADR-017). */
+const profilePresenceScript = `try{if(localStorage.getItem(${JSON.stringify(PROFILE_STORAGE_KEY)}))document.documentElement.setAttribute("data-has-profile","")}catch(e){}`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       {/* block, not flex: a flex column makes `mx-auto` children shrink-wrap their content */}
       <body className="min-h-full">
+        <Script id="profile-presence" strategy="beforeInteractive">
+          {profilePresenceScript}
+        </Script>
         <DemoDataBanner />
         <Providers>
           <header className="border-b border-divider">

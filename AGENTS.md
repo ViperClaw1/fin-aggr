@@ -26,7 +26,7 @@
 
 ## Архитектура (кратко, подробности в правилах по путям)
 - Слои `app → widgets → features → entities → shared`. Импорт только вниз. Слайсы одного слоя друг друга не импортируют. Доступ к слайсу только через публичный API (`index.ts`, у `entities` ещё `queries.ts`).
-- `getGateway()` только в `entities/*/api`. `fetch` только в `shared/api/http.ts`. `localStorage` только в `entities/profile/model/persist.ts`. Запись профиля только в `features/edit-profile`.
+- `getGateway()` только в `entities/*/api`. `fetch` только в `shared/api/http.ts`. `localStorage` только в `entities/profile/model/persist.ts`, плюс inline-скрипт в корневом layout, который смотрит лишь наличие ключа `fa.profile` (ADR-017). Запись профиля только в `features/edit-profile`.
 - Данные страниц загружаются при сборке (`'use cache'`) и приходят виджетам пропсами; клиент при первой загрузке не обращается к gateway и не получает zod (ADR-016).
 - `page.tsx` тонкая композиция, не длиннее 80 строк.
 

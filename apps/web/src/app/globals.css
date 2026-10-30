@@ -204,6 +204,22 @@ html:has(dialog:modal) {
   }
 }
 
+/* A saved profile covers the APY table until ranking is ready (ADR-017). The real table
+   stays in the grid so the slot height matches the final catalog. */
+html[data-has-profile] [data-catalog-slot] {
+  display: grid;
+}
+html[data-has-profile] [data-catalog-slot] > [data-catalog-pending],
+html[data-has-profile] [data-catalog-slot] > [data-catalog] {
+  grid-area: 1 / 1;
+}
+html[data-has-profile] [data-catalog] {
+  visibility: hidden;
+}
+html:not([data-has-profile]) [data-catalog-pending] {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

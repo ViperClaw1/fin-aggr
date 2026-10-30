@@ -124,7 +124,7 @@ fa/
 | Чтение профиля (`useProfile`, селекторы) | `entities/profile` | `features`, `widgets`, `app` | Правила слоёв |
 | Запись профиля (`useProfileActions`) | `entities/profile` | Только `features/edit-profile` | ESLint `PROFILE_WRITE` |
 | Сеть (`fetch`) | `shared/api/http.ts` | Только `http.ts` | `no-restricted-globals` |
-| `localStorage` | `entities/profile/model/persist.ts` | Только `persist.ts` | `no-restricted-globals` |
+| `localStorage` | `entities/profile/model/persist.ts` | Только `persist.ts`, плюс скрипт наличия ключа в корневом layout (ADR-017) | `no-restricted-globals` |
 | Фикстуры | `packages/fixtures` | Только `shared/api`, тесты | `FIXTURES_BAN`, depcruise |
 | Реклама (`@fa/contracts/ads`, `SponsoredSlot`) | `contracts/ads`, `widgets/sponsored-slot` | gateway, виджет, монтаж в `app` | depcruise `ads-contract-isolated` |
 | Время | `shared/lib/clock` | Любой код `apps/web` | `no-restricted-properties`, `NO_AMBIENT_TIME` |
@@ -1224,7 +1224,7 @@ module.exports = {
 | E4 UI-кит | `DataTable`, `MetricCard`, поля ввода, `ExplainMath`, графики, баннер, состояния; стенд `/dev/components` | 5 | Компоненты из реестра (раздел 6), проверки доступности |
 | E5 Страницы | профиль: `edit-profile`, `profile-drawer`, `useProductFilters`, e2e «профиль переживает перезагрузку» (1,5, перенесено из E4 и E3); главная (1); compare (3); product (2,5); банки, список и карточка (2,5); coverage (1,5); after-tax yield (1); статические (0,5) | 13,5 | AC-3 и AC-6, все P0-маршруты |
 | E6 PDF и цитаты | синтетические PDF нашего авторства; `CitationViewerHost` и просмотрщик с подсветкой; виджет `fine-print` | 4 | Цитата открывает нужную страницу и подсвечивает текст |
-| E7 Качество | e2e (дым, приватность, доступность); замеры и бюджет бандла; README; шлифовка. Lighthouse mobile на `/compare/cd` (один прогон 2026-10-30: Performance 72 при цели AC-8 не ниже 85, LCP 1,6 с, CLS 0,001). Проигрыш в TBT: после гидрации 60 строк клиентских ячеек перерисовываются, когда оживают фильтры. До M5: медиана 3–5 прогонов, длинные задачи из трассировки, таблица без второго прохода и серверные ячейки там, где нет интерактивности | 4 | AC-1 … AC-10 |
+| E7 Качество | e2e (дым, приватность, доступность); замеры и бюджет бандла; README; шлифовка. Lighthouse mobile на `/compare/cd`: без профиля CLS около 0, с сохранённым профилем CLS 0,128 (колонки и порядок строк после гидрации). P0 (ADR-017) держит колонки на месте и прячет каталог, пока порядок не финальный. Дальше: DOM, zod в простое, полезная нагрузка RSC, LHCI с профилем и без. Опорный замер — PageSpeed Insights или раннер, не один локальный прогон | 4 | AC-1 … AC-10 |
 
 ### Риски
 

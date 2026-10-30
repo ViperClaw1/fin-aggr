@@ -7,9 +7,10 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import { createStore } from 'zustand/vanilla';
 import { loadProfileSchema, type CheckDraft, type SchemaLoader } from './load-schema';
 import { CURRENT_VERSION, migrateDraft, ProfileVersionError, type Migrator } from './migrate';
+import { PROFILE_STORAGE_KEY } from '@/shared/config';
 import { browserBackend, createGuardedStorage, type StorageLike } from './persist';
 
-export const STORAGE_KEY = 'fa.profile';
+export const STORAGE_KEY = PROFILE_STORAGE_KEY;
 
 /** Why a stored profile was discarded; shown once, never persisted. */
 type ResetReason = 'corrupt' | 'future_version' | 'invalid_shape';
