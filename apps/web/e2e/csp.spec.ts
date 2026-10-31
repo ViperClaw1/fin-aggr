@@ -1,3 +1,4 @@
+import { DEFAULT_SEED, generateFixtures } from '@fa/fixtures';
 import { expect, test } from '@playwright/test';
 import { contentSecurityPolicy } from '../security-headers';
 
@@ -18,6 +19,25 @@ test('the page loads without CSP violations', async ({ page }) => {
     document.addEventListener('securitypolicyviolation', (e) => seen.push(e.effectiveDirective));
   });
   await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const seen = await page.evaluate(
+    () => (window as unknown as { cspViolations: string[] }).cspViolations,
+  );
+  expect(seen).toEqual([]);
+});
+
+test('the open citation panel loads without CSP violations', async ({ page }) => {
+  const fact = generateFixtures(Number(process.env.NEXT_PUBLIC_FA_SEED ?? DEFAULT_SEED)).facts[0];
+  expect(fact).toBeDefined();
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    Object.assign(window, { cspViolations: seen });
+    document.addEventListener('securitypolicyviolation', (e) => seen.push(e.effectiveDirective));
+  });
+  if (fact === undefined) return;
+  const q = encodeURIComponent(fact.quote);
+  await page.goto(`/?doc=${fact.documentId}&page=${String(fact.page)}&q=${q}`);
+  await expect(page.locator('dialog canvas')).toBeVisible();
   await page.waitForLoadState('networkidle');
   const seen = await page.evaluate(
     () => (window as unknown as { cspViolations: string[] }).cspViolations,

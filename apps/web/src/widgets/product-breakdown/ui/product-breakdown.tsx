@@ -70,7 +70,7 @@ function UrlSync({ onChange }: { onChange: (handlers: Handlers) => void }) {
 }
 
 function View({ data, handlers }: { data: ProductData; handlers: Handlers | null }) {
-  const { product, institution, partners, facts, dataset, taxTables } = data;
+  const { product, institution, partners, dataset, taxTables } = data;
   const draft = useProfileDraft();
   const profile = useCompleteProfile(taxTables.taxYear);
   const { eligibility, net } = useProductMath(product, draft, profile, taxTables);
@@ -83,7 +83,6 @@ function View({ data, handlers }: { data: ProductData; handlers: Handlers | null
     <article className="flex min-w-0 flex-col gap-8">
       <Conditions
         product={product}
-        facts={facts}
         now={now}
         onOpen={handlers === null ? undefined : handlers.onOpen}
       />

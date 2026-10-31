@@ -10,8 +10,10 @@ import {
   type MetricValue,
 } from '@fa/contracts';
 import Link from 'next/link';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FactValue, freshnessNow } from '@/entities/fact';
 import { headlineApy } from '@/entities/product';
+import { useOpenCitation, type OpenCitation } from '@/features/open-citation';
 import { BulletChart, percentExtent } from '@/shared/ui/charts';
 import { RateValue } from '@/shared/ui/rate-value';
 import type { BankDetail } from '../api/load';
@@ -28,15 +30,43 @@ const METRIC_LABEL: Record<(typeof METRIC_KEYS)[number], string> = {
 
 export function BankHealth({ institution, metrics, products, dataset }: BankDetail) {
   const now = freshnessNow(dataset);
+  const [onOpen, setOnOpen] = useState<((ref: OpenCitation) => void) | null>(null);
+  const open = onOpen === null ? {} : { onOpenCitation: onOpen };
   return (
     <div className="flex flex-col gap-10">
-      <CallReport metrics={metrics} now={now} />
-      <Products institutionName={institution.name} products={products} now={now} />
+      <Suspense fallback={null}>
+        <OpenSync onChange={setOnOpen} />
+      </Suspense>
+      <CallReport metrics={metrics} now={now} open={open} />
+      <Products institutionName={institution.name} products={products} now={now} open={open} />
     </div>
   );
 }
 
-function CallReport({ metrics, now }: { metrics: BankDetail['metrics']; now: Date }) {
+function OpenSync({ onChange }: { onChange: (open: (ref: OpenCitation) => void) => void }) {
+  const { open } = useOpenCitation();
+  const openRef = useRef(open);
+  useLayoutEffect(() => {
+    openRef.current = open;
+  });
+  useEffect(() => {
+    // setState treats a function as an updater and would call it with null.
+    onChange(() => (ref: OpenCitation) => {
+      openRef.current(ref);
+    });
+  }, [onChange]);
+  return null;
+}
+
+function CallReport({
+  metrics,
+  now,
+  open,
+}: {
+  metrics: BankDetail['metrics'];
+  now: Date;
+  open: { onOpenCitation?: (ref: OpenCitation) => void };
+}) {
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">Call report</h2>
@@ -48,6 +78,7 @@ function CallReport({ metrics, now }: { metrics: BankDetail['metrics']; now: Dat
             <FactValue
               fact={{ value: metrics.totalAssetsUsdThousands, provenance: metrics.provenance }}
               now={now}
+              {...open}
               render={(thousands) => <>Total assets {formatUsdFromThousands(thousands)}</>}
             />
           </p>
@@ -69,6 +100,7 @@ function CallReport({ metrics, now }: { metrics: BankDetail['metrics']; now: Dat
                   <FactValue
                     fact={fact}
                     now={now}
+                    {...open}
                     render={(value) =>
                       `${formatPercentPoints(value.value)}, median ${formatPercentPoints(value.marketMedian)}, mean ${formatPercentPoints(value.marketMean)}, percentile ${String(value.percentile)}`
                     }
@@ -86,6 +118,7 @@ function CallReport({ metrics, now }: { metrics: BankDetail['metrics']; now: Dat
           <FactValue
             fact={{ value: metrics.balanceSheetMix, provenance: metrics.provenance }}
             now={now}
+            {...open}
             render={(mix) =>
               mix.map((part) => `${part.label} ${formatShare(part.share)}`).join(', ')
             }
@@ -100,10 +133,12 @@ function Products({
   institutionName,
   products,
   now,
+  open,
 }: {
   institutionName: string;
   products: BankDetail['products'];
   now: Date;
+  open: { onOpenCitation?: (ref: OpenCitation) => void };
 }) {
   return (
     <section className="space-y-3">
@@ -135,6 +170,7 @@ function Products({
                   <FactValue
                     fact={{ value: headlineApy(product), provenance: product.provenance }}
                     now={now}
+                    {...open}
                     render={(rate) => <RateValue rate={rate} />}
                   />
                 </td>

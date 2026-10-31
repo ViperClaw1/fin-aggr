@@ -16,7 +16,7 @@ Show PDFs with `pdfjs-dist` 6.4.299, a dependency of `@fa/web`. The viewer is lo
 
 Generate the eight files with `pdfkit` 0.20.2, a root devDependency used only by `tools/build-docs.mjs`. `tools/*.mjs` is already a knip entry. `@fa/web` runs the script from `predev` and `prebuild`: `pnpm build` builds that package, and `pnpm dev` does not run `prebuild`. `apps/web/public/mock-docs/` is gitignored.
 
-The script reads `NEXT_PUBLIC_FA_SEED` and, when it is unset, uses `20261025`, the default in `apps/web/src/shared/config/env.ts` and `DEFAULT_SEED` in `@fa/fixtures`. The fixture test that checks each quote on its page uses the same seed. It skips the rebuild when `.seed` matches a sha256 of that seed, `packages/fixtures/src/**/*.ts`, and `tools/build-docs.mjs`. A quote change at the same seed changes the hash and rebuilds. The same run copies `pdfjs-dist/standard_fonts/` to `apps/web/public/pdfjs/standard_fonts/` (gitignored) when `LiberationSans-Regular.ttf` is missing.
+The script reads `NEXT_PUBLIC_FA_SEED` and, when it is unset, uses `20261025`, the default in `apps/web/src/shared/config/env.ts` and `DEFAULT_SEED` in `@fa/fixtures`. The fixture test that checks each quote on its page uses the same seed. It skips the rebuild when `.seed` matches a sha256 of that seed, the installed `pdfjs-dist` version, `packages/fixtures/src/**/*.ts`, and `tools/build-docs.mjs`. A quote change at the same seed changes the hash and rebuilds. `@fa/web` copies `pdfjs-dist/standard_fonts/` to `apps/web/public/pdfjs/standard_fonts/` (gitignored) from `scripts/copy-standard-fonts.mjs` when `LiberationSans-Regular.ttf` is missing.
 
 The documents are our own text, with the watermark `SYNTHETIC DOCUMENT · NOT A REAL BANK AGREEMENT` on every page. No `CreationDate` and no random document id: the same seed produces the same bytes.
 
@@ -44,3 +44,4 @@ Opening a citation matches the profile drawer: the first open pushes a history e
 - `tools/bundle-budget.mjs` gains a pdf.js marker: it fails when the marker is in any first-load chunk, and when no chunk in the build contains it.
 - The first Vercel deploy must answer 200 for `/mock-docs/doc_01.pdf`. The deploy runs `@fa/web`'s `prebuild`, which needs the root devDependencies installed so `pdfkit` is present.
 - Highlighting depends on `standardFontDataUrl` and on `findQuote` normalizing spaces, line breaks, case, soft hyphens, and ligatures. The fixture test extracts page text with pdf.js in Node.
+- A hit marks the whole text-layer line. Synthetic quotes are their own paragraph, so the line is the quote. Stage 2, with real agreements, needs a highlight clipped to the characters of the quote inside a line.

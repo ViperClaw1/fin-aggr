@@ -10,6 +10,7 @@ import { INSTITUTION_KIND_LABEL } from '@/entities/institution';
 import { headlineApy } from '@/entities/product';
 import { CompatibilityBadge } from '@/entities/rule';
 import type { InstitutionIndex, SortKey } from '@/features/filter-products';
+import type { OpenCitation } from '@/features/open-citation';
 import type { Column } from '@/shared/ui/data-table';
 import { RateValue } from '@/shared/ui/rate-value';
 import type { Row } from '../model/order';
@@ -27,7 +28,12 @@ const netInterest = (r: Row): number => r.ranked?.netYield?.netInterest ?? Numbe
 
 const netOf = (r: Row): NetYieldResult | null => r.ranked?.netYield ?? null;
 
-export function columns(institutions: InstitutionIndex, now: Date, withProfile: boolean) {
+export function columns(
+  institutions: InstitutionIndex,
+  now: Date,
+  withProfile: boolean,
+  onOpen: ((ref: OpenCitation) => void) | null,
+) {
   const bank = (r: Row): string =>
     institutions.get(r.product.institutionId)?.name ?? 'Unknown bank';
   const base: TableColumn[] = [
@@ -77,6 +83,7 @@ export function columns(institutions: InstitutionIndex, now: Date, withProfile: 
           now={now}
           compact
           align="end"
+          {...(onOpen === null ? {} : { onOpenCitation: onOpen })}
         />
       ),
       compare: (a, b) => compareRate(headlineApy(a.product), headlineApy(b.product)),

@@ -3,13 +3,28 @@
 // An expanded row: who holds the money (SafetyBadge), whether the user can open it and why
 // (CompatibilityBadge, full), and the after-tax math with every assumption (ExplainMath, AC-3).
 // The engine's steps and assumptions are shown as is; the profile adds the defaults it filled in.
-import type { Id, Institution } from '@fa/contracts';
+import { formatRate, type EarlyWithdrawal, type Id, type Institution } from '@fa/contracts';
 import Link from 'next/link';
+import { FactValue } from '@/entities/fact';
 import { SafetyBadge } from '@/entities/institution';
 import { defaultAssumptions, useProfileDraft } from '@/entities/profile';
 import { CompatibilityBadge } from '@/entities/rule';
+import type { OpenCitation } from '@/features/open-citation';
 import { ExplainMath } from '@/shared/ui/explain-math';
 import type { Row } from '../model/order';
+
+function penaltyText(penalty: EarlyWithdrawal): string {
+  switch (penalty.kind) {
+    case 'none':
+      return 'None';
+    case 'days_of_interest':
+      return `${String(penalty.days)} days of interest`;
+    case 'months_of_interest':
+      return `${String(penalty.months)} months of interest`;
+    case 'percent_of_principal':
+      return `${formatRate(penalty.rate)} of the principal`;
+  }
+}
 
 export type InstitutionDetails = ReadonlyMap<
   Id,
@@ -20,9 +35,10 @@ interface RowDetailsProps {
   row: Row;
   institutions: InstitutionDetails;
   taxYear: number;
+  onOpen: ((ref: OpenCitation) => void) | null;
 }
 
-export function RowDetails({ row, institutions, taxYear }: RowDetailsProps) {
+export function RowDetails({ row, institutions, taxYear, onOpen }: RowDetailsProps) {
   const draft = useProfileDraft();
   const issuer = institutions.get(row.product.institutionId);
   const partners = (issuer?.partnerInstitutionIds ?? []).map((id) => ({
@@ -46,6 +62,13 @@ export function RowDetails({ row, institutions, taxYear }: RowDetailsProps) {
           headingLevel={3}
         />
       )}
+      <p>
+        <FactValue
+          fact={row.product.earlyWithdrawal}
+          render={penaltyText}
+          {...(onOpen === null ? {} : { onOpenCitation: onOpen })}
+        />
+      </p>
       <p>
         <Link
           href={`/product/${row.product.id}`}

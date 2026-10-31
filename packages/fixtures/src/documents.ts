@@ -79,11 +79,12 @@ export function generateFacts(
       page: PENALTY_PAGE,
       quote: penaltyQuote(penalty),
     };
+    // The other clauses of the same agreement belong to that product too, so fine print can show them.
     const others = OTHER_FACTS.map((f, k): FactRecord => ({
       ...common,
       ...f,
       id: `fact_${doc.id}_${String(k + 1)}`,
-      productId: null,
+      productId: product?.id ?? null,
       page: Math.min(doc.pages, PENALTY_PAGE + k + 1),
     }));
     return [penaltyFact, ...others];

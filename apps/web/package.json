@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "predev": "node ../../tools/build-docs.mjs",
-    "dev": "next dev",
+    "dev": "node ./scripts/copy-standard-fonts.mjs && next dev",
     "prebuild": "node ../../tools/build-docs.mjs",
-    "build": "next build",
+    "build": "node ./scripts/copy-standard-fonts.mjs && next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "e2e": "playwright test"

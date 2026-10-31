@@ -1,5 +1,5 @@
 // The product's terms. Every rate, penalty and limit goes through FactValue (AC-3).
-import type { Fact, FactRecord, Id, Product } from '@fa/contracts';
+import type { Id, Product } from '@fa/contracts';
 import type { ReactNode } from 'react';
 import { FactValue } from '@/entities/fact';
 import { RateValue } from '@/shared/ui/rate-value';
@@ -7,38 +7,17 @@ import { openingText, penaltyText, TAX_TREATMENT_LABEL, termText, tierRange } fr
 
 type OnOpen = ((ref: { documentId: Id; page: number; quote: string }) => void) | undefined;
 
-function fromRecord(product: Product, record: FactRecord): Fact<string> {
-  const base = product.provenance;
-  return {
-    value: record.valueText,
-    provenance: {
-      sourceId: base.sourceId,
-      sourceUrl: base.sourceUrl,
-      retrievedAt: base.retrievedAt,
-      document: { id: record.documentId, page: record.page, quote: record.quote },
-      verification:
-        record.status === 'verified' && base.verification.status === 'verified'
-          ? base.verification
-          : { status: 'unverified' },
-      isMock: record.isMock,
-    },
-  };
-}
-
 export function Conditions({
   product,
-  facts,
   now,
   onOpen,
 }: {
   product: Product;
-  facts: readonly FactRecord[];
   now: Date;
   onOpen: OnOpen;
 }) {
   const sourced = product.provenance;
   const open = onOpen === undefined ? {} : { onOpenCitation: onOpen };
-  const extra = facts.filter((fact) => fact.key !== 'earlyWithdrawalPenalty');
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">Terms</h2>
@@ -71,16 +50,6 @@ export function Conditions({
             {...open}
           />
         </Row>
-        {extra.map((fact) => (
-          <Row key={fact.id} label={fact.humanLabel}>
-            <FactValue
-              fact={fromRecord(product, fact)}
-              render={(text) => text}
-              now={now}
-              {...open}
-            />
-          </Row>
-        ))}
       </dl>
     </section>
   );

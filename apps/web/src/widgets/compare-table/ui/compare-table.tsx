@@ -13,6 +13,7 @@ import {
   useProfileHydrated,
 } from '@/entities/profile';
 import { useNetYield } from '@/features/compute-net-yield';
+import { useOpenCitation, type OpenCitation } from '@/features/open-citation';
 import {
   effectiveSort,
   filterProducts,
@@ -61,6 +62,7 @@ interface UrlState {
   onSortChange: (sort: ProductSort | null) => void;
   /** opens the profile drawer; null before hydration (the button shows disabled) */
   onOpenProfile: (() => void) | null;
+  onOpenCitation: ((ref: OpenCitation) => void) | null;
   /** the filter form reads the URL; the prerendered fallback shows it disabled */
   withForm: boolean;
 }
@@ -70,6 +72,7 @@ interface Url {
   sort: ProductSort | null;
   setSort: (sort: ProductSort | null) => void;
   openProfile: () => void;
+  openCitation: (ref: OpenCitation) => void;
 }
 const noop = () => undefined;
 
@@ -88,6 +91,7 @@ function Catalog(props: {
   rows: readonly Row[];
   index: InstitutionDetails;
   taxYear: number;
+  onOpen: ((ref: OpenCitation) => void) | null;
   sort: ProductSort | null;
   sortDisabled: boolean;
   onSortChange: (next: ProductSort | null) => void;
@@ -110,7 +114,12 @@ function Catalog(props: {
             rows={props.rows}
             getRowId={(r) => r.product.id}
             renderExpanded={(r) => (
-              <RowDetails row={r} institutions={props.index} taxYear={props.taxYear} />
+              <RowDetails
+                row={r}
+                institutions={props.index}
+                taxYear={props.taxYear}
+                onOpen={props.onOpen}
+              />
             )}
             expandLabel={(r) =>
               `Show details: ${props.index.get(r.product.institutionId)?.name ?? 'Unknown bank'}, ${r.product.name}`
@@ -152,6 +161,7 @@ export function CompareTable(props: Props) {
         sort={url?.sort ?? null}
         onSortChange={url?.setSort ?? noop}
         onOpenProfile={url?.openProfile ?? null}
+        onOpenCitation={url?.openCitation ?? null}
         withForm={url !== null}
       />
     </>
@@ -164,9 +174,12 @@ function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
   // `open` is a new function on every render (it closes over the current field): reported through
   // a ref, or the effect below would re-run on every render and loop through setUrl
   const { open } = useProfileDrawer();
+  const { open: openCitation } = useOpenCitation();
   const openRef = useRef(open);
+  const citationRef = useRef(openCitation);
   useLayoutEffect(() => {
     openRef.current = open;
+    citationRef.current = openCitation;
   });
   useEffect(() => {
     onChange({
@@ -177,6 +190,9 @@ function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
       },
       openProfile: () => {
         openRef.current(PROFILE_FORM_FIELDS[0]);
+      },
+      openCitation: (ref) => {
+        citationRef.current(ref);
       },
     });
   }, [filters, sort, setSort, onChange]);
@@ -245,10 +261,11 @@ function Table(props: Props & UrlState) {
         {props.withForm && needs !== null ? <NeedsDataNote needs={needs} /> : null}
         <Catalog
           caption={CAPTION[category] ?? 'Products'}
-          columns={columns(index, freshnessNow(dataset), withProfile)}
+          columns={columns(index, freshnessNow(dataset), withProfile, props.onOpenCitation)}
           rows={rows}
           index={index}
           taxYear={taxTables.taxYear}
+          onOpen={props.onOpenCitation}
           sort={sort}
           sortDisabled={!props.withForm}
           onSortChange={props.onSortChange}

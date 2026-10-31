@@ -1,8 +1,9 @@
 import { isId } from '@fa/contracts';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { SponsoredSlot } from '@/widgets/sponsored-slot';
+import { FinePrint } from '@/widgets/fine-print';
 import { loadProductData, loadProductParams, ProductBreakdown } from '@/widgets/product-breakdown';
+import { SponsoredSlot } from '@/widgets/sponsored-slot';
 
 // Reads params outside <Suspense> on purpose: the shell must be in the static HTML (see compare).
 export const instant = false;
@@ -41,6 +42,7 @@ export default async function ProductPage({ params }: PageProps<'/product/[id]'>
       {/* the ad sits beside the breakdown, never inside it (AC-6) */}
       <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <ProductBreakdown {...data} />
+        <FinePrint product={data.product} facts={data.facts} dataset={data.dataset} />
         <SponsoredSlot placement="product_aside" />
       </div>
     </main>
