@@ -3,7 +3,7 @@
 // Reports every route and fails above the AC-8 budget on the compare route (ADR-016 D7). All
 // categories share one route and one bundle; /compare/cd has the most rows.
 import process from 'node:process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
@@ -30,7 +30,19 @@ const size = (path) => {
 // minification: zod passes it as a string to its class constructor.
 const ZOD_MARKER = '$ZodType';
 const ZOD_ALLOWED = new Set(['/dev/components']); // the stand renders schemas; 404 in production
+const PDF_MARKER = 'Invalid PDF url data:';
 const hasZod = (path) => readFileSync(join(APP, path), 'utf8').includes(ZOD_MARKER);
+const hasPdf = (path) => readFileSync(join(APP, path), 'utf8').includes(PDF_MARKER);
+
+function jsFiles(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) jsFiles(path, out);
+    else if (name.endsWith('.js')) out.push(path);
+  }
+  return out;
+}
 
 const rows = stats
   .map(({ route, firstLoadChunkPaths }) => ({
@@ -66,5 +78,20 @@ if (budgeted === undefined) {
 }
 if (budgeted.kb > BUDGET_KB) {
   process.stderr.write(`✖ ${BUDGET_ROUTE} is over the AC-8 budget\n`);
+  process.exit(1);
+}
+// pdf.js must exist in some chunk (the marker still matches) and in no first-load chunk (ADR-018).
+const staticDir = join(APP, '.next/static');
+const pdfChunks = jsFiles(staticDir).filter((path) =>
+  readFileSync(path, 'utf8').includes(PDF_MARKER),
+);
+if (pdfChunks.length === 0) {
+  process.stderr.write(`✖ no chunk contains ${PDF_MARKER}: the pdf.js check checks nothing\n`);
+  process.exit(1);
+}
+const firstLoad = new Set(stats.flatMap((row) => row.firstLoadChunkPaths));
+const leaked = [...firstLoad].filter(hasPdf);
+if (leaked.length > 0) {
+  process.stderr.write(`✖ pdf.js in the first load: ${leaked.join(', ')} (ADR-018)\n`);
   process.exit(1);
 }

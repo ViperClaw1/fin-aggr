@@ -1,19 +1,20 @@
 // Synthetic PDFs for the mock documents (ADR-018). Same seed as the app: NEXT_PUBLIC_FA_SEED,
 // or 20261025, the default in env.ts and @fa/fixtures. A fixed CreationDate makes pdfkit's file id
-// stable, so the same seed is the same bytes. If the files for this seed are already in the output
-// directory, the script does nothing. Quote text that changes at the same seed is picked up only
-// after the directory is deleted.
+// stable, so the same seed is the same bytes. The .seed stamp is a hash of that seed, the fixture
+// sources and this script, so a quote change rebuilds even when the seed does not. If the stamp
+// still matches, the script does nothing.
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { register } from 'node:module';
+import { cpSync, existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire, register } from 'node:module';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import PDFDocument from 'pdfkit';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const FONTS = join(ROOT, 'apps/web/public/pdfjs/standard_fonts');
 // Same number as readEnv and @fa/fixtures DEFAULT_SEED. The PDF test fails if those drift.
 const DEFAULT_SEED = 20261025;
 const DOCUMENT_IDS = Array.from({ length: 8 }, (_, i) => `doc_${String(i + 1).padStart(2, '0')}`);
@@ -111,16 +112,43 @@ export function renderDocument(meta, facts) {
   });
 }
 
-function alreadyBuilt(dir, ids, seed) {
-  const stamp = join(dir, '.seed');
-  if (!existsSync(stamp) || readFileSync(stamp, 'utf8') !== String(seed)) return false;
+function sourceStamp(seed) {
+  const hash = createHash('sha256');
+  hash.update(String(seed));
+  hash.update('\0');
+  const files = [
+    ...globSync('packages/fixtures/src/**/*.ts', { cwd: ROOT }),
+    'tools/build-docs.mjs',
+  ].sort();
+  for (const file of files) {
+    hash.update(file);
+    hash.update('\0');
+    hash.update(readFileSync(join(ROOT, file)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+function ensureFonts() {
+  if (existsSync(join(FONTS, 'LiberationSans-Regular.ttf'))) return;
+  const require = createRequire(join(ROOT, 'apps/web/package.json'));
+  const src = join(dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts');
+  mkdirSync(FONTS, { recursive: true });
+  cpSync(src, FONTS, { recursive: true });
+}
+
+function alreadyBuilt(dir, ids, stamp) {
+  const file = join(dir, '.seed');
+  if (!existsSync(file) || readFileSync(file, 'utf8') !== stamp) return false;
   return ids.every((id) => existsSync(join(dir, `${id}.pdf`)));
 }
 
 async function main() {
   const seed = seedFromEnv();
   const dir = outputDir();
-  if (alreadyBuilt(dir, DOCUMENT_IDS, seed)) {
+  const stamp = sourceStamp(seed);
+  ensureFonts();
+  if (alreadyBuilt(dir, DOCUMENT_IDS, stamp)) {
     process.stdout.write(`mock-docs: seed ${String(seed)} already built\n`);
     return;
   }
@@ -141,7 +169,7 @@ async function main() {
     const bytes = await renderDocument(doc, facts);
     writeFileSync(join(dir, `${doc.id}.pdf`), bytes);
   }
-  writeFileSync(join(dir, '.seed'), String(seed));
+  writeFileSync(join(dir, '.seed'), stamp);
   const digest = createHash('sha256')
     .update(readFileSync(join(dir, 'doc_01.pdf')))
     .digest('hex')

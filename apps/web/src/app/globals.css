@@ -235,3 +235,23 @@ html:not([data-has-profile]) [data-catalog-pending] {
     scroll-behavior: auto !important;
   }
 }
+
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  transform-origin: 0 0;
+}
+
+.pdf-text-layer span {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.pdf-text-layer span[data-quote-highlight] {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}

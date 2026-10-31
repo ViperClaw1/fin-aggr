@@ -3,6 +3,7 @@
 // drawer on a field without importing the drawer itself.
 import type { Profile, ProfileDraft } from '@fa/contracts';
 import { parseAsStringLiteral, useQueryState } from 'nuqs';
+import { createOverlayHistory } from '@/shared/lib/overlay-history';
 
 /** The form's fields in display order; the scenario fields are named without the prefix. */
 export const PROFILE_FORM_FIELDS = [
@@ -20,9 +21,7 @@ export type ProfileFormField = (typeof PROFILE_FORM_FIELDS)[number];
 export const PROFILE_DRAWER_KEY = 'profile';
 
 const field = parseAsStringLiteral(PROFILE_FORM_FIELDS);
-
-// Whether this page pushed the open entry. One per tab, like the history it describes.
-let pushed = false;
+const overlay = createOverlayHistory();
 
 /**
  * The field the drawer is open on (null when closed), `open` and `close`. Opening pushes a
@@ -33,19 +32,12 @@ let pushed = false;
 export function useProfileDrawer() {
   const [current, setField] = useQueryState(PROFILE_DRAWER_KEY, field);
   const open = (to: ProfileFormField) => {
-    if (current === null) pushed = true;
-    void setField(to, { history: current === null ? 'push' : 'replace' });
+    void setField(to, { history: overlay.open(current === null) });
   };
   const close = () => {
-    // already closed by Back: the browser has stepped over our entry itself
-    if (current === null) {
-      pushed = false;
-      return;
-    }
-    if (pushed) {
-      pushed = false;
-      window.history.back();
-    } else void setField(null, { history: 'replace' });
+    const action = overlay.close(current !== null);
+    if (action === 'back') window.history.back();
+    else if (action === 'replace') void setField(null, { history: 'replace' });
   };
   return { field: current, open, close };
 }

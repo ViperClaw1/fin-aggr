@@ -17,8 +17,9 @@ coverage/
 # next.js
 .next/
 out/
-# synthetic PDFs, rebuilt by tools/build-docs.mjs (ADR-018)
+# synthetic PDFs and pdf.js standard fonts, rebuilt by tools/build-docs.mjs (ADR-018)
 apps/web/public/mock-docs/
+apps/web/public/pdfjs/
 # written by `next dev` when it detects an AI agent; content is not ours
 apps/web/AGENTS.md
 

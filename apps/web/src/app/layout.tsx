@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { ThemeToggle } from '@/features/toggle-theme';
 import { env, PROFILE_STORAGE_KEY } from '@/shared/config';
 import { DemoDataBanner } from '@/shared/ui/demo-banner';
+import { CitationViewerHost } from '@/widgets/citation-viewer';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
 import { SiteFooter } from '@/widgets/site-footer';
 import { SiteNav } from '@/widgets/site-nav';
@@ -86,6 +87,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </header>
           {children}
           <SiteFooter />
+          <Suspense fallback={null}>
+            <CitationViewerHost />
+          </Suspense>
         </Providers>
       </body>
     </html>

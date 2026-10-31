@@ -67,14 +67,15 @@ describe('synthetic documents', () => {
   beforeAll(() => {
     build(built, String(DEFAULT_SEED));
     build(again, String(DEFAULT_SEED));
-  });
+  }, 60_000);
 
   it('uses the same default seed as the app and the generator', () => {
     expect(readEnv({}).seed).toBe(DEFAULT_SEED);
     const dir = mkdtempSync(join(tmpdir(), 'fa-docs-'));
     try {
-      build(dir, null);
-      expect(readFileSync(join(dir, '.seed'), 'utf8')).toBe(String(DEFAULT_SEED));
+      const log = build(dir, null);
+      expect(log).toContain(`seed ${String(DEFAULT_SEED)}`);
+      expect(readFileSync(join(dir, '.seed'), 'utf8')).toMatch(/^[a-f0-9]{64}$/);
       expect(generateFixtures(DEFAULT_SEED).documents.map((doc) => doc.id)).toEqual(
         Array.from({ length: 8 }, (_, i) => `doc_${String(i + 1).padStart(2, '0')}`),
       );
