@@ -32,25 +32,28 @@ export function Disclosure({
   useEffect(() => {
     const details = ref.current;
     if (details === null) return undefined;
+    // A test or a script can set `.open` before this effect runs. `toggle` does not bubble,
+    // so read the property here and listen on the element itself.
+    const sync = (): void => {
+      setOpen(details.open);
+    };
     // native listener: keyboard handlers on <details> itself are not allowed by jsx-a11y
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' || !details.open) return;
       details.open = false;
       details.querySelector('summary')?.focus();
     };
+    details.addEventListener('toggle', sync);
     details.addEventListener('keydown', onKey);
+    sync();
+    details.dataset.ready = '';
     return () => {
+      details.removeEventListener('toggle', sync);
       details.removeEventListener('keydown', onKey);
     };
   }, []);
   return (
-    <details
-      ref={ref}
-      className="relative inline-block"
-      onToggle={(event) => {
-        setOpen(event.currentTarget.open);
-      }}
-    >
+    <details ref={ref} className="relative inline-block">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 tabular-nums [&::-webkit-details-marker]:hidden">
         {summary}
         {icon ? (

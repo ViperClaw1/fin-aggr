@@ -57,6 +57,8 @@ test.describe('on a 375 px screen', () => {
   test.use({ viewport: { width: 375, height: 800 } });
 
   test('the page does not scroll sideways with every panel open', async ({ page }) => {
+    // data-ready is set in an effect, after hydration, so `.open` is not written into the SSR markup.
+    await section(page).locator('details[data-ready]').first().waitFor();
     // open panels overlap the next toggle on a narrow screen, so open them all directly
     await section(page)
       .locator('details')

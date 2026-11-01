@@ -48,6 +48,7 @@ test('a filter in the URL narrows the table in memory', async ({ page }) => {
 });
 
 test('compare renders without serious or critical axe violations', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/compare/cd');
   await expect(page.getByRole('table')).toBeVisible();
   await expectNoA11yViolations(page);

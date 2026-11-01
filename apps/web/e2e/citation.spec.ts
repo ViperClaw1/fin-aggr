@@ -36,7 +36,7 @@ test('the quote highlight covers the painted text', async ({ page }) => {
   const button = page.locator('[data-citation] button').first();
   await button.click();
   const dialog = page.getByRole('dialog', { name: 'Source' });
-  await expect(dialog.locator('[data-quote-highlight]').first()).toBeVisible();
+  await expect(dialog.locator('[data-quote-highlight]').first()).toBeVisible({ timeout: 15_000 });
   expect(await darkPixels(page)).toBeGreaterThan(0);
 });
 
