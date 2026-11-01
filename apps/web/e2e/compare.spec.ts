@@ -8,13 +8,12 @@ import { expectNoA11yViolations } from './axe';
 // a string that exists only in the fixtures package, so only the mock gateway chunk carries it
 const FIXTURE_MARKER = 'mock-call-reports';
 
-test('the CD table is rendered in the static HTML, freshness included', async ({ request }) => {
+test('the CD table is rendered in the static HTML', async ({ request }) => {
   const html = await (await request.get('/compare/cd')).text();
   // a rendered row, not only the serialized props (which also carry the names)
   expect(html).toMatch(/<caption[^>]*>Certificates of deposit<\/caption>/);
   // the name is a link to the product page, still in the static cell
   expect(html).toMatch(/<td[^>]*>\s*<a [^>]*>12-Month CD<\/a><\/td>/);
-  expect(html).toMatch(/\d+ days? ago|today/i);
 });
 
 test('after hydration no script with the mock gateway or fixtures is loaded', async ({ page }) => {
@@ -24,9 +23,15 @@ test('after hydration no script with the mock gateway or fixtures is loaded', as
   });
   await page.goto('/compare/cd');
   await expect(page.getByRole('table', { name: 'Certificates of deposit' })).toBeVisible();
-  // freshness text appears once datasetInfo is read from the hydrated cache; it sits in the closed
-  // source tooltip (T3), so it is in the DOM, not on screen
-  await expect(page.getByText(/days? ago|today/i).first()).toBeAttached();
+  // data-ready is set in an effect, after hydration. The source panel mounts only while open,
+  // so freshness is not in the closed cell.
+  const source = page
+    .getByRole('table', { name: 'Certificates of deposit' })
+    .locator('details[data-ready]')
+    .first();
+  await source.waitFor();
+  await source.locator('summary').click();
+  await expect(source.getByText(/Updated (today|yesterday|\d+ days ago)/)).toBeVisible();
   await page.waitForLoadState('networkidle');
   const bodies = await Promise.all(scripts);
   expect(bodies.length).toBeGreaterThan(0);
