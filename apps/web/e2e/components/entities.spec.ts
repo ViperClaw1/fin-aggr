@@ -63,6 +63,7 @@ test.describe('on a 375 px screen', () => {
       .evaluateAll((all) => {
         for (const d of all) (d as HTMLDetailsElement).open = true;
       });
+    await expect(section(page).locator('details > div').first()).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );

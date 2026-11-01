@@ -34,12 +34,36 @@ Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 202
 
 ## Measurements
 
-Lighthouse (E7, mobile, 5 runs, median) is not filled from a single local run. The first GitHub Actions artifacts (`.lighthouseci/anonymous` and `.lighthouseci/with-profile`) are the baseline; copy the `/compare/cd` medians here when that run exists. Manual checks are PageSpeed Insights or an incognito window, and they say whether a profile was stored.
+AC-8 (E7, decided 2026-11-01). Two uses, two instruments.
+
+- **Acceptance, no profile.** PageSpeed Insights, mobile, median of 3 runs, `https://fin-aggr.vercel.app/compare/cd`. First run is in, two more are still needed for the median.
+- **Acceptance, with profile.** PSI cannot set `localStorage`. Median of Lighthouse CI with the same complete draft as `compare-cls.spec.ts`.
+- **Regression.** Lighthouse CI against `pnpm start` on the runner. Assertions stay `warn` through E7 step 2.8, then `error` on `/compare/cd` (Performance ≥ 85, TBT ≤ 300 ms, CLS ≤ 0.1). A green job while the level is `warn` does not mean the score cleared 85.
+- **Not acceptance.** Brave in a normal window. Extensions and Shields share the page process.
+
+PSI, 2026-11-01 16:47 GMT+4, one run, mobile, no profile, `https://fin-aggr.vercel.app/compare/cd`. Lighthouse 13.6.0, emulated Moto G Power, Slow 4G, Headless Chromium 153. The filmstrip is the compare page (60 products). SEO on the same report is 66; that is not AC-8.
+
+| Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| anonymous | 100 | 0.9 s | 0.9 s | 50 ms | 0.001 | 1.4 s | 100 (one run; median waits for three) |
+
+Field series, 2026-11-01, mobile, Brave, not incognito, Lighthouse 13.5.0, Chromium 156, same URL. Not for acceptance. Median is the middle of three. The higher TBT is the laptop's CPU throttle plus Brave, not the PSI lab.
+
+| Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| anonymous | 74 | 2.1 s | 1.3 s | 1 290 ms | 0.001 | 2.0 s | 70, 74, 75 |
+| with profile | 72 | 2.0 s | 1.7 s | 1 510 ms | 0.007 | 2.2 s | 74, 72, 72 |
+
+Lab run [41304184631](https://github.com/ViperClaw1/fin-aggr/actions/runs/41304184631) on `d239ccc` finished green. The artifact list for that run is empty, so the `/compare/cd` medians are not copied yet. They come from the `categories:performance` lines in the two `lighthouse` jobs.
 
 | Scenario | Route | Performance | LCP | FCP | TBT | CLS | Note |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| anonymous | `/compare/cd` | | | | | | pending first LHCI run |
-| with profile | `/compare/cd` | | | | | | pending first LHCI run |
+| anonymous | `/compare/cd` | | | | | | `d239ccc` log, artifacts empty |
+| with profile | `/compare/cd` | | | | | | `d239ccc` log, artifacts empty |
+
+DOM on `/compare/cd`, no profile, hydrated, mobile viewport 412×823, Puppeteer, current Vercel (`d239ccc`). 2337 elements, 62 `<details>`, 487 of those elements sit in closed panels. Step 2.2 stops mounting the panel until it is opened, so those 487 leave the tree (about 1850 remain). That is not half the page: the rows themselves are the rest. A quote was not in this tree (no `<blockquote>`).
+
+Stop rule. After steps 2.1–2.8, if the acceptance medians are still under 85, step 2.9 draws the table once and the filter only hides rows. If that is still under 85, the score is taken to the customer with the numbers. Features are not cut in silence. The two options on the table are a mobile bar of 80, given the React and Next main thread (about 150 KB), or a lighter mobile table.
 
 | Commit | `/` | `/_not-found` | `/dev/components` | Note |
 | --- | --- | --- | --- | --- |
@@ -67,4 +91,4 @@ depcruise: until 2026-10-28 every npm rule (`contracts-depend-on-zod-only`, spec
 ## Consequences
 - Commit order, each with `pnpm bundle:report` before and after recorded here: report script (this ADR) → D4 → D3 → D5 → D2 → D6 → D1 (with compare-table), then D7 and status `accepted`.
 - New e2e after D1: on `/compare/cd` the first load requests no mock or fixture chunk, and the data is in the HTML.
-- If the numbers after D1–D5 still exceed the budget, AC-8 itself is revisited rather than cutting features silently.
+- If the numbers after D1–D5 still exceed the bundle budget, AC-8's bundle half is revisited rather than cutting features silently. The Performance half has the same rule: see the stop rule under Measurements.

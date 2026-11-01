@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 interface DisclosureProps {
   /** Visible part of the toggle, e.g. a value or a chip. */
@@ -17,6 +17,7 @@ interface DisclosureProps {
 /**
  * Native <details> (no Popover API: Safari 16.4 floor, ADR-014). From `sm` up the panel is
  * absolute so a table row does not grow; on phones it stays in the flow. Escape closes it and returns focus, which <details> lacks natively.
+ * The panel mounts only while open, so a closed quote, source or eligibility reason is not in the DOM (E7).
  * Not inside <p>: <details> is not phrasing content.
  */
 export function Disclosure({
@@ -27,6 +28,7 @@ export function Disclosure({
   icon = true,
 }: DisclosureProps) {
   const ref = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     const details = ref.current;
     if (details === null) return undefined;
@@ -42,7 +44,13 @@ export function Disclosure({
     };
   }, []);
   return (
-    <details ref={ref} className="relative inline-block">
+    <details
+      ref={ref}
+      className="relative inline-block"
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 tabular-nums [&::-webkit-details-marker]:hidden">
         {summary}
         {icon ? (
@@ -54,11 +62,13 @@ export function Disclosure({
       </summary>
       {/* in the flow on phones (an absolute panel from a toggle near the right edge would leave
           the screen), absolute from `sm` up so a table row keeps its height */}
-      <div
-        className={`z-(--z-popover) mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-background p-3 text-left text-sm font-normal whitespace-normal shadow-lg sm:absolute ${align === 'end' ? 'sm:right-0' : 'sm:left-0'}`}
-      >
-        {children}
-      </div>
+      {open ? (
+        <div
+          className={`z-(--z-popover) mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-background p-3 text-left text-sm font-normal whitespace-normal shadow-lg sm:absolute ${align === 'end' ? 'sm:right-0' : 'sm:left-0'}`}
+        >
+          {children}
+        </div>
+      ) : null}
     </details>
   );
 }
