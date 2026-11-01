@@ -46,7 +46,7 @@ export function Disclosure({
     details.addEventListener('toggle', sync);
     details.addEventListener('keydown', onKey);
     sync();
-    details.dataset.ready = '';
+    details.dataset['ready'] = '';
     return () => {
       details.removeEventListener('toggle', sync);
       details.removeEventListener('keydown', onKey);
