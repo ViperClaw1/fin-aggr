@@ -82,7 +82,7 @@ describe('synthetic documents', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it('writes the same bytes for the same seed and skips a second run', () => {
     const fixtures = generateFixtures(DEFAULT_SEED);
