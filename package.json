@@ -19,12 +19,15 @@
     "bench": "vitest bench --run",
     "golden:check": "node tools/golden-check.mjs",
     "bundle:report": "node tools/bundle-budget.mjs",
+    "lhci": "node tools/lhci-prepare.mjs && lhci autorun --config=tools/lhci.runtime.json",
+    "lhci:profile": "node tools/lhci-prepare.mjs --profile && lhci autorun --config=tools/lhci.runtime.json",
     "rules:sync": "node tools/sync-agent-rules.mjs",
     "rules:check": "node tools/sync-agent-rules.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@fa/fixtures": "workspace:*",
+    "@lhci/cli": "0.15.1",
     "@next/eslint-plugin-next": "16.4.3",
     "@vitest/coverage-v8": "5.0.5",
     "@vitest/eslint-plugin": "1.6.28",
@@ -40,6 +43,7 @@
     "lint-staged": "17.6.0",
     "pdfkit": "0.20.2",
     "prettier": "3.9.10",
+    "puppeteer": "25.14.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",
     "vitest": "5.0.5"

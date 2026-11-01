@@ -306,4 +306,18 @@ export default defineConfig(
 
   // canaries are excluded from tsconfig (they import modules that do not exist), so no type info
   { files: CANARIES, extends: [tseslint.configs.disableTypeChecked] },
+
+  // LHCI loads the config and the puppeteer script with require(), so these stay CommonJS.
+  {
+    files: ['tools/lhci*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        module: 'readonly',
+        process: 'readonly',
+        require: 'readonly',
+      },
+    },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
 );

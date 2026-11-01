@@ -33,6 +33,14 @@ Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 202
 - **D7. Budget as a CI gate.** `tools/bundle-budget.mjs` reports per route (CI step after `build`) and fails above 200 KB gzip on `/compare/[category]`, when that route is missing from the build, or when zod (`$ZodType`) is in the first load of any route but `/dev/components`.
 
 ## Measurements
+
+Lighthouse (E7, mobile, 5 runs, median) is not filled from a single local run. The first GitHub Actions artifacts (`.lighthouseci/anonymous` and `.lighthouseci/with-profile`) are the baseline; copy the `/compare/cd` medians here when that run exists. Manual checks are PageSpeed Insights or an incognito window, and they say whether a profile was stored.
+
+| Scenario | Route | Performance | LCP | FCP | TBT | CLS | Note |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| anonymous | `/compare/cd` | | | | | | pending first LHCI run |
+| with profile | `/compare/cd` | | | | | | pending first LHCI run |
+
 | Commit | `/` | `/_not-found` | `/dev/components` | Note |
 | --- | --- | --- | --- | --- |
 | baseline | 179.0 | 179.0 | 188.1 | |

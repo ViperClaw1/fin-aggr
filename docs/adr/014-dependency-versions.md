@@ -27,6 +27,19 @@ Deferred (pinned when first used, in the ADR or PR that adds them):
 
 Tailwind 4 sets the browser floor: Safari 16.4+, Chrome 111+. Accepted for the US Stage 1 audience. Tailwind is wired through `turbopack.rules` in `next.config.ts` with `@tailwindcss/turbopack`. If Tailwind or Next change the supported integration, this ADR is revisited.
 
+## Amendment (E7, 2026-11-01): `@lhci/cli` installed
+
+Accepted with the E7 plan. Exact version, no `^`/`~`. Root devDependency. Used by `pnpm lhci` and `pnpm lhci:profile` (GitHub Actions, report only until the Performance gate is turned on). Not imported by application code.
+
+| Package | Version | Where |
+| --- | --- | --- |
+| @lhci/cli | 0.15.1 | root devDependency |
+| puppeteer | 25.14.0 | root devDependency |
+
+`@lhci/cli` does not depend on `puppeteer`. When a puppeteer script is set, LHCI loads the package with `require('puppeteer')`, so it has to be installed beside the CLI. `tools/lhci-prepare.mjs` imports it and writes that Chrome's path into the run config, so both scenarios measure the same browser. `puppeteer` 25.15.0 and 25.16.0 were newer than two weeks on 2026-11-01; 25.14.0 was published 2026-10-14.
+
+Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06-25.
+
 ## Amendment (E6, ADR-018, 2026-10-30): installed
 
 Accepted with ADR-018. Exact versions, no `^`/`~`. `pdfkit` is imported by `tools/build-docs.mjs`. `pdfjs-dist` is imported by the fixture PDF test; the viewer imports it in step 2.

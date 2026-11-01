@@ -51,6 +51,10 @@ next-env.d.ts
 playwright-report/
 test-results/
 
+# lighthouse ci reports and the generated run config (E7)
+.lighthouseci/
+tools/lhci.runtime.json
+
 # Claude Code: personal and transient state
 .claude/settings.local.json
 CLAUDE.local.md

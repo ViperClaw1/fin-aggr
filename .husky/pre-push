@@ -1,1 +1,1 @@
-pnpm typecheck && pnpm depcruise
+pnpm knip && pnpm lint && pnpm typecheck
