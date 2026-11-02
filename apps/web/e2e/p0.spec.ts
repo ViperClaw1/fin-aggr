@@ -1,6 +1,6 @@
 // Closing checks for the P0 routes (E5 step 8): citations, the profile sentinel, ads, keyboard.
 import { DEFAULT_SEED, generateFixtures } from '@fa/fixtures';
-import { expect, test, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 
 const fixtures = generateFixtures(Number(process.env.NEXT_PUBLIC_FA_SEED ?? DEFAULT_SEED));
 const product = fixtures.products.find((item) => item.category === 'cd');
@@ -109,17 +109,53 @@ test('a sentinel income never leaves the browser while following links (AC-4)', 
   expect(leaks).toEqual([]);
 });
 
+test('the Compare menu opens on hover and closes when the pointer leaves', async ({ page }) => {
+  const nav = page.getByRole('navigation', { name: 'Primary' });
+  const compare = nav.getByText('Compare', { exact: true });
+  const menu = nav.locator('details').filter({ hasText: 'Compare' });
+  await page.goto('/');
+  await compare.hover();
+  await expect(nav.getByRole('link', { name: 'CDs', exact: true })).toBeVisible();
+  await nav.getByRole('link', { name: 'Savings', exact: true }).hover();
+  await expect(menu).toHaveJSProperty('open', true);
+  await page.getByRole('heading', { level: 1 }).hover();
+  await expect(menu).toHaveJSProperty('open', false);
+});
+
+test('a narrow screen opens Compare with a click', async ({ browser }, testInfo) => {
+  const baseURL = testInfo.project.use.baseURL;
+  const pixel = devices['Pixel 5'];
+  const context = await browser.newContext({
+    userAgent: pixel.userAgent,
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: pixel.deviceScaleFactor,
+    isMobile: true,
+    hasTouch: true,
+    ...(baseURL === undefined ? {} : { baseURL }),
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Menu' }).click();
+    const nav = page.getByRole('navigation', { name: 'Primary' });
+    await nav.getByText('Compare', { exact: true }).click();
+    await expect(nav.getByRole('link', { name: 'CDs', exact: true })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 test('the Compare menu closes after a choice and after a click outside', async ({ page }) => {
   const nav = page.getByRole('navigation', { name: 'Primary' });
   const compare = nav.getByText('Compare', { exact: true });
   const menu = nav.locator('details').filter({ hasText: 'Compare' });
   await page.goto('/');
-  await compare.click();
+  await compare.hover();
   await expect(menu).toHaveJSProperty('open', true);
   await page.getByRole('heading', { level: 1 }).click();
   await expect(menu).toHaveJSProperty('open', false);
 
-  await compare.click();
+  await compare.hover();
   await nav.getByRole('link', { name: 'CDs', exact: true }).click();
   await expect(page).toHaveURL(/\/compare\/cd$/);
   await expect(menu).toHaveJSProperty('open', false);

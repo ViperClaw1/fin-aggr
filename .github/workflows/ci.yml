@@ -66,3 +66,16 @@ jobs:
           name: lighthouse-${{ matrix.scenario }}
           path: .lighthouseci
           if-no-files-found: warn
+
+  # Vercel deploys main on its own. Fail when the live HTML is still another commit.
+  # `<meta name="build">` is VERCEL_GIT_COMMIT_SHA (layout.tsx); locally it is "local".
+  production-commit:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node tools/check-production-commit.mjs https://fin-aggr.vercel.app ${{ github.sha }}

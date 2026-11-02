@@ -25,6 +25,7 @@ const P0_ROUTES = [
 test('home renders without serious or critical axe violations', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="build"]')).toHaveAttribute('content', 'local');
   await expectNoA11yViolations(page);
 });
 

@@ -36,16 +36,20 @@ Fixtures: every `retrievedAt` is `2026-10-01T00:00:00Z`, later than `AS_OF = 202
 
 AC-8 (E7, decided 2026-11-01). Two uses, two instruments.
 
-- **Acceptance, no profile.** PageSpeed Insights, mobile, median of 3 runs, `https://fin-aggr.vercel.app/compare/cd`. First run is in, two more are still needed for the median.
+- **Acceptance, no profile.** PageSpeed Insights, mobile, median of 3 runs, `https://fin-aggr.vercel.app/compare/cd`. Median recorded 2026-11-02 (below).
 - **Acceptance, with profile.** PSI cannot set `localStorage`. Median of Lighthouse CI with the same complete draft as `compare-cls.spec.ts`.
 - **Regression.** Lighthouse CI against `pnpm start` on the runner. Assertions stay `warn` through E7 step 2.8, then `error` on `/compare/cd` (Performance ≥ 85, TBT ≤ 300 ms, CLS ≤ 0.1). A green job while the level is `warn` does not mean the score cleared 85.
 - **Not acceptance.** Brave in a normal window. Extensions and Shields share the page process.
 
-PSI, 2026-11-01 16:47 GMT+4, one run, mobile, no profile, `https://fin-aggr.vercel.app/compare/cd`. Lighthouse 13.6.0, emulated Moto G Power, Slow 4G, Headless Chromium 153. The filmstrip is the compare page (60 products). SEO on the same report is 66; that is not AC-8.
+PSI acceptance, 2026-11-02 15:29–15:36 GMT+4, three runs, mobile, no profile, `https://fin-aggr.vercel.app/compare/cd`. Lighthouse 13.6.0, emulated Moto G Power, Slow 4G, Headless Chromium 153. The filmstrip is the compare page. SEO on the same reports is 66; that is not AC-8. Median is the middle value of the three.
 
 | Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| anonymous | 100 | 0.9 s | 0.9 s | 50 ms | 0.001 | 1.4 s | 100 (one run; median waits for three) |
+| anonymous | 100 | 1.0 s | 1.0 s | 70 ms | 0.001 | 1.4 s | 100, 99, 100 |
+
+Per run, in order: 100 / 1.0 s / 1.0 s / 70 ms / 0.001 / 1.4 s (15:29); 99 / 0.9 s / 0.9 s / 100 ms / 0.001 / 1.9 s (15:33); 100 / 1.0 s / 1.0 s / 40 ms / 0.001 / 1.4 s (15:36). Reports: [o6q4ug4bzm](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/o6q4ug4bzm?form_factor=mobile), [u9ycte91f2](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/u9ycte91f2?form_factor=mobile), [rdf59f0w7n](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/rdf59f0w7n?form_factor=mobile).
+
+The 2026-11-01 16:47 single run (Performance 100, LCP 0.9 s, FCP 0.9 s, TBT 50 ms, CLS 0.001, Speed Index 1.4 s) is the same lab, not part of this median.
 
 Field series, 2026-11-01, mobile, Brave, not incognito, Lighthouse 13.5.0, Chromium 156, same URL. Not for acceptance. Median is the middle of three. The higher TBT is the laptop's CPU throttle plus Brave, not the PSI lab.
 

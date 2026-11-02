@@ -88,7 +88,7 @@ function NavMenu({ label, items }: (typeof MENUS)[number]) {
       >
         {label} <Chevron />
       </summary>
-      <div className="grid min-w-44 rounded-md border border-border bg-background p-1.5 shadow-lg md:absolute md:top-11 md:left-0">
+      <div className="grid min-w-44 rounded-md border border-border bg-background p-1.5 shadow-lg md:absolute md:top-full md:left-0">
         {items.map((item) => (
           <Link
             key={item.href}

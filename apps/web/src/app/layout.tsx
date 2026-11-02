@@ -28,6 +28,10 @@ const DESCRIPTION =
 // Pages set their own title, description and canonical path; the rest is inherited. noindex while
 // the data is synthetic (decided 2026-10-29): no made-up rates in search results. OG images come
 // from the opengraph-image files.
+// Vercel sets this at build time. CI compares it with the pushed commit so a deploy
+// that never picked up the commit fails instead of shipping yesterday's build.
+const buildSha = process.env['VERCEL_GIT_COMMIT_SHA'] ?? 'local';
+
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: { default: 'FA · Compare deposits after tax', template: '%s · FA' },
@@ -36,6 +40,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   openGraph: { type: 'website', siteName: 'FA', locale: 'en_US', description: DESCRIPTION },
   twitter: { card: 'summary_large_image' },
+  other: { build: buildSha },
 };
 
 export const viewport: Viewport = {

@@ -1189,6 +1189,8 @@ module.exports = {
 8. `pnpm build`
 9. `pnpm e2e` (Playwright: дым, приватность, axe)
 
+На `main`, после деплоя: `node tools/check-production-commit.mjs` сверяет `<meta name="build">` на проде с `github.sha`. В теге — `VERCEL_GIT_COMMIT_SHA`, локально `local`. Джоба ждёт выкладку до 8 минут и падает, если прод отдаёт другой коммит.
+
 **Хуки.** pre-commit: `lint-staged` (ESLint с `--fix --max-warnings 0`, Prettier). pre-push: `knip`, `lint`, `typecheck`. `depcruise` остаётся шагом CI.
 
 **Исключения.** Только `// eslint-disable-next-line <правило> -- <причина не короче 10 символов>, <ссылка на задачу>`. Число таких директив печатается в CI, рост считается замечанием на ревью.
