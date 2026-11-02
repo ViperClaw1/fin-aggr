@@ -60,7 +60,12 @@ function ProfilePresenceScript() {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The presence script sets data-has-profile on this node before hydration (ADR-017).
+      suppressHydrationWarning
+    >
       {/* block, not flex: a flex column makes `mx-auto` children shrink-wrap their content */}
       <body className="min-h-full">
         <ProfilePresenceScript />

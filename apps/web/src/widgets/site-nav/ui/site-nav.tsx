@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 const itemClass =
-  'flex min-h-10 items-center gap-1 rounded px-2.5 font-medium text-muted no-underline hover:bg-divider hover:text-foreground';
+  'flex min-h-10 items-center gap-1 rounded px-2.5 font-medium text-muted no-underline hover:text-foreground';
+
+const menuTriggerClass = `${itemClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`;
 
 function Chevron() {
   return (
@@ -44,14 +46,26 @@ const MENUS = [
 function NavMenu({ label, items }: (typeof MENUS)[number]) {
   const root = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
+    const menu = root.current;
+    const finePointer = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    // Native listeners: jsx-a11y rejects mouse handlers on <details>.
+    const onEnter = () => {
+      if (menu !== null && finePointer()) menu.open = true;
+    };
+    const onLeave = () => {
+      if (menu !== null && finePointer()) menu.open = false;
+    };
     const onPointerDown = (event: PointerEvent) => {
-      const menu = root.current;
       if (menu?.open !== true) return;
       if (event.target instanceof Node && menu.contains(event.target)) return;
       menu.open = false;
     };
+    menu?.addEventListener('mouseenter', onEnter);
+    menu?.addEventListener('mouseleave', onLeave);
     document.addEventListener('pointerdown', onPointerDown);
     return () => {
+      menu?.removeEventListener('mouseenter', onEnter);
+      menu?.removeEventListener('mouseleave', onLeave);
       document.removeEventListener('pointerdown', onPointerDown);
     };
   }, []);
@@ -62,7 +76,15 @@ function NavMenu({ label, items }: (typeof MENUS)[number]) {
   return (
     <details ref={root} className="relative">
       <summary
-        className={`${itemClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+        className={menuTriggerClass}
+        onClick={(event) => {
+          // A pointer click toggles <details> and would close a menu the pointer just opened.
+          // Keyboard activation has detail 0 and still toggles. Touch keeps the click toggle.
+          if (event.detail === 0) return;
+          if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            event.preventDefault();
+          }
+        }}
       >
         {label} <Chevron />
       </summary>
