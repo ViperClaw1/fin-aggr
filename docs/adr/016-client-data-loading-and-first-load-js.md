@@ -51,6 +51,13 @@ Per run, in order: 100 / 1.0 s / 1.0 s / 70 ms / 0.001 / 1.4 s (15:29); 99 / 0.9
 
 The 2026-11-01 16:47 single run (Performance 100, LCP 0.9 s, FCP 0.9 s, TBT 50 ms, CLS 0.001, Speed Index 1.4 s) is the same lab, not part of this median.
 
+Local Lighthouse CI, before E7 step 2.3, 2026-11-02. Lighthouse 12.6.1 against `pnpm start` on this machine, 5 runs, median is the middle value. Not the PSI acceptance run: the laptop's CPU throttle is why TBT is about 1.5 s here and about 70 ms on PSI. Assertions stayed `warn` (Performance 0.66 and 0.73, both under 0.85; TBT over 300 ms). The other three routes are in `.lighthouseci/anonymous` and `.lighthouseci/with-profile`; only `/compare/cd` is gated.
+
+| Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index |
+| --- | --- | --- | --- | --- | --- | --- |
+| anonymous | 66 | 2.6 s | 1.8 s | 1 531 ms | 0.002 | 2.5 s |
+| with profile | 73 | 1.4 s | 0.9 s | 1 666 ms | 0 | 1.8 s |
+
 Field series, 2026-11-01, mobile, Brave, not incognito, Lighthouse 13.5.0, Chromium 156, same URL. Not for acceptance. Median is the middle of three. The higher TBT is the laptop's CPU throttle plus Brave, not the PSI lab.
 
 | Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |
