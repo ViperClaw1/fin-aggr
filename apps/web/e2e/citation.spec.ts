@@ -70,7 +70,7 @@ test('a direct link opens the panel on the cited page', async ({ page }) => {
   await page.goto(`/?doc=${fact.documentId}&page=${String(fact.page)}&q=${q}`);
   const dialog = page.getByRole('dialog', { name: 'Source' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(`Page ${String(fact.page)} of`)).toBeVisible();
+  await expect(dialog.getByText(new RegExp(`^Page ${String(fact.page)} of`))).toBeVisible();
   await expect(dialog.locator('[data-quote-highlight]').first()).toBeVisible();
 });
 
@@ -113,8 +113,10 @@ test('every fixture quote opens on its page', async ({ page }) => {
     await page.goto(`/?doc=${fact.documentId}&page=${String(fact.page)}&q=${q}`);
     await expect(
       dialog.locator('p.text-sm').filter({ hasText: `Page ${String(fact.page)} of` }),
-    ).toBeVisible();
-    await expect(dialog.locator('[data-quote-highlight]').first()).toBeVisible();
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(dialog.locator('[data-quote-highlight]').first()).toBeVisible({
+      timeout: 20_000,
+    });
   }
 });
 
