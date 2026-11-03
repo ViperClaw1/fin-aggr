@@ -11,7 +11,7 @@ export {
   type RuleTraceNode,
   type Tri,
 } from './rules';
-export { rankProducts, type RankedProduct } from './rank';
+export { rankProducts, type RankableProduct, type RankedProduct } from './rank';
 export {
   categoryLimit,
   planCoverage,

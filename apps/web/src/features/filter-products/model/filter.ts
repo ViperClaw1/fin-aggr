@@ -6,7 +6,9 @@ import type { ProductFilters } from './search-params';
 
 export type InstitutionIndex = ReadonlyMap<Id, Pick<Institution, 'name' | 'kind'>>;
 
-type Test = (p: Product, issuer: Pick<Institution, 'name' | 'kind'> | undefined) => boolean;
+type Filterable = Pick<Product, 'institutionId' | 'name' | 'termMonths' | 'minOpening' | 'tiers'>;
+
+type Test = (p: Filterable, issuer: Pick<Institution, 'name' | 'kind'> | undefined) => boolean;
 
 function tests(f: Omit<ProductFilters, 'hide'>): Test[] {
   const out: Test[] = [];
@@ -31,11 +33,11 @@ function tests(f: Omit<ProductFilters, 'hide'>): Test[] {
  * is missing from the index is left out. Other filters keep it, so products do not vanish while
  * institutions are still loading.
  */
-export function filterProducts(
-  products: readonly Product[],
+export function filterProducts<T extends Filterable>(
+  products: readonly T[],
   filters: Omit<ProductFilters, 'hide'>,
   institutions: InstitutionIndex,
-): Product[] {
+): T[] {
   const checks = tests(filters);
   return products.filter((p) => {
     const issuer = institutions.get(p.institutionId);

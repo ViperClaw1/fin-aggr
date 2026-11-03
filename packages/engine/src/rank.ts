@@ -1,5 +1,5 @@
 // Ranking (spec §5). The signature takes no ad data: sponsored slots cannot affect order (ADR-006).
-import type { Id, Product, Profile, TaxTables } from '@fa/contracts';
+import type { EarlyWithdrawal, Id, Product, Profile, TaxTables } from '@fa/contracts';
 import {
   evaluateEligibility,
   productEligibilityRule,
@@ -35,8 +35,22 @@ function byGroupThenNetThenId(a: RankedProduct, b: RankedProduct): number {
   return a.productId < b.productId ? -1 : 1;
 }
 
+/** What ranking reads. The compare page omits fields the row and the engine never use. */
+export type RankableProduct = Pick<
+  Product,
+  | 'id'
+  | 'category'
+  | 'termMonths'
+  | 'tierMode'
+  | 'tiers'
+  | 'taxTreatment'
+  | 'minOpening'
+  | 'maxDeposit'
+  | 'eligibility'
+> & { earlyWithdrawal: { readonly value: EarlyWithdrawal } };
+
 export function rankProducts(
-  products: readonly Product[],
+  products: readonly RankableProduct[],
   profile: Profile,
   tables: TaxTables,
 ): RankedProduct[] {

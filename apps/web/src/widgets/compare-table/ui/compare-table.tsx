@@ -29,6 +29,7 @@ import { freshnessNow } from '@/entities/fact';
 import type { CompareData } from '../api/prefetch';
 import { needsData } from '../model/needs-data';
 import { defaultOrder, type Row } from '../model/order';
+import { unpackCompareProducts } from '../model/wire';
 import { columns, shownSortKeys } from './columns';
 import { NeedsDataNote } from './needs-data-note';
 import { RowDetails, type InstitutionDetails } from './row-details';
@@ -200,7 +201,8 @@ function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
 }
 
 function Table(props: Props & UrlState) {
-  const { category, products, institutions, dataset, taxTables, filters } = props;
+  const { category, institutions, dataset, taxTables, filters } = props;
+  const products = useMemo(() => unpackCompareProducts(props.products), [props.products]);
   const index: InstitutionDetails = useMemo(
     () => new Map(institutions.map((i) => [i.id, i])),
     [institutions],

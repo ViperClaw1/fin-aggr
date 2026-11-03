@@ -6,8 +6,8 @@
 // useDeferredValue, so typing stays responsive while the table catches up.
 // The engine (with decimal.js) loads through import() once there is a profile: a visitor without
 // one never parses it, which keeps the first load light on phones (Lighthouse TBT, E5 step 2).
-import type { Product, Profile, TaxTables } from '@fa/contracts';
-import type { RankedProduct, rankProducts } from '@fa/engine';
+import type { Profile, TaxTables } from '@fa/contracts';
+import type { RankableProduct, RankedProduct, rankProducts } from '@fa/engine';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { lazyOnce } from '@/shared/lib/lazy-once';
 
@@ -17,7 +17,7 @@ const loadRank = lazyOnce(() => import('@fa/engine').then((m) => m.rankProducts)
 
 /** The rankProducts order, or null without a complete profile or until the engine has loaded. */
 export function useNetYield(
-  products: readonly Product[],
+  products: readonly RankableProduct[],
   profile: Profile | null,
   tables: TaxTables,
 ): readonly RankedProduct[] | null {

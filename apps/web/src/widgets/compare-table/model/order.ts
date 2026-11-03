@@ -1,17 +1,18 @@
 // The table's default order, computed here and not by DataTable (it gets ordered rows and
 // sort={null}): top APY without a profile, the rankProducts order with one. The ranking is not
 // one column's sort (eligible, then needs data, then ineligible, net interest inside each group).
-import { compareRate, type Product, type Rate } from '@fa/contracts';
+import { compareRate, type Rate } from '@fa/contracts';
 import type { RankedProduct } from '@fa/engine';
 import { headlineApy } from '@/entities/product';
+import type { CompareProduct } from './wire';
 
 export interface Row {
-  product: Product;
+  product: CompareProduct;
   /** null without a complete profile */
   ranked: RankedProduct | null;
 }
 
-type WithApy = [product: Product, apy: Rate];
+type WithApy = [product: CompareProduct, apy: Rate];
 
 /** Top APY first; ties by id, code-unit order, the same on every machine. */
 function byApy([a, aApy]: WithApy, [b, bApy]: WithApy): number {
@@ -21,7 +22,7 @@ function byApy([a, aApy]: WithApy, [b, bApy]: WithApy): number {
 }
 
 export function defaultOrder(
-  products: readonly Product[],
+  products: readonly CompareProduct[],
   ranked: readonly RankedProduct[] | null,
 ): Row[] {
   // the top APY once per product, not twice per comparison (hydration cost on phones)
