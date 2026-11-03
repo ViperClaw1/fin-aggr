@@ -1,10 +1,12 @@
 'use client';
 
 import type { Profile } from '@fa/contracts';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { toCompleteProfile } from './complete';
+import { scheduleWhenIdle, startProfileHydration } from './hydrate';
+import { hasStoredProfile } from './persist';
 import { profileStore } from './store';
 
 export const useProfileDraft = () => useStore(profileStore, (s) => s.draft);
@@ -40,7 +42,39 @@ export const useProfileActions = () =>
     })),
   );
 
-/** Reads the stored profile once on the client; safe to call twice (StrictMode). */
-export async function rehydrateProfile(): Promise<void> {
-  await profileStore.persist.rehydrate();
+/** Reads the stored profile once on the client; safe to call twice (StrictMode).
+ *  No stored key: nothing is imported. A stored key loads the schema once the browser is idle. */
+export function rehydrateProfile(): Promise<void> {
+  return startProfileHydration(
+    {
+      setState: (partial) => {
+        profileStore.setState(partial);
+      },
+      rehydrate: async () => {
+        await profileStore.persist.rehydrate();
+      },
+    },
+    hasStoredProfile(),
+    scheduleWhenIdle,
+  );
+}
+
+/** True once the schema chunk has loaded. Mount this only where an edit can happen. */
+export function useProfileSchema(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void profileStore.ensureSchema().then(
+      () => {
+        if (live) setReady(true);
+      },
+      () => {
+        if (live) setReady(true);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  return ready;
 }

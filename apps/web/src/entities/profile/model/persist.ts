@@ -2,12 +2,23 @@
 // test whether the key exists, without reading the value (ADR-017).
 // Storage failures (quota, blocked storage) never reach the user's action: the profile keeps
 // working in memory and `onError` reports it.
+import { PROFILE_STORAGE_KEY } from '@/shared/config';
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 /** localStorage in a browser, null on the server. Reading it may throw (blocked storage). */
 export const browserBackend = (): StorageLike | null =>
   typeof window === 'undefined' ? null : localStorage;
+
+/** True when a profile envelope is stored. A blocked read counts as absent. */
+export function hasStoredProfile(storage: StorageLike | null = browserBackend()): boolean {
+  if (storage === null) return false;
+  try {
+    return storage.getItem(PROFILE_STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
 
 /** Tests and fallbacks: a Map behind the Storage methods. */
 export function memoryBackend(seed: Record<string, string> = {}): StorageLike & {

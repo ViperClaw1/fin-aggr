@@ -180,6 +180,24 @@ describe('storage failures', () => {
   });
 });
 
+describe('the schema chunk is not loaded until an edit needs it', () => {
+  it('loads on ensureSchema and then accepts an edit', async () => {
+    let loads = 0;
+    const loadSchema = async () => {
+      loads += 1;
+      const { checkDraft } = await import('./schema');
+      return checkDraft;
+    };
+    const store = createProfileStore({ backend: () => memoryBackend(), loadSchema });
+    expect(loads).toBe(0);
+    await store.ensureSchema();
+    expect(loads).toBe(1);
+    expect(store.getState().update({ stateCode: 'NY' }).ok).toBe(true);
+    await store.ensureSchema();
+    expect(loads).toBe(1);
+  });
+});
+
 describe('the schema chunk fails to load (ADR-016 D5)', () => {
   const failing = () => Promise.reject(new Error('ChunkLoadError'));
   const raw = JSON.stringify({ state: { draft: { stateCode: 'NY' } }, version: 1 });

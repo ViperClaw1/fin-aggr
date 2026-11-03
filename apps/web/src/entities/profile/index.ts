@@ -14,6 +14,7 @@ export {
   useProfileActions,
   useProfileDraft,
   useProfileHydrated,
+  useProfileSchema,
   useProfileStatus,
 } from './model/hooks';
 export { exportProfile, MAX_IMPORT_BYTES, parseImport, type ImportResult } from './model/serialize';

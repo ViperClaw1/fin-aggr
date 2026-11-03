@@ -1,6 +1,7 @@
 // The profile store (ADR-004, ADR-009): a draft persisted in this browser only. Hydration is manual
 // (skipHydration) so the static shell renders without a profile; HydrateProfile starts it.
-// The schema loads lazily on hydration (ADR-016 D5); until it has loaded, edits are rejected and
+// The schema loads lazily (ADR-016 D5, E7 step 2.3): on hydration only when a profile is stored,
+// otherwise when the form calls ensureSchema. Until it has loaded, edits are rejected and
 // nothing is written, so a failed load never overwrites the stored profile.
 import type { ProfileDraft } from '@fa/contracts';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
@@ -160,7 +161,18 @@ export function createProfileStore({
       },
     ),
   );
-  return store;
+  return Object.assign(store, {
+    /** Loads the schema chunk if a later edit needs it. A failed load sets `loadError`. */
+    ensureSchema: async (): Promise<void> => {
+      if (gate.check !== null) return;
+      try {
+        gate.check = await loadSchema();
+      } catch (error) {
+        store.setState({ loadError: true });
+        throw new SchemaLoadError(error);
+      }
+    },
+  });
 }
 
 /** The app's store. On the server it never hydrates and has no storage, so it stays empty. */

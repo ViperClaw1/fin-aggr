@@ -1,5 +1,6 @@
 // The profile drawer and form (E5 step 1). The profile lives in this browser only (ADR-004).
-import { expect, test, type Page } from '@playwright/test';
+// $ZodType is the zod marker that survives minification (tools/bundle-budget.mjs).
+import { expect, test, type Page, type Response } from '@playwright/test';
 import { expectNoA11yViolations } from './axe';
 
 // a label that only the lazily loaded form renders, so only its chunk carries it
@@ -20,6 +21,33 @@ async function fillIncome(page: Page, text: string) {
   await income.fill(text);
   await income.blur();
 }
+
+function collectScripts(page: Page): { bodies: () => Promise<string[]>; stop: () => void } {
+  const pending: Promise<string>[] = [];
+  const onResponse = (response: Response) => {
+    if (response.request().resourceType() === 'script' && response.ok()) {
+      pending.push(response.text().catch(() => ''));
+    }
+  };
+  page.on('response', onResponse);
+  return {
+    bodies: () => Promise.all(pending),
+    stop: () => {
+      page.off('response', onResponse);
+    },
+  };
+}
+
+test('a visit without a profile does not load the zod chunk', async ({ page }) => {
+  const scripts = collectScripts(page);
+  await page.goto('/');
+  await expect(profileButton(page)).toHaveText('No profile yet');
+  await page.waitForLoadState('networkidle');
+  scripts.stop();
+  const bodies = await scripts.bodies();
+  expect(bodies.length).toBeGreaterThan(0);
+  expect(bodies.some((body) => body.includes('$ZodType'))).toBe(false);
+});
 
 test('the profile survives a reload', async ({ page }) => {
   await page.goto('/');
@@ -147,20 +175,20 @@ test('the open drawer has no serious or critical axe violations', async ({ page 
 
 for (const path of ['/', '/compare/cd']) {
   test(`the form is not in the first load of ${path}, only after opening`, async ({ page }) => {
-    const scripts: Promise<string>[] = [];
-    page.on('response', (response) => {
-      if (response.request().resourceType() === 'script') scripts.push(response.text());
-    });
+    const scripts = collectScripts(page);
     await page.goto(path);
     await expect(profileButton(page)).toHaveText('No profile yet');
     await page.waitForLoadState('networkidle');
-    const before = await Promise.all(scripts);
-    expect(before.filter((b) => b.includes(FORM_MARKER))).toHaveLength(0);
+    const before = await scripts.bodies();
+    expect(before.filter((body) => body.includes(FORM_MARKER))).toHaveLength(0);
 
     await profileButton(page).click();
     await expect(drawer(page).getByLabel(FORM_MARKER)).toBeVisible();
-    const after = await Promise.all(scripts);
-    expect(after.filter((b) => b.includes(FORM_MARKER)).length).toBeGreaterThan(0);
+    // the schema chunk loads after the form paints (E7 step 2.3)
+    await page.waitForLoadState('networkidle');
+    scripts.stop();
+    const after = await scripts.bodies();
+    expect(after.filter((body) => body.includes(FORM_MARKER)).length).toBeGreaterThan(0);
   });
 }
 
