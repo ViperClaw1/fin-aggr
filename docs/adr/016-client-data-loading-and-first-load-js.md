@@ -58,6 +58,13 @@ Local Lighthouse CI, before E7 step 2.3, 2026-11-02. Lighthouse 12.6.1 against `
 | anonymous | 66 | 2.6 s | 1.8 s | 1 531 ms | 0.002 | 2.5 s |
 | with profile | 73 | 1.4 s | 0.9 s | 1 666 ms | 0 | 1.8 s |
 
+Local Lighthouse CI, 2026-11-03, after step 2.3 was committed and before the step 2.4 commit. Same tool and machine, 5 runs, median is the middle value. `pnpm start` serves the last production build, so this is not a measured effect of 2.4. Both scores are still under 85 and TBT is higher than the 2026-11-02 baseline. Assertions stayed `warn`.
+
+| Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index |
+| --- | --- | --- | --- | --- | --- | --- |
+| anonymous | 71 | 1.6 s | 1.0 s | 2 392 ms | 0 | 2.8 s |
+| with profile | 67 | 1.7 s | 1.3 s | 3 580 ms | 0 | 4.5 s |
+
 Field series, 2026-11-01, mobile, Brave, not incognito, Lighthouse 13.5.0, Chromium 156, same URL. Not for acceptance. Median is the middle of three. The higher TBT is the laptop's CPU throttle plus Brave, not the PSI lab.
 
 | Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |

@@ -52,7 +52,7 @@ E6 закрыт на `74098a3`: цитата открывает страницу
 | 2.2 | Сделано: панель `Disclosure` монтируется только открытой. На Vercel до правки 2337 элементов, из них 487 в закрытых панелях (не половина страницы) | Style & Layout, гидрация, TBT |
 | 2.3 | Без ключа `fa.profile` не делать `import()` схемы; с ключом — в `requestIdleCallback` (в Safari запасной `setTimeout`, пригодится шагу 3). e2e: без профиля чанк zod не запрашивается. База 2026-11-02, lhci 12.6.1, медиана `/compare/cd`: без профиля Performance 66, TBT 1 531 мс; с профилем 73 и 1 666 мс (ADR-016) | длинная задача на каждой странице |
 | 2.4 | Сделано: клиент `/compare` получает поля строки и движка; общие правила и источники — один раз. JSON пропсов CD (60 продуктов, все учреждения, налоговые таблицы) < 40 KB. `compounding`, `validFrom`, `validTo` на страницу не попадают | разбор HTML, гидрация |
-| 2.5 | `browserslist`: Safari 16.4, Chrome 111 (ADR-014) | устаревший JS |
+| 2.5 | Сделано: `browserslist` в `apps/web` — Chrome, Edge и Firefox 111, Safari 16.4 (ADR-014). Это тот же пол, что Next 16.4 берёт без поля. Замер 2026-11-03 до коммита 2.4, `/compare/cd`: без профиля Performance 71, TBT 2 392 мс; с профилем 67 и 3 580 мс (ADR-016) | устаревший JS |
 | 2.6 | CSS в HTML (`inlineCss`, сверить с документацией Next 16.4), Geist Mono без предзагрузки | FCP |
 | 2.7 | `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY` | Best Practices |
 | 2.8 | «Reduce unused JavaScript» (46 KiB): какой чанк грузится и не используется на `/compare` (`next analyze`) | TBT |

@@ -25,7 +25,7 @@ Deferred (pinned when first used, in the ADR or PR that adds them):
 - fast-check 4.10.2: property tests start with the engine in E2, so it is not installed in E0.
 - Packages for later milestones (decimal.js, zod, TanStack, zustand, nuqs, react-hook-form, resolvers) are pinned here but installed only in the milestone that first imports them. knip reports an unused dependency otherwise.
 
-Tailwind 4 sets the browser floor: Safari 16.4+, Chrome 111+. Accepted for the US Stage 1 audience. Tailwind is wired through `turbopack.rules` in `next.config.ts` with `@tailwindcss/turbopack`. If Tailwind or Next change the supported integration, this ADR is revisited.
+Tailwind 4 sets the browser floor: Safari 16.4+, Chrome 111+. Accepted for the US Stage 1 audience. E7 step 2.5 pins that floor in `apps/web/package.json` `browserslist` as `chrome 111`, `edge 111`, `firefox 111`, `safari 16.4` — the same four versions Next 16.4 compiles for when the field is absent. Firefox and Edge stay at 111 so a Chrome-and-Safari-only list does not fall back to older browsers. Tailwind is wired through `turbopack.rules` in `next.config.ts` with `@tailwindcss/turbopack`. If Tailwind or Next change the supported integration, this ADR is revisited.
 
 ## Amendment (E7, 2026-11-01): `@lhci/cli` installed
 
