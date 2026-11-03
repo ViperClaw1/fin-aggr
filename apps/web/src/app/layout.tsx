@@ -20,6 +20,8 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  // Used for the wordmark and a few labels. Skip the preload so it does not compete with first paint.
+  preload: false,
 });
 
 const DESCRIPTION =

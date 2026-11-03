@@ -1,6 +1,6 @@
 import { DEFAULT_SEED, generateFixtures } from '@fa/fixtures';
 import { expect, test } from '@playwright/test';
-import { contentSecurityPolicy } from '../security-headers';
+import { contentSecurityPolicy, securityHeaders } from '../security-headers';
 
 // ADR-015. Add each P0 route here as it lands (E5).
 const ROUTES = ['/'];
@@ -8,7 +8,11 @@ const ROUTES = ['/'];
 for (const route of ROUTES) {
   test(`${route} sends the production CSP`, async ({ request }) => {
     const response = await request.get(route);
-    expect(response.headers()['content-security-policy']).toBe(contentSecurityPolicy(false));
+    const headers = response.headers();
+    expect(headers['content-security-policy']).toBe(contentSecurityPolicy(false));
+    for (const header of securityHeaders(false)) {
+      expect(headers[header.key.toLowerCase()]).toBe(header.value);
+    }
   });
 }
 

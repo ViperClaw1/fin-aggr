@@ -29,7 +29,7 @@ upgrade-insecure-requests;
 ```
 
 - `connect-src 'self'` is the control that enforces AC-4: nothing the page runs can send data to another origin. Any new origin needs an ADR and a spec change.
-- Other headers set together: `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` with camera, microphone and geolocation disabled.
+- Other headers set together: `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Cross-Origin-Opener-Policy: same-origin`, `Permissions-Policy` with camera, microphone and geolocation disabled. `X-Frame-Options` repeats `frame-ancestors 'none'` for the Lighthouse check. `same-origin` keeps a window this page opens from reaching `window.opener` on another origin.
 - The header value lives in one module (`apps/web/security-headers.ts`) so tests and config share it.
 
 ## Verification

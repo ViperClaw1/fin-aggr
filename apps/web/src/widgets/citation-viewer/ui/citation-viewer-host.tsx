@@ -1,7 +1,7 @@
 'use client';
 
-// Mounted once in the root layout, inside <Suspense>. The panel (gateway, pdf.js) loads only
-// while a citation is open, so neither joins the first load (ADR-016).
+// Mounted once in the root layout, inside <Suspense>. The panel (gateway, pdf.js, react-query)
+// loads only while a citation is open, so none of them join the first load (ADR-016).
 import dynamic from 'next/dynamic';
 import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { useOpenCitation } from '@/features/open-citation';

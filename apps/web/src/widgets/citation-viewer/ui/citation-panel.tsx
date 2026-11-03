@@ -1,10 +1,11 @@
 'use client';
 
 // Document metadata and pdf.js load only while a citation is open (ADR-016).
-import { useQuery } from '@tanstack/react-query';
+import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { documentQuery } from '@/entities/document/queries';
 import type { CitationRef } from '@/features/open-citation';
+import { getQueryClient } from '@/shared/lib/query-client';
 import { ErrorState, Skeleton } from '@/shared/ui/states';
 
 const Viewer = dynamic(() => import('./pdf-viewer').then((m) => m.PdfViewer), {
@@ -12,7 +13,15 @@ const Viewer = dynamic(() => import('./pdf-viewer').then((m) => m.PdfViewer), {
   loading: () => <Skeleton label="Loading the document" className="h-96 w-full" />,
 });
 
-export function CitationPanel({
+export function CitationPanel(props: { current: CitationRef; onPage: (page: number) => void }) {
+  return (
+    <QueryClientProvider client={getQueryClient()}>
+      <CitationQuery {...props} />
+    </QueryClientProvider>
+  );
+}
+
+function CitationQuery({
   current,
   onPage,
 }: {
