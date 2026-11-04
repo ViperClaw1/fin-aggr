@@ -1,0 +1,44 @@
+diff --git a/core/lib/tracehouse/trace-processor.js b/core/lib/tracehouse/trace-processor.js
+--- a/core/lib/tracehouse/trace-processor.js
++++ b/core/lib/tracehouse/trace-processor.js
+@@ -87,9 +87,14 @@ class TraceProcessor {
+     if (event.name !== 'navigationStart') return false;
+     // COMPAT: support pre-m67 test traces before `args.data` added to all navStart events.
+     // TODO: remove next line when old test traces (e.g. progressive-app-m60.json) are updated.
+-    if (event.args.data?.documentLoaderURL === undefined) return true;
+-    if (!event.args.data?.documentLoaderURL) return false;
+-    return ACCEPTABLE_NAVIGATION_URL_REGEX.test(event.args.data.documentLoaderURL);
++    const url = event.args.data?.documentLoaderURL;
++    if (url === undefined) return true;
++    // Chrome 155 on Windows emits the real main-frame navigation with an empty URL.
++    if (!url) {
++      return event.args.data?.isLoadingMainFrame === true &&
++        event.args.data?.isOutermostMainFrame === true;
++    }
++    return ACCEPTABLE_NAVIGATION_URL_REGEX.test(url);
+   }
+ 
+   /**
+@@ -939,8 +944,20 @@ class TraceProcessor {
+       }
+       case 'auto': {
+         const marker = lighthouseMarker() || lastNavigationStart();
+-        if (!marker) throw this.createNoNavstartError();
+-        return marker;
++        if (marker) return marker;
++        // Chrome 155 on Windows records the load but omits navigationStart,
++        // and the main-frame id on ResourceSendRequest often does not match.
++        const frameId = traceEventSubsets.mainFrameInfo.frameId;
++        const requests = traceEventSubsets.keyEvents.filter(event => event.name === 'ResourceSendRequest');
++        const fetchStart = requests.find(event => {
++          const frame = event.args?.data?.frame;
++          return frame === undefined || frame === frameId;
++        }) || requests[0];
++        if (fetchStart) return fetchStart;
++        const committed = traceEventSubsets.keyEvents.find(event =>
++          event.name === 'FrameCommittedInBrowser' && event.args?.data?.frame === frameId);
++        if (committed) return committed;
++        throw this.createNoNavstartError();
+       }
+     }
+   }

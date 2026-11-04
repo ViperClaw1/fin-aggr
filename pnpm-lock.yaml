@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  lighthouse@12.6.1: f86799094450b15f7c042c6543daeba2591ddf3384be349c4f48441126d8934e
+
 importers:
 
   .:
@@ -4499,7 +4502,7 @@ snapshots:
       express: 4.22.3
       inquirer: 6.5.2
       isomorphic-fetch: 3.0.0
-      lighthouse: 12.6.1
+      lighthouse: 12.6.1(patch_hash=f86799094450b15f7c042c6543daeba2591ddf3384be349c4f48441126d8934e)
       lighthouse-logger: 1.2.0
       open: 7.4.2
       proxy-agent: 6.5.0
@@ -4521,7 +4524,7 @@ snapshots:
       debug: 4.4.3
       isomorphic-fetch: 3.0.0
       js-yaml: 3.15.2
-      lighthouse: 12.6.1
+      lighthouse: 12.6.1(patch_hash=f86799094450b15f7c042c6543daeba2591ddf3384be349c4f48441126d8934e)
       tree-kill: 1.2.2
     transitivePeerDependencies:
       - bare-abort-controller
@@ -6638,7 +6641,7 @@ snapshots:
 
   lighthouse-stack-packs@1.12.2: {}
 
-  lighthouse@12.6.1:
+  lighthouse@12.6.1(patch_hash=f86799094450b15f7c042c6543daeba2591ddf3384be349c4f48441126d8934e):
     dependencies:
       '@paulirish/trace_engine': 0.0.53
       '@sentry/node': 7.120.4

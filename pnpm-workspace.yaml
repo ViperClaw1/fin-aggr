@@ -6,3 +6,6 @@ allowBuilds:
   puppeteer: true
   sharp: false
   unrs-resolver: false
+
+patchedDependencies:
+  lighthouse@12.6.1: patches/lighthouse@12.6.1.patch

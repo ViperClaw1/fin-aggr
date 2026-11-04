@@ -42,6 +42,10 @@ Accepted with the E7 plan. Exact version, no `^`/`~`. Root devDependency. Used b
 
 Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06-25.
 
+## Amendment (E7, 2026-11-04): lighthouse trace patch
+
+`patches/lighthouse@12.6.1.patch`, recorded in `pnpm-workspace.yaml` `patchedDependencies`. Chrome 155 on Windows omits `navigationStart` from the Lighthouse trace, so `pnpm lhci` stops with `NO_NAVSTART`. The patch keeps a real main-frame navigation whose URL is empty, and when `navigationStart` is absent it uses the first main-frame `ResourceSendRequest`, any `ResourceSendRequest`, then `FrameCommittedInBrowser`. A trace that still has `navigationStart` keeps that origin. `@lhci/cli` stays 0.15.1.
+
 ## Amendment (E6, ADR-018, 2026-10-30): installed
 
 Accepted with ADR-018. Exact versions, no `^`/`~`. `pdfkit` is imported by `tools/build-docs.mjs`. `pdfjs-dist` is imported by the fixture PDF test; the viewer imports it in step 2.
