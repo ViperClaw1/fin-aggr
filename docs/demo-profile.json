@@ -1,0 +1,14 @@
+{
+  "format": "fa-profile",
+  "version": 1,
+  "profile": {
+    "filingStatus": "single",
+    "stateCode": "NY",
+    "taxableIncome": 8000000,
+    "residency": "us_citizen",
+    "scenario": {
+      "principal": 2500000,
+      "holdingMonths": 12
+    }
+  }
+}

@@ -46,11 +46,11 @@ Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06
 
 `patches/lighthouse@12.6.1.patch`, recorded in `pnpm-workspace.yaml` `patchedDependencies`. Chrome 155 on Windows omits `navigationStart` from the Lighthouse trace, so `pnpm lhci` stops with `NO_NAVSTART`. The patch keeps a real main-frame navigation whose URL is empty, and when `navigationStart` is absent it uses the first main-frame `ResourceSendRequest`, any `ResourceSendRequest`, then `FrameCommittedInBrowser`. A trace that still has `navigationStart` keeps that origin. `@lhci/cli` stays 0.15.1.
 
-`@lhci/cli` 0.16.0 (published 2026-11-02) depends on `lighthouse` 13.6.0, the same major PSI used on 2026-11-04. Checked `core/lib/tracehouse/trace-processor.js` at tag `v13.6.0` (the tag `v.13.6.0` does not exist). `_isNavigationStartOfInterest` still returns false when `documentLoaderURL` is `""`, and `computeTimeOrigin` method `auto` still throws when neither the timespan marker nor `navigationStart` is present. There is no `ResourceSendRequest` fallback. Moving to 0.16.0 would not remove the patch, and the release is newer than two weeks, so 0.15.1 stays.
+`@lhci/cli` 0.16.0 (published 2026-11-02) depends on `lighthouse` 13.6.0, the same major PSI used on 2026-11-04. Checked `core/lib/tracehouse/trace-processor.js` at tag `v13.6.0` (the tag `v.13.6.0` does not exist). `_isNavigationStartOfInterest` still returns false when `documentLoaderURL` is `""`, and `computeTimeOrigin` method `auto` still throws when neither the timespan marker nor `navigationStart` is present. There is no `ResourceSendRequest` fallback. Moving to 0.16.0 would not remove the patch, and the release is newer than two weeks, so 0.15.1 stays. Accepted 2026-11-04: the patch stays. A local Windows run that needed the patch is not comparable with earlier runs. The baseline is a CI run.
 
-## Amendment (Stage 2 step 0, 2026-11-04): proposed, not installed
+## Amendment (Stage 2, 2026-11-04): accepted, not installed
 
-Proposed with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Nothing from this table is installed until the Stage 2 plan is accepted. Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04. A release newer than two weeks (published after 2026-10-21) is not pinned.
+Accepted with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Installed at Stage 2 step 1, which starts after M5. Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04. A release newer than two weeks (published after 2026-10-21) is not pinned.
 
 | Package | Version | Published | Where, once accepted |
 | --- | --- | --- | --- |

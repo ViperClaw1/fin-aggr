@@ -5,9 +5,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # 02:00 UTC+4. Firefox and WebKit only; the other jobs skip a schedule run.
+  schedule:
+    - cron: '0 22 * * *'
 
 jobs:
   gates:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_DATA_SOURCE: mock
@@ -35,9 +39,30 @@ jobs:
       - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
       - run: pnpm e2e
 
-  # Report only (E7 step 1). Assertions are warnings; a red score does not fail this job.
-  # A failed build or a missing Puppeteer Chrome still does. Median of 5 mobile runs.
+  # Median of 5 mobile runs on pnpm start. Performance and CLS on /compare/cd fail the job.
+  # TBT stays a warning (ADR-016). A dot-directory is hidden, so the upload must include it.
+  # Firefox and WebKit on the production build (E7 step 3). Not on pull requests.
+  e2e-browsers:
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_DATA_SOURCE: mock
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @fa/web exec playwright install --with-deps firefox webkit
+      - run: pnpm e2e:browsers
+
   lighthouse:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -65,7 +90,8 @@ jobs:
         with:
           name: lighthouse-${{ matrix.scenario }}
           path: .lighthouseci
-          if-no-files-found: warn
+          include-hidden-files: true
+          if-no-files-found: error
 
   # Vercel deploys main on its own. Fail when the live HTML is still another commit.
   # `<meta name="build">` is VERCEL_GIT_COMMIT_SHA (layout.tsx); locally it is "local".

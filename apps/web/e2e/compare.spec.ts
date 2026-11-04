@@ -191,7 +191,13 @@ for (const viewport of [
 ]) {
   test(`the table does not move on hydration at ${String(viewport.width)}px`, async ({
     browser,
+    browserName,
   }) => {
+    // Firefox dies opening a second context with JavaScript off (Playwright 1.64, FrameTree.js).
+    test.fixme(
+      browserName === 'firefox',
+      'Firefox crashes when a second context disables JavaScript',
+    );
     const top = async (javaScriptEnabled: boolean) => {
       const context = await browser.newContext({ viewport, javaScriptEnabled });
       const page = await context.newPage();

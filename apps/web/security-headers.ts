@@ -13,7 +13,6 @@ export function contentSecurityPolicy(dev: boolean): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    'upgrade-insecure-requests',
   ].join('; ');
 }
 

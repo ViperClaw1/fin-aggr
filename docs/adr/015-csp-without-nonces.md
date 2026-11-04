@@ -25,8 +25,9 @@ object-src 'none';
 base-uri 'self';
 form-action 'self';
 frame-ancestors 'none';
-upgrade-insecure-requests;
 ```
+
+`upgrade-insecure-requests` was removed in E7 step 3. WebKit upgrades `http://localhost` subresources to `https://localhost`, and `pnpm start` is HTTP, so no script loaded and the page never hydrated. Chromium and Firefox do not upgrade loopback. Vercel already redirects HTTP to HTTPS, so the directive did not change production.
 
 - `connect-src 'self'` is the control that enforces AC-4: nothing the page runs can send data to another origin. Any new origin needs an ADR and a spec change.
 - Other headers set together: `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Cross-Origin-Opener-Policy: same-origin`, `Permissions-Policy` with camera, microphone and geolocation disabled. `X-Frame-Options` repeats `frame-ancestors 'none'` for the Lighthouse check. `same-origin` keeps a window this page opens from reaching `window.opener` on another origin.

@@ -27,6 +27,12 @@ function sameSecret(given: string, expected: string): boolean {
   return difference === 0;
 }
 
+/** Same stamp as `<meta name="build">` in the root layout. The gate is what production returns. */
+function buildStamp(): string {
+  const raw = process.env['VERCEL_GIT_COMMIT_SHA'] ?? 'local';
+  return /^[0-9a-f]{40}$/.test(raw) ? raw : 'local';
+}
+
 function gatePage(rejected: boolean): NextResponse {
   const message = rejected ? '<p>Wrong password.</p>' : '';
   const html = `<!DOCTYPE html>
@@ -35,6 +41,7 @@ function gatePage(rejected: boolean): NextResponse {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="build" content="${buildStamp()}">
   <title>FA demo</title>
 </head>
 <body>

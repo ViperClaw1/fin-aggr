@@ -1,3 +1,16 @@
 {
-  "js/ts.tsdk.path": "node_modules\\typescript\\lib"
+  "js/ts.tsdk.path": "node_modules\\typescript\\lib",
+  "files.exclude": {
+    "**/node_modules/**/tsconfig.json": true,
+    "**/node_modules/**/tsconfig-*.json": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true
+  },
+  "typescript.tsserver.watchOptions": {
+    "excludeDirectories": ["**/node_modules"]
+  }
 }

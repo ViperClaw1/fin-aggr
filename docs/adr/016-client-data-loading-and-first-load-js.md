@@ -38,7 +38,7 @@ AC-8 (E7, decided 2026-11-01). Two uses, two instruments.
 
 - **Acceptance, no profile.** PageSpeed Insights, mobile, median of 3 runs, `https://fin-aggr.vercel.app/compare/cd`. Median recorded 2026-11-02 (below).
 - **Acceptance, with profile.** PSI cannot set `localStorage`. Median of Lighthouse CI with the same complete draft as `compare-cls.spec.ts`.
-- **Regression.** Lighthouse CI against `pnpm start` on the runner. Assertions stay `warn` through E7 step 2.8, then `error` on `/compare/cd` (Performance ≥ 85, TBT ≤ 300 ms, CLS ≤ 0.1). A green job while the level is `warn` does not mean the score cleared 85.
+- **Regression.** Lighthouse CI against `pnpm start` on the runner. Performance (≥ 85) and CLS (≤ 0.1) on `/compare/cd` are `error`. TBT (≤ 300 ms) stays `warn`: the with-profile median was 441.5 ms. A green job does not mean TBT cleared 300 ms. Laptop runs are not this number: Chrome 155 on Windows needs the ADR-014 trace patch, and the laptop CPU moves TBT by seconds.
 - **Not acceptance.** Brave in a normal window. Extensions and Shields share the page process.
 
 PSI acceptance, 2026-11-02 15:29–15:36 GMT+4, three runs, mobile, no profile, `https://fin-aggr.vercel.app/compare/cd`. Lighthouse 13.6.0, emulated Moto G Power, Slow 4G, Headless Chromium 153. The filmstrip is the compare page. SEO on the same reports is 66; that is not AC-8. Median is the middle value of the three.
@@ -65,6 +65,17 @@ Local Lighthouse CI, 2026-11-03, after step 2.3 was committed and before the ste
 | anonymous | 71 | 1.6 s | 1.0 s | 2 392 ms | 0 | 2.8 s |
 | with profile | 67 | 1.7 s | 1.3 s | 3 580 ms | 0 | 4.5 s |
 
+Runner, [41662400511](https://github.com/ViperClaw1/fin-aggr/actions/runs/41662400511), commit `569d689`, 2026-11-03. Lighthouse 12.6.1, `ubuntu-latest`, 5 runs, mobile. This is the AC-8 with-profile median. LHCI prints only failing assertions, so a check that passed has no exact score. Artifacts were empty (`include-hidden-files` was false). With profile, TBT values as printed: 232, 608, 642, 426, 441.5. Sorted, the middle is 441.5 ms.
+
+| Scenario | Performance | TBT | CLS | LCP, FCP, Speed Index |
+| --- | --- | --- | --- | --- |
+| anonymous | median ≥ 85 (no warning) | median ≤ 300 ms (no warning) | median ≤ 0.1 (no warning) | not in the log |
+| with profile | median ≥ 85 (no warning) | 441.5 ms | median ≤ 0.1 (no warning) | not in the log |
+
+The same profile job on [41876801041](https://github.com/ViperClaw1/fin-aggr/actions/runs/41876801041) (`282b4a5`, trace patch applied) finished green. Its reports were not uploaded, so it does not replace the table above. On `16df88f`, before the patch, `pnpm lhci:profile` exited 1 ([41835572470](https://github.com/ViperClaw1/fin-aggr/actions/runs/41835572470)).
+
+Stop rule, applied to the with-profile runner median. Performance cleared 85, so that assertion and CLS are `error`. TBT did not clear 300 ms, so it stays `warn`. Step 2.9 is not started.
+
 Field series, 2026-11-01, mobile, Brave, not incognito, Lighthouse 13.5.0, Chromium 156, same URL. Not for acceptance. Median is the middle of three. The higher TBT is the laptop's CPU throttle plus Brave, not the PSI lab.
 
 | Scenario | Performance | LCP | FCP | TBT | CLS | Speed Index | Runs |
@@ -81,7 +92,7 @@ Lab run [41304184631](https://github.com/ViperClaw1/fin-aggr/actions/runs/413041
 
 DOM on `/compare/cd`, no profile, hydrated, mobile viewport 412×823, Puppeteer, current Vercel (`d239ccc`). 2337 elements, 62 `<details>`, 487 of those elements sit in closed panels. Step 2.2 stops mounting the panel until it is opened, so those 487 leave the tree (about 1850 remain). That is not half the page: the rows themselves are the rest. A quote was not in this tree (no `<blockquote>`).
 
-Stop rule. After steps 2.1–2.8, if the acceptance medians are still under 85, step 2.9 draws the table once and the filter only hides rows. If that is still under 85, the score is taken to the customer with the numbers. Features are not cut in silence. The two options on the table are a mobile bar of 80, given the React and Next main thread (about 150 KB), or a lighter mobile table.
+Stop rule. After steps 2.1–2.8, if the with-profile runner median is still under 85, step 2.9 draws the table once and the filter only hides rows. That median cleared 85, so step 2.9 is not started. If a later runner median falls under 85, 2.9 is the next change. Features are not cut in silence. The two options on the table are a mobile bar of 80, given the React and Next main thread (about 150 KB), or a lighter mobile table.
 
 | Commit | `/` | `/_not-found` | `/dev/components` | Note |
 | --- | --- | --- | --- | --- |

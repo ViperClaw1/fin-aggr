@@ -33,6 +33,7 @@ Search here before creating a component. Add a row for every exported UI compone
 | YieldComparator | widgets/yield-comparator | Best eligible CD, savings and Treasury after tax (`useNetYield` per category). Without a profile, a prompt that opens the drawer. The scenario is edited from an assumption | `products`, `taxTables` from `loadYieldData` | app/tools/after-tax-yield |
 | Landing | widgets/landing | Home: hero, three questions (compare, bank health, coverage), how it works, commercial model linking to /disclosure. That block is a DRAFT | none | app/page |
 | SiteNav | widgets/site-nav | Primary header links: Compare (CDs, savings, Treasuries), Banks, Tools (coverage, after-tax yield), Methodology. Menu collapses them on a narrow screen | none | app/layout |
+| ThemeToggle | features/toggle-theme | Light or dark for this visit (`data-theme` on `<html>`). Not stored: a reload is light again (ADR-004) | none | app/layout |
 | SiteFooter | widgets/site-footer | Footer: links to /methodology, /disclosure, /privacy; the demo-data notice (`DEMO_DATA_TEXT`, same words as the banner) and the privacy line; the data set date. Async server component, date loaded at build (`loadDataset`, `'use cache'`) | none | app/layout |
 
 ## Modules (slices without UI yet)

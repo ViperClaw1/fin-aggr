@@ -20,7 +20,10 @@ function readBuildSha(html) {
 
 async function readLive(origin) {
   const response = await fetch(new URL('/', origin));
-  if (!response.ok) throw new Error(`GET / -> ${String(response.status)}`);
+  // DEMO_PASSWORD answers 401 with the same build stamp as the app (proxy.ts).
+  if (!response.ok && response.status !== 401) {
+    throw new Error(`GET / -> ${String(response.status)}`);
+  }
   return readBuildSha(await response.text());
 }
 

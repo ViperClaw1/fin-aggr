@@ -1,4 +1,5 @@
-// Mobile Lighthouse against `pnpm start`. Scores are warnings until E7 step 2 (docs/plan-e7.md).
+// Mobile Lighthouse against `pnpm start`. Performance and CLS fail /compare/cd.
+// TBT stays a warning: the runner with-profile median was 441.5 ms (ADR-016).
 // LHCI_PROFILE=1 seeds a complete draft and keeps it: Lighthouse clears storage unless
 // disableStorageReset is set. The anonymous run leaves the default (storage is cleared).
 // chromePath is filled by tools/lhci-prepare.mjs: Puppeteer 25's executablePath() is async.
@@ -32,10 +33,10 @@ module.exports = {
         {
           matchingUrlPattern: '/compare/cd$',
           assertions: {
-            'categories:performance': ['warn', { minScore: 0.85, aggregationMethod: 'median' }],
+            'categories:performance': ['error', { minScore: 0.85, aggregationMethod: 'median' }],
             'total-blocking-time': ['warn', { maxNumericValue: 300, aggregationMethod: 'median' }],
             'cumulative-layout-shift': [
-              'warn',
+              'error',
               { maxNumericValue: 0.1, aggregationMethod: 'median' },
             ],
           },

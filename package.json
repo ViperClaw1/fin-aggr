@@ -16,6 +16,7 @@
     "knip": "knip",
     "test": "vitest run --coverage && node tools/golden-count.mjs",
     "e2e": "pnpm --filter @fa/web e2e",
+    "e2e:browsers": "pnpm --filter @fa/web e2e:browsers",
     "bench": "vitest bench --run",
     "golden:check": "node tools/golden-check.mjs",
     "bundle:report": "node tools/bundle-budget.mjs",

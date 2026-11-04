@@ -28,7 +28,9 @@ describe('demoGate', () => {
   it('returns the password form when the cookie is missing', async () => {
     const response = await demoGate(request('GET'), PASSWORD);
     expect(response.status).toBe(401);
-    expect(await response.text()).toContain('Password');
+    const html = await response.text();
+    expect(html).toContain('Password');
+    expect(html).toContain('<meta name="build" content="local">');
   });
 
   it('rejects a wrong password', async () => {

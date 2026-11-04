@@ -109,7 +109,13 @@ test('a sentinel income never leaves the browser while following links (AC-4)', 
   expect(leaks).toEqual([]);
 });
 
-test('the Compare menu opens on hover and closes when the pointer leaves', async ({ page }) => {
+test('the Compare menu opens on hover and closes when the pointer leaves', async ({
+  page,
+  browserName,
+}) => {
+  // The menu listens for mouseenter only when (hover: hover) and (pointer: fine).
+  // Playwright WebKit does not match that query, so the menu stays closed.
+  test.fixme(browserName === 'webkit', 'Playwright WebKit does not match hover: hover');
   const nav = page.getByRole('navigation', { name: 'Primary' });
   const compare = nav.getByText('Compare', { exact: true });
   const menu = nav.locator('details').filter({ hasText: 'Compare' });
@@ -145,7 +151,11 @@ test('a narrow screen opens Compare with a click', async ({ browser }, testInfo)
   }
 });
 
-test('the Compare menu closes after a choice and after a click outside', async ({ page }) => {
+test('the Compare menu closes after a choice and after a click outside', async ({
+  page,
+  browserName,
+}) => {
+  test.fixme(browserName === 'webkit', 'Playwright WebKit does not match hover: hover');
   const nav = page.getByRole('navigation', { name: 'Primary' });
   const compare = nav.getByText('Compare', { exact: true });
   const menu = nav.locator('details').filter({ hasText: 'Compare' });

@@ -36,20 +36,28 @@ function sha256(dir: string, id: string): string {
     .digest('hex');
 }
 
-async function pageText(bytes: Buffer, pageNumber: number): Promise<string> {
+/** One open per file. Returns the text of the pages that carry quotes. */
+async function openQuotes(bytes: Buffer, pages: ReadonlySet<number>): Promise<Map<number, string>> {
   const pdf = await getDocument({
     data: new Uint8Array(bytes),
     useWasm: false,
     verbosity: 0,
   }).promise;
   try {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    return content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-      .replaceAll(/\s+/g, ' ')
-      .trim();
+    const text = new Map<number, string>();
+    for (const pageNumber of pages) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      text.set(
+        pageNumber,
+        content.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' ')
+          .replaceAll(/\s+/g, ' ')
+          .trim(),
+      );
+    }
+    return text;
   } finally {
     await pdf.cleanup();
   }
@@ -57,6 +65,7 @@ async function pageText(bytes: Buffer, pageNumber: number): Promise<string> {
 
 const built = mkdtempSync(join(tmpdir(), 'fa-docs-'));
 const again = mkdtempSync(join(tmpdir(), 'fa-docs-'));
+let defaultLog = '';
 
 afterAll(() => {
   rmSync(built, { recursive: true, force: true });
@@ -65,24 +74,18 @@ afterAll(() => {
 
 describe('synthetic documents', () => {
   beforeAll(() => {
-    build(built, String(DEFAULT_SEED));
+    defaultLog = build(built, null);
     build(again, String(DEFAULT_SEED));
-  }, 60_000);
+  });
 
   it('uses the same default seed as the app and the generator', () => {
     expect(readEnv({}).seed).toBe(DEFAULT_SEED);
-    const dir = mkdtempSync(join(tmpdir(), 'fa-docs-'));
-    try {
-      const log = build(dir, null);
-      expect(log).toContain(`seed ${String(DEFAULT_SEED)}`);
-      expect(readFileSync(join(dir, '.seed'), 'utf8')).toMatch(/^[a-f0-9]{64}$/);
-      expect(generateFixtures(DEFAULT_SEED).documents.map((doc) => doc.id)).toEqual(
-        Array.from({ length: 8 }, (_, i) => `doc_${String(i + 1).padStart(2, '0')}`),
-      );
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  }, 60_000);
+    expect(defaultLog).toContain(`seed ${String(DEFAULT_SEED)}`);
+    expect(readFileSync(join(built, '.seed'), 'utf8')).toMatch(/^[a-f0-9]{64}$/);
+    expect(generateFixtures(DEFAULT_SEED).documents.map((doc) => doc.id)).toEqual(
+      Array.from({ length: 8 }, (_, i) => `doc_${String(i + 1).padStart(2, '0')}`),
+    );
+  });
 
   it('writes the same bytes for the same seed and skips a second run', () => {
     const fixtures = generateFixtures(DEFAULT_SEED);
@@ -97,14 +100,19 @@ describe('synthetic documents', () => {
 
   it('puts each quote on its fact page', async () => {
     const fixtures = generateFixtures(DEFAULT_SEED);
-    for (const fact of fixtures.facts) {
-      const doc = fixtures.documents.find((item) => item.id === fact.documentId);
-      expect(doc).toBeDefined();
-      if (doc === undefined) continue;
-      expect(fact.page).toBeLessThanOrEqual(doc.pages);
-      const text = await pageText(readFileSync(join(built, `${doc.id}.pdf`)), fact.page);
-      const quote = fact.quote.replaceAll(/\s+/g, ' ').trim();
-      expect(text).toContain(quote);
+    expect(fixtures.documents).toHaveLength(8);
+    for (const doc of fixtures.documents) {
+      const facts = fixtures.facts.filter((fact) => fact.documentId === doc.id);
+      expect(facts).toHaveLength(5);
+      const text = await openQuotes(
+        readFileSync(join(built, `${doc.id}.pdf`)),
+        new Set(facts.map((fact) => fact.page)),
+      );
+      for (const fact of facts) {
+        expect(fact.page).toBeLessThanOrEqual(doc.pages);
+        const quote = fact.quote.replaceAll(/\s+/g, ' ').trim();
+        expect(text.get(fact.page)).toContain(quote);
+      }
     }
   });
 });
