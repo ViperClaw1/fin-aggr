@@ -2,7 +2,7 @@
 
 Frontend prototype on mock data. It compares US deposit products (CDs, savings, treasuries) by after-tax net yield, shows a source for every fact, and keeps the user profile in the browser. Every page shows a DEMO DATA banner.
 
-Spec: [specs/Finance Aggregator Spec.md](specs/Finance%20Aggregator%20Spec.md). Decisions: [docs/adr/](docs/adr/).
+Spec: [specs/Finance Aggregator Spec.md](specs/Finance%20Aggregator%20Spec.md). Decisions: [docs/adr/](docs/adr/). Stage 2 plan (draft): [docs/plan-stage-2.md](docs/plan-stage-2.md).
 
 ## Layout
 

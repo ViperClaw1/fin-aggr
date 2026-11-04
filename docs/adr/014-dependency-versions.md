@@ -46,6 +46,27 @@ Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06
 
 `patches/lighthouse@12.6.1.patch`, recorded in `pnpm-workspace.yaml` `patchedDependencies`. Chrome 155 on Windows omits `navigationStart` from the Lighthouse trace, so `pnpm lhci` stops with `NO_NAVSTART`. The patch keeps a real main-frame navigation whose URL is empty, and when `navigationStart` is absent it uses the first main-frame `ResourceSendRequest`, any `ResourceSendRequest`, then `FrameCommittedInBrowser`. A trace that still has `navigationStart` keeps that origin. `@lhci/cli` stays 0.15.1.
 
+`@lhci/cli` 0.16.0 (published 2026-11-02) depends on `lighthouse` 13.6.0, the same major PSI used on 2026-11-04. Checked `core/lib/tracehouse/trace-processor.js` at tag `v13.6.0` (the tag `v.13.6.0` does not exist). `_isNavigationStartOfInterest` still returns false when `documentLoaderURL` is `""`, and `computeTimeOrigin` method `auto` still throws when neither the timespan marker nor `navigationStart` is present. There is no `ResourceSendRequest` fallback. Moving to 0.16.0 would not remove the patch, and the release is newer than two weeks, so 0.15.1 stays.
+
+## Amendment (Stage 2 step 0, 2026-11-04): proposed, not installed
+
+Proposed with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Nothing from this table is installed until the Stage 2 plan is accepted. Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04. A release newer than two weeks (published after 2026-10-21) is not pinned.
+
+| Package | Version | Published | Where, once accepted |
+| --- | --- | --- | --- |
+| @supabase/supabase-js | 2.118.0 | 2026-10-15 | `apps/web` server gateway, `packages/ingest`, `supabase/scripts` |
+| supabase | 2.121.0 | 2026-10-14 | root devDependency (CLI: `supabase start`, migrations) |
+| pg | 8.23.1 | 2026-09-30 | `packages/ingest` and seed scripts; one transaction per domain publish |
+| @types/pg | 8.23.1 | 2026-10-04 | root devDependency. `pg@8.23.1` does not set `types` |
+| robots-parser | 3.0.1 | 2023-02-21 | `packages/ingest`, step 8. Latest release; ships its own types |
+| cheerio | 1.2.0 | 2026-01-23 | `packages/ingest`, step 8, and only if static HTML is enough |
+
+Not pinned:
+- `@supabase/supabase-js` 2.119.0 and `supabase` 3.0.0 were published 2026-11-04. `supabase` 2.122.1 was published 2026-11-02.
+- `postgres` 4.0.0 was published 2026-10-29. The previous line is 3.4.9 (2026-04-05). One driver is enough: `pg`, whose current release already clears two weeks.
+- A ZIP package. NCUA archives go through `node:zlib` first. A package is pinned in this ADR only if that is not enough.
+- Playwright and pdf.js stay on the versions already accepted above.
+
 ## Amendment (E6, ADR-018, 2026-10-30): installed
 
 Accepted with ADR-018. Exact versions, no `^`/`~`. `pdfkit` is imported by `tools/build-docs.mjs`. `pdfjs-dist` is imported by the fixture PDF test; the viewer imports it in step 2.
