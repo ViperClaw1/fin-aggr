@@ -46,6 +46,9 @@ test('Edit on the scenario opens the deposit field and the result follows it', a
   const product = f.products.find((item) => item.category === 'cd');
   expect(product).toBeDefined();
   if (product === undefined) return;
+  // WebKit keeps the initial about:blank entry. The second close steps back, so the product
+  // page has to be the entry under the drawer or the tab leaves the site.
+  await page.goto(`/product/${product.id}`);
   await page.goto(`/product/${product.id}?profile=principal`);
   await fillProfile(page);
   const net = page.getByRole('group', { name: 'Net interest' });
