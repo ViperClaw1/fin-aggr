@@ -100,7 +100,8 @@ jobs:
   production-commit:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The script polls for 15 minutes. Leave room for checkout and a slow Vercel deploy.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

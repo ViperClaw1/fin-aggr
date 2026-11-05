@@ -4,7 +4,7 @@
 // Polls, because the deploy finishes after CI has already started.
 import process from 'node:process';
 
-const TIMEOUT_MS = 8 * 60 * 1000;
+const TIMEOUT_MS = 15 * 60 * 1000;
 const INTERVAL_MS = 15 * 1000;
 
 /** Content of `<meta name="build">`, or null when the tag is absent. */
