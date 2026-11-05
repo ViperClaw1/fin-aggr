@@ -31,7 +31,7 @@ import type { CompareData } from '../api/prefetch';
 import { needsData } from '../model/needs-data';
 import { defaultOrder, type Row } from '../model/order';
 import { CONTENT_VISIBILITY_AFTER, hiddenProductIds } from '../model/visibility';
-import { unpackCompareProducts } from '../model/wire';
+import { unpackCompareProducts, type CompareProduct } from '../model/wire';
 import { columns, shownSortKeys } from './columns';
 import { NeedsDataNote } from './needs-data-note';
 import { RowDetails, type InstitutionDetails } from './row-details';
@@ -82,7 +82,7 @@ interface Url {
 const noop = () => undefined;
 
 function useVisibleCatalog(
-  products: readonly ReturnType<typeof unpackCompareProducts>,
+  products: readonly CompareProduct[],
   filters: Filters,
   index: InstitutionDetails,
   taxTables: Props['taxTables'],
