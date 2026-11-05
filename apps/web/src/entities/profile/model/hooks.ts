@@ -7,16 +7,19 @@ import { useShallow } from 'zustand/react/shallow';
 import { toCompleteProfile } from './complete';
 import { scheduleWhenIdle, startProfileHydration } from './hydrate';
 import { hasStoredProfile } from './persist';
-import { profileStore } from './store';
+import { profileStore, type ProfileState } from './store';
 
 export const useProfileDraft = () => useStore(profileStore, (s) => s.draft);
 
 export const useProfileHydrated = () => useStore(profileStore, (s) => s.hydrated);
 
-export const useProfileStatus = () =>
+type ProfileStatus = Pick<ProfileState, 'hydrated' | 'resetReason' | 'persistError' | 'loadError'>;
+
+// Explicit return: destructuring this result otherwise cycles through useShallow's type params (TS7022).
+export const useProfileStatus = (): ProfileStatus =>
   useStore(
     profileStore,
-    useShallow((s) => ({
+    useShallow((s): ProfileStatus => ({
       hydrated: s.hydrated,
       resetReason: s.resetReason,
       persistError: s.persistError,

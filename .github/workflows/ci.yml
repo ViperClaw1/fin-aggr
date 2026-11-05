@@ -42,10 +42,12 @@ jobs:
   # Median of 5 mobile runs on pnpm start. Performance and CLS on /compare/cd fail the job.
   # TBT stays a warning (ADR-016). A dot-directory is hidden, so the upload must include it.
   # Firefox and WebKit on the production build (E7 step 3). Not on pull requests.
+  # 30 minutes is short: the production build, then WebKit's system packages (~114 MB via
+  # `playwright install --with-deps`), then the browser suite itself (~9 minutes).
   e2e-browsers:
     if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       NEXT_PUBLIC_DATA_SOURCE: mock
       NEXT_TELEMETRY_DISABLED: '1'
