@@ -50,6 +50,7 @@ async function paintPage(args: PaintArgs): Promise<'highlighted' | 'missing'> {
   canvas.style.height = `${String(css.height)}px`;
   textLayer.style.width = `${String(css.width)}px`;
   textLayer.style.height = `${String(css.height)}px`;
+  textLayer.style.setProperty('--scale-factor', String(css.scale));
   textLayer.replaceChildren();
   const task = page.render({ canvas, canvasContext: context, viewport: output });
   args.render.cancel = () => {
@@ -64,12 +65,25 @@ async function paintPage(args: PaintArgs): Promise<'highlighted' | 'missing'> {
   layer.textDivs.forEach((div, index) => {
     if (hits.has(index)) div.setAttribute('data-quote-highlight', '');
   });
-  layer.textDivs
-    .find((div) => div.hasAttribute('data-quote-highlight'))
-    ?.scrollIntoView({
-      block: 'center',
-    });
+  const highlighted = layer.textDivs.find((div) => div.hasAttribute('data-quote-highlight'));
+  if (highlighted !== undefined) revealQuote(highlighted);
   return hits.size > 0 ? 'highlighted' : 'missing';
+}
+
+/** Firefox does not scroll an absolute span inside overflow:hidden via scrollIntoView, and
+ *  checkVisibility is false until the span meets the dialog's scrollport. */
+function revealQuote(quote: HTMLElement): void {
+  let node: HTMLElement | null = quote.parentElement;
+  while (node !== null) {
+    const overflow = getComputedStyle(node).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) {
+      const quoteBox = quote.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      node.scrollTop += quoteBox.top - box.top - (node.clientHeight - quoteBox.height) / 2;
+      return;
+    }
+    node = node.parentElement;
+  }
 }
 
 function useFrameWidth(frame: RefObject<HTMLDivElement | null>): number {

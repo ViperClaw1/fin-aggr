@@ -31,6 +31,7 @@ export default defineConfig({
       name: 'firefox',
       testIgnore: 'components/**',
       // One context: two Firefox contexts crash the browser (Playwright 1.64, FrameTree.js).
+      // e2e:browsers also passes --workers=1 so Firefox and WebKit do not share next start.
       // Axe on /compare/cd needs more than the 30s default.
       workers: 1,
       timeout: 60_000,

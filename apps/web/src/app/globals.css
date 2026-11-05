@@ -242,6 +242,12 @@ html:not([data-has-profile]) [data-catalog-pending] {
   overflow: hidden;
   line-height: 1;
   transform-origin: 0 0;
+  /* pdf.js writes width as round(var(--total-scale-factor) * page). Without these the value is
+     invalid, the layer collapses, and Firefox's checkVisibility treats the quote as hidden. */
+  --user-unit: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --total-scale-factor: var(--scale-factor, 1);
 }
 
 .pdf-text-layer span {

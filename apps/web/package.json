@@ -11,7 +11,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "e2e": "playwright test --project=chromium --project=components-warmup --project=components",
-    "e2e:browsers": "playwright test --project=firefox --project=webkit"
+    "e2e:browsers": "playwright test --project=firefox --project=webkit --workers=1"
   },
   "dependencies": {
     "@fa/contracts": "workspace:*",
