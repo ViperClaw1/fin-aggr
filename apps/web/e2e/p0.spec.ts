@@ -30,14 +30,19 @@ test('significant numbers on the data pages carry a citation or an assumption', 
 test('sponsored offers sit outside tables, lists and the product article', async ({ page }) => {
   const inside =
     'table [data-sponsored], ul [data-sponsored], ol [data-sponsored], article [data-sponsored]';
-  for (const path of ['/compare/cd', `/product/${product?.id ?? ''}`, '/']) {
-    await page.goto(path);
-    await expect(page.locator(inside)).toHaveCount(0);
-  }
+  // Check the slot on the first visit. A second goto of /compare/cd in Firefox never
+  // finishes the navigation Playwright waits on (e2e-browsers), so the expect times out.
   await page.goto('/compare/cd');
   await expect(page.locator('[data-sponsored="compare_top"]')).toBeVisible();
+  await expect(page.locator(inside)).toHaveCount(0);
+
   await page.goto(`/product/${product?.id ?? ''}`);
   await expect(page.locator('[data-sponsored="product_aside"]')).toBeVisible();
+  await expect(page.locator(inside)).toHaveCount(0);
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.locator(inside)).toHaveCount(0);
 });
 
 test('the compare table and the profile drawer work from the keyboard', async ({ page }) => {
