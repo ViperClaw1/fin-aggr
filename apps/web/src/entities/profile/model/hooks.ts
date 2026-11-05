@@ -1,7 +1,7 @@
 'use client';
 
 import type { Profile } from '@fa/contracts';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { toCompleteProfile } from './complete';
@@ -43,7 +43,7 @@ export const useProfileActions = () =>
   );
 
 /** Reads the stored profile once on the client; safe to call twice (StrictMode).
- *  No stored key: nothing is imported. A stored key loads the schema once the browser is idle. */
+ *  The draft check does not load zod, with or without a stored key. */
 export function rehydrateProfile(): Promise<void> {
   return startProfileHydration(
     {
@@ -57,24 +57,4 @@ export function rehydrateProfile(): Promise<void> {
     hasStoredProfile(),
     scheduleWhenIdle,
   );
-}
-
-/** True once the schema chunk has loaded. Mount this only where an edit can happen. */
-export function useProfileSchema(): boolean {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    let live = true;
-    void profileStore.ensureSchema().then(
-      () => {
-        if (live) setReady(true);
-      },
-      () => {
-        if (live) setReady(true);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, []);
-  return ready;
 }

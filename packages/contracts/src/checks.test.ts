@@ -6,8 +6,8 @@ import { Cents } from './money/cents';
 import { isCents, isRate, isSignedRate } from './money/checks';
 import { Rate, SignedRate } from './money/rate';
 import { Id, IsoDate } from './primitives';
-import { Profile } from './profile';
-import { isProfile } from './profile-checks';
+import { Profile, ProfileDraft } from './profile';
+import { isProfile, isProfileDraft } from './profile-checks';
 import { InstitutionQuery, ProductQuery } from './queries';
 import { normalizeInstitutionQuery, normalizeProductQuery } from './query-keys';
 
@@ -141,6 +141,46 @@ describe('zod schemas and zod-free checks agree', () => {
     }
     expect(values.filter(isProfile).length).toBeGreaterThan(100);
     expect(agree(Profile, isProfile, values)).toEqual([]);
+  });
+
+  it('ProfileDraft on partial drafts built from edge values for every field', () => {
+    const fields: Record<string, readonly unknown[]> = {
+      taxYear: [2026, 2026.5, Number.MAX_SAFE_INTEGER + 1, '2026'],
+      filingStatus: ['single', 'married_joint', 'head_of_household', 'other', 0],
+      stateCode: ['NY', 'N', 'NYC', '', 7],
+      taxableIncome: [0, 12345600, -1, 1.5, '1'],
+      cityMarginalRate: [null, '0.03', '1', '1.5', 0.03],
+      residency: ['us_citizen', 'us_resident', 'nonresident', 'alien', null],
+      age: [null, 0, 120, 121, -1, 40.5],
+      scenario: [
+        { principal: 1000000, holdingMonths: 12 },
+        { principal: 1, holdingMonths: 1 },
+        { principal: 1, holdingMonths: 120 },
+        { principal: 1, holdingMonths: 0 },
+        { principal: 1, holdingMonths: 121 },
+        { principal: 1.5, holdingMonths: 12 },
+        { principal: 1 },
+        { principal: 1, holdingMonths: 12, extra: 1 },
+        {},
+        null,
+      ],
+    };
+    const values: unknown[] = [null, [], 'x', {}];
+    let s = 9;
+    for (let i = 0; i < 20000; i += 1) {
+      const draft: Record<string, unknown> = {};
+      for (const [k, list] of Object.entries(fields)) {
+        s = (s * 1103515245 + 12345) % 2147483648;
+        const roll = s % 100;
+        // mostly valid, sometimes an edge value, sometimes the key is absent
+        if (roll < 70) draft[k] = list[0];
+        else if (roll < 90) draft[k] = list[Math.floor(s / 100) % list.length];
+      }
+      if (i % 97 === 0) draft['email'] = 'x';
+      values.push(draft);
+    }
+    expect(values.filter(isProfileDraft).length).toBeGreaterThan(100);
+    expect(agree(ProfileDraft, isProfileDraft, values)).toEqual([]);
   });
 
   it('query normalizers give what the schemas give on valid queries', () => {

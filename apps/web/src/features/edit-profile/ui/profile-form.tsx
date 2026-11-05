@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   useProfileActions,
   useProfileDraft,
-  useProfileSchema,
   useProfileStatus,
   type ProfileFormField,
 } from '@/entities/profile';
@@ -24,13 +23,12 @@ interface ProfileFormProps {
 export function ProfileForm({ focusField }: ProfileFormProps) {
   const draft = useProfileDraft();
   const { hydrated, loadError } = useProfileStatus();
-  const schemaReady = useProfileSchema();
   const { update } = useProfileActions();
   const [issues, setIssues] = useState<readonly string[]>([]);
   // fields are uncontrolled: a new revision remounts them with the stored values
   const [revision, setRevision] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
-  const disabled = !hydrated || !schemaReady || loadError;
+  const disabled = !hydrated || loadError;
 
   useEffect(() => {
     if (disabled || focusField === null) return;
@@ -48,7 +46,7 @@ export function ProfileForm({ focusField }: ProfileFormProps) {
       <ProfileNotices />
       <form
         ref={formRef}
-        aria-busy={!hydrated || !schemaReady}
+        aria-busy={!hydrated}
         aria-label="Profile"
         onSubmit={(e) => {
           e.preventDefault();
@@ -56,9 +54,7 @@ export function ProfileForm({ focusField }: ProfileFormProps) {
       >
         <fieldset disabled={disabled} className="flex flex-col gap-4">
           <legend className="sr-only">Your profile</legend>
-          {hydrated && schemaReady ? null : (
-            <p className="text-sm text-muted">Loading your profile…</p>
-          )}
+          {hydrated ? null : <p className="text-sm text-muted">Loading your profile…</p>}
           <div key={`${String(revision)}-${String(hydrated)}`} className="flex flex-col gap-4">
             <ProfileFields draft={draft} write={write} />
           </div>

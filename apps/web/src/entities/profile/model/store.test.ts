@@ -180,40 +180,14 @@ describe('storage failures', () => {
   });
 });
 
-describe('the schema chunk is not loaded until an edit needs it', () => {
-  it('loads on ensureSchema and then accepts an edit', async () => {
-    let loads = 0;
-    const loadSchema = async () => {
-      loads += 1;
-      const { checkDraft } = await import('./schema');
-      return checkDraft;
-    };
-    const store = createProfileStore({ backend: () => memoryBackend(), loadSchema });
-    expect(loads).toBe(0);
-    await store.ensureSchema();
-    expect(loads).toBe(1);
-    expect(store.getState().update({ stateCode: 'NY' }).ok).toBe(true);
-    await store.ensureSchema();
-    expect(loads).toBe(1);
-  });
-});
-
-describe('the schema chunk fails to load (ADR-016 D5)', () => {
-  const failing = () => Promise.reject(new Error('ChunkLoadError'));
+describe('a stored draft is checked without the schema chunk', () => {
   const raw = JSON.stringify({ state: { draft: { stateCode: 'NY' } }, version: 1 });
 
-  it('hydrates with an empty draft, flags loadError and keeps the stored profile', async () => {
+  it('restores a valid draft and then accepts an edit', async () => {
     const backend = memoryBackend({ [STORAGE_KEY]: raw });
-    const store = createProfileStore({ backend: () => backend, loadSchema: failing });
-    await store.persist.rehydrate();
-    const s = store.getState();
-    expect([s.draft, s.hydrated, s.loadError, s.resetReason]).toEqual([{}, true, true, null]);
-    expect(s.update({ age: 30 }).ok).toBe(false);
-    expect(backend.getItem(STORAGE_KEY)).toBe(raw);
-  });
-  it('a reload with a working load restores the kept profile', async () => {
-    const backend = memoryBackend({ [STORAGE_KEY]: raw });
-    await createProfileStore({ backend: () => backend, loadSchema: failing }).persist.rehydrate();
-    expect((await hydrated(backend)).getState().draft).toEqual({ stateCode: 'NY' });
+    const store = await hydrated(backend);
+    expect(store.getState().draft).toEqual({ stateCode: 'NY' });
+    expect(store.getState().update({ age: 30 }).ok).toBe(true);
+    expect(store.getState().draft).toEqual({ stateCode: 'NY', age: 30 });
   });
 });

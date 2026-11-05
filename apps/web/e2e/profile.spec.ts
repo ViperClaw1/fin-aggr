@@ -38,6 +38,34 @@ function collectScripts(page: Page): { bodies: () => Promise<string[]>; stop: ()
   };
 }
 
+test('a visit with a saved profile does not load the zod chunk', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'fa.profile',
+      JSON.stringify({
+        state: {
+          draft: {
+            filingStatus: 'single',
+            stateCode: 'CA',
+            taxableIncome: 8_000_000,
+            residency: 'us_citizen',
+            age: 40,
+          },
+        },
+        version: 1,
+      }),
+    );
+  });
+  const scripts = collectScripts(page);
+  await page.goto('/compare/cd');
+  await expect(page.getByRole('table', { name: 'Certificates of deposit' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  scripts.stop();
+  const bodies = await scripts.bodies();
+  expect(bodies.length).toBeGreaterThan(0);
+  expect(bodies.some((body) => body.includes('$ZodType'))).toBe(false);
+});
+
 test('a visit without a profile does not load the zod chunk', async ({ page }) => {
   const scripts = collectScripts(page);
   await page.goto('/');

@@ -50,7 +50,7 @@ export {
   TaxTables,
 } from './reference';
 export { Profile, ProfileDraft } from './profile';
-export { isProfile } from './profile-checks';
+export { isProfile, isProfileDraft } from './profile-checks';
 export { normalizeInstitutionQuery, normalizeProductQuery } from './query-keys';
 export { Assumption, CalcStep } from './calc';
 export { FactQuery, InstitutionQuery, Page, ProductQuery, type PageOf } from './queries';

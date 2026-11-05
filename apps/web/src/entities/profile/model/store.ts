@@ -1,12 +1,10 @@
 // The profile store (ADR-004, ADR-009): a draft persisted in this browser only. Hydration is manual
 // (skipHydration) so the static shell renders without a profile; HydrateProfile starts it.
-// The schema loads lazily (ADR-016 D5, E7 step 2.3): on hydration only when a profile is stored,
-// otherwise when the form calls ensureSchema. Until it has loaded, edits are rejected and
-// nothing is written, so a failed load never overwrites the stored profile.
-import type { ProfileDraft } from '@fa/contracts';
-import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+// Reading the stored draft does not load zod (ADR-016 D5). isProfileDraft checks the shape.
+// The schema chunk loads only when a profile file is imported, which needs its error messages.
+import { isProfileDraft, type ProfileDraft } from '@fa/contracts';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
-import { loadProfileSchema, type CheckDraft, type SchemaLoader } from './load-schema';
 import { CURRENT_VERSION, migrateDraft, ProfileVersionError, type Migrator } from './migrate';
 import { PROFILE_STORAGE_KEY } from '@/shared/config';
 import { browserBackend, createGuardedStorage, type StorageLike } from './persist';
@@ -23,7 +21,7 @@ export interface ProfileState {
   resetReason: ResetReason | null;
   /** storage failed (quota, blocked): the profile lives in memory for this session */
   persistError: boolean;
-  /** the schema chunk failed to load: the stored profile is kept but not shown; retried on reload */
+  /** Kept for the load-failure notice. Reading a draft no longer loads the schema, so it stays false. */
   loadError: boolean;
   /** merges into the draft; an undefined value clears that field */
   update: (patch: ProfileDraft) => ActionResult;
@@ -36,41 +34,10 @@ export interface ProfileState {
 interface Options {
   backend?: () => StorageLike | null;
   migrate?: Migrator;
-  loadSchema?: SchemaLoader;
-}
-
-class SchemaLoadError extends Error {
-  constructor(cause: unknown) {
-    super('profile schema failed to load', { cause });
-    this.name = 'SchemaLoadError';
-  }
 }
 
 const NOT_LOADED: ActionResult = { ok: false, issues: ['(root): profile is not loaded yet'] };
-
-interface Gate {
-  check: CheckDraft | null;
-}
-
-/** Loads the schema before the first read; writes wait for it, so a failed load overwrites nothing. */
-function gatedStorage(guarded: StorageLike, loadSchema: SchemaLoader, gate: Gate): StateStorage {
-  return {
-    getItem: async (key) => {
-      try {
-        gate.check = await loadSchema();
-      } catch (error) {
-        throw new SchemaLoadError(error);
-      }
-      return guarded.getItem(key);
-    },
-    setItem: (key, value) => {
-      if (gate.check !== null) guarded.setItem(key, value);
-    },
-    removeItem: (key) => {
-      guarded.removeItem(key);
-    },
-  };
-}
+const INVALID: ActionResult = { ok: false, issues: ['(root): invalid profile'] };
 
 const draftOf = (persisted: unknown): unknown =>
   typeof persisted === 'object' && persisted !== null
@@ -91,24 +58,20 @@ function mergeDraft(draft: ProfileDraft, patch: ProfileDraft): unknown {
 export function createProfileStore({
   backend = browserBackend,
   migrate = migrateDraft,
-  loadSchema = loadProfileSchema,
 }: Options = {}) {
   const guarded = createGuardedStorage(backend, () => {
     // set once: setState itself writes to storage, which would fail again
     if (!store.getState().persistError) store.setState({ persistError: true });
   });
-  const gate: Gate = { check: null };
-  const storage = gatedStorage(guarded, loadSchema, gate);
-  const check = (value: unknown) => gate.check?.(value);
+  const storage = guarded;
 
   const store = createStore<ProfileState>()(
     persist(
       (set, get) => {
         const accept = (candidate: unknown): ActionResult => {
-          const checked = check(candidate);
-          if (checked === undefined) return NOT_LOADED;
-          if (!checked.ok) return checked;
-          set({ draft: checked.draft });
+          if (!get().hydrated) return NOT_LOADED;
+          if (!isProfileDraft(candidate)) return INVALID;
+          set({ draft: candidate });
           return { ok: true };
         };
         return {
@@ -138,19 +101,13 @@ export function createProfileStore({
         migrate: (persisted, version) => ({ draft: migrate(draftOf(persisted), version) }),
         // persist does not validate; a stored value of the wrong shape is discarded here
         merge: (persisted, current) => {
-          // getItem has loaded the schema before persist calls merge
-          const checked = check(draftOf(persisted) ?? {});
-          return checked?.ok === true
-            ? { ...current, draft: checked.draft }
+          const draft = draftOf(persisted) ?? {};
+          return isProfileDraft(draft)
+            ? { ...current, draft }
             : { ...current, draft: {}, resetReason: 'invalid_shape' };
         },
         // persist leaves hasHydrated() false after an error, so the store keeps its own flag
         onRehydrateStorage: () => (_state, error) => {
-          if (error instanceof SchemaLoadError) {
-            // the stored key stays: writes are off until a load succeeds
-            store.setState({ loadError: true, hydrated: true });
-            return;
-          }
           if (error !== undefined) {
             const future = error instanceof ProfileVersionError && error.code === 'future';
             store.setState({ draft: {}, resetReason: future ? 'future_version' : 'corrupt' });
@@ -161,18 +118,7 @@ export function createProfileStore({
       },
     ),
   );
-  return Object.assign(store, {
-    /** Loads the schema chunk if a later edit needs it. A failed load sets `loadError`. */
-    ensureSchema: async (): Promise<void> => {
-      if (gate.check !== null) return;
-      try {
-        gate.check = await loadSchema();
-      } catch (error) {
-        store.setState({ loadError: true });
-        throw new SchemaLoadError(error);
-      }
-    },
-  });
+  return store;
 }
 
 /** The app's store. On the server it never hydrates and has no storage, so it stays empty. */
