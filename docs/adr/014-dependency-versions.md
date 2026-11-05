@@ -48,11 +48,13 @@ Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06
 
 `@lhci/cli` 0.16.0 (published 2026-11-02) depends on `lighthouse` 13.6.0, the same major PSI used on 2026-11-04. Checked `core/lib/tracehouse/trace-processor.js` at tag `v13.6.0` (the tag `v.13.6.0` does not exist). `_isNavigationStartOfInterest` still returns false when `documentLoaderURL` is `""`, and `computeTimeOrigin` method `auto` still throws when neither the timespan marker nor `navigationStart` is present. There is no `ResourceSendRequest` fallback. Moving to 0.16.0 would not remove the patch, and the release is newer than two weeks, so 0.15.1 stays. Accepted 2026-11-04: the patch stays. A local Windows run that needed the patch is not comparable with earlier runs. The baseline is a CI run.
 
-## Amendment (Stage 2, 2026-11-04): accepted, not installed
+## Amendment (Stage 2, 2026-11-04): accepted, installed at step 1
 
-Accepted with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Installed at Stage 2 step 1, which starts after M5. Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04. A release newer than two weeks (published after 2026-10-21) is not pinned.
+Accepted with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04, and again on 2026-11-05 before install. A release newer than two weeks is not pinned. On 2026-11-05 the pins below were unchanged: `@supabase/supabase-js` 2.119.0 (2026-11-04), `supabase` 2.122.0 (2026-10-23) and 3.0.0 (2026-11-02) are still inside two weeks. `pg` 8.23.1, `@types/pg` 8.23.1, `robots-parser` 3.0.1 and `cheerio` 1.2.0 are still the current releases that clear the rule.
 
-| Package | Version | Published | Where, once accepted |
+Installed on 2026-11-05: `@supabase/supabase-js` in `@fa/ingest`, `supabase` CLI as a root devDependency. `pg` waits for the seed transaction (step 2). `robots-parser` and `cheerio` wait for step 8, when something imports them.
+
+| Package | Version | Published | Where |
 | --- | --- | --- | --- |
 | @supabase/supabase-js | 2.118.0 | 2026-10-15 | `apps/web` server gateway, `packages/ingest`, `supabase/scripts` |
 | supabase | 2.121.0 | 2026-10-14 | root devDependency (CLI: `supabase start`, migrations) |

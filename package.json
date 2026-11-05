@@ -23,7 +23,9 @@
     "lhci": "node tools/lhci-prepare.mjs && lhci autorun --config=tools/lhci.runtime.json",
     "lhci:profile": "node tools/lhci-prepare.mjs --profile && lhci autorun --config=tools/lhci.runtime.json",
     "rules:sync": "node tools/sync-agent-rules.mjs",
-    "rules:check": "node tools/sync-agent-rules.mjs --check"
+    "rules:check": "node tools/sync-agent-rules.mjs --check",
+    "db:start": "supabase start",
+    "db:seed:sql": "node supabase/scripts/generate-seed.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -45,6 +47,7 @@
     "pdfkit": "0.20.2",
     "prettier": "3.9.10",
     "puppeteer": "25.14.0",
+    "supabase": "2.121.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",
     "vitest": "5.0.5"

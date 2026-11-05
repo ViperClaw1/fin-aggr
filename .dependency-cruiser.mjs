@@ -54,6 +54,33 @@ export default {
 
     // pure packages
     {
+      // ADR-020: the site never ships connectors, and ingest does not read the app or the mock set.
+      name: 'web-does-not-import-ingest',
+      severity: 'error',
+      from: { path: '^apps/web/' },
+      to: { path: '^packages/ingest/' },
+    },
+    {
+      name: 'ingest-does-not-import-web-or-fixtures',
+      severity: 'error',
+      from: { path: '^packages/ingest/' },
+      to: { path: ['^apps/web/', '^packages/fixtures/'] },
+    },
+    {
+      // ADR-019: the browser never talks to Supabase. The client is allowed only in the server
+      // gateway, the ingest package, and the database scripts.
+      name: 'supabase-js-server-only',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/web/src/shared/api/gateway\\.supabase\\.ts$',
+          '^packages/ingest/',
+          '^supabase/scripts/',
+        ],
+      },
+      to: { path: 'node_modules/@supabase/supabase-js/' },
+    },
+    {
       name: 'engine-is-pure',
       severity: 'error',
       from: { path: '^packages/engine/src' },

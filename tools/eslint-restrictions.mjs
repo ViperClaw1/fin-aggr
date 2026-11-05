@@ -135,7 +135,17 @@ export const WEB_PROPS = [
   { object: 'document', property: 'cookie', message: 'Forbidden.' },
   AMBIENT_NOW,
 ];
-export const WEB_SYNTAX = [...SYNTAX_COMMON, NO_AMBIENT_TIME, NO_LOCAL_MONEY_FORMAT];
+// ADR-019: the service role and the database URL belong to ingest and scripts, never to the web app.
+export const NO_SUPABASE_SECRET = {
+  selector: 'Literal[value=/^SUPABASE_(SERVICE_ROLE_KEY|DB_URL)$/]',
+  message: 'SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL are not allowed in apps/web (ADR-019).',
+};
+export const WEB_SYNTAX = [
+  ...SYNTAX_COMMON,
+  NO_AMBIENT_TIME,
+  NO_LOCAL_MONEY_FORMAT,
+  NO_SUPABASE_SECRET,
+];
 // ADR-016 D3: client and engine code use the zod-free checks from @fa/contracts, so zod stays out
 // of the browser bundle. Schemas are capitalised (Cents, ProfileDraft); Date and JSON are not schemas.
 export const NO_SCHEMA_CALL = {

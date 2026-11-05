@@ -5,7 +5,6 @@
 // change rebuilds even when the seed does not. If the stamp still matches, the script does nothing.
 // Standard fonts are copied by apps/web/scripts/copy-standard-fonts.mjs.
 import { Buffer } from 'node:buffer';
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { register } from 'node:module';
@@ -18,7 +17,6 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Same number as readEnv and @fa/fixtures DEFAULT_SEED. The PDF test fails if those drift.
 const DEFAULT_SEED = 20261025;
 const DOCUMENT_IDS = Array.from({ length: 8 }, (_, i) => `doc_${String(i + 1).padStart(2, '0')}`);
-const TRANSFORM = '--experimental-transform-types';
 const WATERMARK = 'SYNTHETIC DOCUMENT · NOT A REAL BANK AGREEMENT';
 const FILLER =
   'This page is filler in a synthetic deposit agreement written for the FA prototype. It is not a bank document and it is not for financial decisions.';
@@ -155,15 +153,7 @@ async function main() {
     process.stdout.write(`mock-docs: seed ${String(seed)} already built\n`);
     return;
   }
-  // Fixture sources use TypeScript parameter properties, which strip-only mode cannot load.
-  if (!process.execArgv.includes(TRANSFORM)) {
-    const child = spawnSync(
-      process.execPath,
-      [TRANSFORM, ...process.execArgv, process.argv[1], ...process.argv.slice(2)],
-      { stdio: 'inherit', env: process.env },
-    );
-    process.exit(child.status ?? 1);
-  }
+  // contracts and fixtures are erasableSyntaxOnly, so Node's type strip can load them.
   register(new globalThis.URL('./resolve-ts.mjs', import.meta.url));
   const { generateFixtures } = await import('@fa/fixtures');
   const { documents, facts } = generateFixtures(seed);

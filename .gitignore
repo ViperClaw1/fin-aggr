@@ -59,6 +59,10 @@ test-results/
 .lighthouseci/
 tools/lhci.runtime.json
 
+# supabase CLI local state
+supabase/.branches
+supabase/.temp
+
 # Claude Code: personal and transient state
 .claude/settings.local.json
 CLAUDE.local.md

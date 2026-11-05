@@ -10,15 +10,19 @@ export type GatewayErrorCode =
   'not_found' | 'validation_failed' | 'rate_limited' | 'unavailable' | 'not_implemented';
 
 export class GatewayError extends Error {
+  readonly code: GatewayErrorCode;
+  readonly retryable: boolean;
   constructor(
-    readonly code: GatewayErrorCode,
+    code: GatewayErrorCode,
     message: string,
-    readonly retryable: boolean,
+    retryable: boolean,
     // the underlying error, so devtools and logs show the real reason behind a wrapped failure
     options?: { cause?: unknown },
   ) {
     super(message, options);
     this.name = 'GatewayError';
+    this.code = code;
+    this.retryable = retryable;
   }
 }
 
