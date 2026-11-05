@@ -27,7 +27,8 @@ export async function generateMetadata({
   };
 }
 
-// The catalog is loaded at build time and passed as props (ADR-016 D1); the table filters it in memory.
+// The catalog is loaded at build time and passed as props (ADR-016 D1). The table is drawn
+// once; a filter hides rows instead of dropping them.
 export default async function ComparePage({ params }: PageProps<'/compare/[category]'>) {
   const { category } = await params;
   if (!isStage1(category)) notFound();

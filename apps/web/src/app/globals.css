@@ -204,25 +204,30 @@ html:has(dialog:modal) {
   }
 }
 
-/* A saved profile covers the APY table until ranking is ready (ADR-017). The real table
-   stays in the grid so the slot height matches the final catalog. */
+/* A saved profile covers the APY table until ranking is ready (ADR-017). The table stays
+   in flow and sets the slot height. The note is out of flow: in a shared grid cell Firefox
+   sized the slot from the note alone, then the catalog jumped when the cover came off. */
 html[data-has-profile] [data-catalog-slot] {
-  display: grid;
-}
-html[data-has-profile] [data-catalog-slot] > [data-catalog-pending],
-html[data-has-profile] [data-catalog-slot] > [data-catalog] {
-  grid-area: 1 / 1;
+  position: relative;
 }
 html[data-has-profile] [data-catalog] {
   visibility: hidden;
 }
-/* The cover stretches to the table, so the painted block is already full height (LCP). */
 html[data-has-profile] [data-catalog-pending] {
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   background: var(--surface);
 }
 html:not([data-has-profile]) [data-catalog-pending] {
   display: none;
+}
+
+/* Rows past the first screen skip layout until they near the viewport (ADR-016, step 2.9).
+   Block size only: a width placeholder would shrink the table. */
+tr.cv-below {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 2.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

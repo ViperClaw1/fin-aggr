@@ -45,7 +45,7 @@ test('lists all 60 CDs, best APY first, with sources', async ({ page }) => {
   await expect(rows.nth(1).locator('[data-citation]').first()).toBeVisible();
 });
 
-test('a filter in the URL narrows the table in memory', async ({ page }) => {
+test('a filter in the URL hides rows and keeps them mounted', async ({ page }) => {
   await page.goto('/compare/cd?term=12');
   const rows = page.getByRole('table').getByRole('row');
   await expect(rows.nth(1)).toContainText('12-Month CD');
@@ -168,14 +168,14 @@ test('the filter form writes the URL, Reset clears it', async ({ page }) => {
   const form = page.getByRole('form', { name: 'Filters' });
   await form.getByRole('group', { name: 'Term' }).getByLabel('12 mo').check();
   await expect(page).toHaveURL(/term=12/);
-  const terms = await table(page).locator('tbody tr td:nth-child(3)').allInnerTexts();
+  const terms = await table(page).locator('tbody tr:visible td:nth-child(3)').allInnerTexts();
   expect(new Set(terms)).toEqual(new Set(['12 mo']));
 
   await form.getByLabel('Search bank or product').fill('Granite');
   await expect(page).toHaveURL(/search=Granite/);
   await form.getByRole('button', { name: 'Reset filters' }).click();
   await expect(page).not.toHaveURL(/term=|search=/);
-  await expect(table(page).locator('tbody tr')).toHaveCount(60);
+  await expect(table(page).locator('tbody tr:visible')).toHaveCount(60);
 });
 
 test('compare with the filter form has no serious or critical axe violations', async ({ page }) => {

@@ -2,7 +2,8 @@
 
 // The compare table. Data comes as props, loaded at build time (ADR-016 D1), so the table is in the
 // static HTML and the client never loads the gateway. Filters and the column sort are read from
-// the URL and run in memory. With a complete profile the rows are ranked after tax in the browser
+// the URL. A filter hides rows; it does not drop them, so the body stays mounted (step 2.9).
+// With a complete profile the rows are ranked after tax in the browser
 // (ADR-008); the profile never leaves it (ADR-004). The filter form and row summaries come next.
 import type { ProductCategory } from '@fa/contracts';
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -17,7 +18,6 @@ import { useOpenCitation, type OpenCitation } from '@/features/open-citation';
 import {
   effectiveSort,
   filterProducts,
-  filterRanked,
   FilterForm,
   FilterFormStatic,
   useProductFilters,
@@ -25,14 +25,18 @@ import {
   type ProductSort,
 } from '@/features/filter-products';
 import { DataTable, type Column } from '@/shared/ui/data-table';
+import { EmptyState } from '@/shared/ui/states';
 import { freshnessNow } from '@/entities/fact';
 import type { CompareData } from '../api/prefetch';
 import { needsData } from '../model/needs-data';
 import { defaultOrder, type Row } from '../model/order';
+import { CONTENT_VISIBILITY_AFTER, hiddenProductIds } from '../model/visibility';
 import { unpackCompareProducts } from '../model/wire';
 import { columns, shownSortKeys } from './columns';
 import { NeedsDataNote } from './needs-data-note';
 import { RowDetails, type InstitutionDetails } from './row-details';
+
+const EMPTY_FILTERS = 'No products match these filters. Remove some, or use Reset filters.';
 
 const CAPTION: Record<string, string> = {
   cd: 'Certificates of deposit',
@@ -77,6 +81,40 @@ interface Url {
 }
 const noop = () => undefined;
 
+function useVisibleCatalog(
+  products: readonly ReturnType<typeof unpackCompareProducts>,
+  filters: Filters,
+  index: InstitutionDetails,
+  taxTables: Props['taxTables'],
+) {
+  const matched = useMemo(() => {
+    const ids = new Set<string>();
+    for (const product of filterProducts(products, filters, index)) ids.add(product.id);
+    return ids;
+  }, [products, filters, index]);
+  const profile = useCompleteProfile(taxTables.taxYear);
+  // Rank the whole catalog. A filter change must not rebuild the row list (step 2.9).
+  const ranked = useNetYield(products, profile, taxTables);
+  const rows = useMemo(() => defaultOrder(products, ranked), [products, ranked]);
+  const hiddenRowIds = useMemo(
+    () =>
+      hiddenProductIds(
+        rows.map((row) => ({ id: row.product.id, group: row.ranked?.group ?? null })),
+        matched,
+        filters.hide,
+      ),
+    [rows, matched, filters.hide],
+  );
+  return {
+    rows,
+    hiddenRowIds,
+    visibleCount: rows.length - hiddenRowIds.size,
+    profile,
+    ranked,
+    needs: needsData(ranked === null ? null : ranked.filter((row) => matched.has(row.productId))),
+  };
+}
+
 /** Drops the pre-hydration cover once the row order will not change again (ADR-017). */
 function ReleaseCatalog({ hold }: { hold: boolean }) {
   useLayoutEffect(() => {
@@ -90,6 +128,8 @@ function Catalog(props: {
   caption: string;
   columns: Column<Row>[];
   rows: readonly Row[];
+  hiddenRowIds: ReadonlySet<string>;
+  showEmpty: boolean;
   index: InstitutionDetails;
   taxYear: number;
   onOpen: ((ref: OpenCitation) => void) | null;
@@ -113,6 +153,8 @@ function Catalog(props: {
             caption={props.caption}
             columns={props.columns}
             rows={props.rows}
+            hiddenRowIds={props.hiddenRowIds}
+            contentVisibilityAfter={CONTENT_VISIBILITY_AFTER}
             getRowId={(r) => r.product.id}
             renderExpanded={(r) => (
               <RowDetails
@@ -134,9 +176,8 @@ function Catalog(props: {
               }
               props.onSortChange(next as ProductSort);
             }}
-            status={props.rows.length === 0 ? 'empty' : 'ready'}
-            emptyTitle="No products match these filters. Remove some, or use Reset filters."
           />
+          {props.showEmpty ? <EmptyState title={EMPTY_FILTERS} /> : null}
         </div>
       </div>
     </>
@@ -207,16 +248,8 @@ function Table(props: Props & UrlState) {
     () => new Map(institutions.map((i) => [i.id, i])),
     [institutions],
   );
-  const filtered = useMemo(
-    () => filterProducts(products, filters, index),
-    [products, filters, index],
-  );
-  const profile = useCompleteProfile(taxTables.taxYear);
-  const ranked = useNetYield(filtered, profile, taxTables);
-  const rows = useMemo(
-    () => defaultOrder(filtered, ranked === null ? null : filterRanked(ranked, filters.hide)),
-    [filtered, ranked, filters.hide],
-  );
+  const catalog = useVisibleCatalog(products, filters, index, taxTables);
+  const { rows, hiddenRowIds, visibleCount, profile, ranked } = catalog;
   const withProfile = ranked !== null;
   const terms = useMemo(
     () =>
@@ -226,7 +259,7 @@ function Table(props: Props & UrlState) {
     [products],
   );
   const sort = effectiveSort(props.sort, shownSortKeys(withProfile));
-  const needs = needsData(ranked);
+  const needs = catalog.needs;
   const onOpenProfile = props.onOpenProfile;
   const holdCatalog = !useProfileHydrated() || (profile !== null && ranked === null);
   return (
@@ -243,7 +276,7 @@ function Table(props: Props & UrlState) {
           {/* one live region: a filter change announces the new count */}
           <div aria-live="polite" className="min-w-0">
             <h2 className="text-xl font-semibold tabular-nums">
-              {rows.length === 1 ? '1 product' : `${String(rows.length)} products`}
+              {visibleCount === 1 ? '1 product' : `${String(visibleCount)} products`}
             </h2>
             <p className="text-sm text-muted">
               {sort === null ? defaultOrderNote(withProfile) : 'Sorted by the chosen column.'}
@@ -265,6 +298,8 @@ function Table(props: Props & UrlState) {
           caption={CAPTION[category] ?? 'Products'}
           columns={columns(index, freshnessNow(dataset), withProfile, props.onOpenCitation)}
           rows={rows}
+          hiddenRowIds={hiddenRowIds}
+          showEmpty={visibleCount === 0}
           index={index}
           taxYear={taxTables.taxYear}
           onOpen={props.onOpenCitation}

@@ -40,9 +40,7 @@ test('the quote highlight covers the painted text', async ({ page }) => {
   expect(await darkPixels(page)).toBeGreaterThan(0);
 });
 
-test('Escape closes the panel and returns focus', async ({ page, browserName }) => {
-  // WebKit reports the citation button inactive after Escape. The close handler does call focus().
-  test.fixme(browserName === 'webkit', 'WebKit does not restore focus to the citation button');
+test('Escape closes the panel and returns focus', async ({ page }) => {
   expect(product).toBeDefined();
   await page.goto(`/product/${product?.id ?? ''}`);
   const button = page.locator('main [data-citation] button').first();

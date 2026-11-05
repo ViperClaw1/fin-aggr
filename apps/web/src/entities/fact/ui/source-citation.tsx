@@ -39,7 +39,9 @@ export function SourceCitation({
       {doc !== undefined && onOpen !== undefined ? (
         <button
           type="button"
-          onClick={() => {
+          onClick={(event) => {
+            // WebKit does not always focus a button on click before the URL update.
+            event.currentTarget.focus();
             onOpen({ documentId: doc.id, page: doc.page, quote: doc.quote });
           }}
           className="text-accent underline"

@@ -3,16 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const RANKED = 'Ranked for your profile: eligible first, then by net interest after tax.';
 
-test('a saved profile keeps CLS under 0.1 and the catalog top still', async ({
-  page,
-  browserName,
-}) => {
-  // Windows Firefox 157 moves the catalog 481px when the cover comes off. Chromium stays under 1px.
-  // The cover CSS is the Lighthouse fix (ADR-017); do not change it from this number.
-  test.fixme(
-    browserName === 'firefox',
-    'Firefox moves the catalog 481px when the profile cover is removed',
-  );
+test('a saved profile keeps CLS under 0.1 and the catalog top still', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'fa.profile',

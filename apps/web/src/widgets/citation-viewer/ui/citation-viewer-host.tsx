@@ -4,7 +4,7 @@
 // loads only while a citation is open, so none of them join the first load (ADR-016).
 import dynamic from 'next/dynamic';
 import { useEffect, useId, useLayoutEffect, useRef } from 'react';
-import { useOpenCitation } from '@/features/open-citation';
+import { citationReturnTarget, useOpenCitation } from '@/features/open-citation';
 import { Skeleton } from '@/shared/ui/states';
 
 const Panel = dynamic(() => import('./citation-panel').then((m) => m.CitationPanel), {
@@ -23,7 +23,8 @@ export function CitationViewerHost() {
     if (dialog === null) return;
     if (current !== null && !dialog.open) {
       returnFocus.current =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        citationReturnTarget() ??
+        (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       dialog.showModal();
     }
     if (current === null && dialog.open) dialog.close();
@@ -47,8 +48,23 @@ export function CitationViewerHost() {
       aria-labelledby={titleId}
       className="sheet m-0 ml-auto h-dvh max-h-none w-full max-w-3xl overflow-hidden border-l border-divider bg-background p-0 text-foreground"
       onClose={() => {
-        close();
-        returnFocus.current?.focus();
+        const restore = returnFocus.current;
+        const action = close();
+        const focus = (): void => {
+          restore?.focus();
+        };
+        // WebKit moves focus to the body after this event, and again when history.back()
+        // finishes. Focus once the navigation has settled.
+        if (action === 'back') {
+          window.addEventListener(
+            'popstate',
+            () => {
+              setTimeout(focus, 0);
+            },
+            { once: true },
+          );
+        }
+        setTimeout(focus, 0);
       }}
     >
       <div className="flex h-full flex-col">

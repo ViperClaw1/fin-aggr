@@ -36,6 +36,16 @@ export interface DataTableProps<T> {
   sortDisabled?: boolean;
   /** Hidden columns are not rendered at all. */
   hiddenColumnIds?: readonly string[];
+  /**
+   * Rows that stay mounted and are not shown. A filter hides them; it does not drop them from
+   * `rows`, so the body is not built again (ADR-016 D1, step 2.9).
+   */
+  hiddenRowIds?: ReadonlySet<string>;
+  /**
+   * Visible rows at this index and after (0-based, hidden rows are not counted) skip layout
+   * until they near the viewport.
+   */
+  contentVisibilityAfter?: number;
   renderExpanded?: (row: T) => ReactNode;
   /** Names the row in its expand button ("Show details: Birch Bank"); pass it with renderExpanded. */
   expandLabel?: (row: T) => string;
@@ -173,15 +183,24 @@ function Body<T>(
 ) {
   const compare = p.visible.find((c) => c.id === p.sort?.columnId)?.compare;
   const rows = p.sort && compare ? sortRows(p.rows, compare, p.sort.direction, p.getRowId) : p.rows;
+  const hidden = p.hiddenRowIds;
+  const after = p.contentVisibilityAfter;
+  let shown = 0;
   return (
     <tbody>
       {rows.map((row) => {
         const id = p.getRowId(row);
+        const isHidden = hidden?.has(id) === true;
+        const below = !isHidden && after !== undefined && shown >= after;
+        if (!isHidden) shown += 1;
         const open = p.renderExpanded !== undefined && p.expanded.has(id);
         const detailsId = `${p.idPrefix}-${id}-details`;
         return (
           <Fragment key={id}>
-            <tr className="group border-b border-divider">
+            <tr
+              hidden={isHidden}
+              className={`group border-b border-divider${below ? ' cv-below' : ''}`}
+            >
               {p.visible.map((c, i) => {
                 // the sticky first column wraps on phones, or a long name would cover the screen
                 const wrap =
@@ -218,7 +237,7 @@ function Body<T>(
               })}
             </tr>
             {open && p.renderExpanded ? (
-              <tr id={detailsId} className="border-b border-divider">
+              <tr id={detailsId} hidden={isHidden} className="border-b border-divider">
                 <td colSpan={p.visible.length} className="bg-surface px-3 py-4">
                   {/* as wide as the visible part of the region and pinned to its left edge: on a
                       table wider than the screen the details stay readable without scrolling */}
