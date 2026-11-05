@@ -1,6 +1,5 @@
 // Pure filtering: keeps order, never mutates, empty filters return the same items.
 import { compareRate, type Id, type Institution, type Product } from '@fa/contracts';
-import type { RankedProduct } from '@fa/engine';
 import { headlineApy } from '@/entities/product';
 import type { ProductFilters } from './search-params';
 
@@ -44,9 +43,3 @@ export function filterProducts<T extends Filterable>(
     return checks.every((check) => check(p, issuer));
   });
 }
-
-/** `hide: 'ineligible'` drops that group only; needs_profile stays and ranks are kept. */
-export const filterRanked = (
-  ranked: readonly RankedProduct[],
-  hide: ProductFilters['hide'],
-): RankedProduct[] => (hide === null ? [...ranked] : ranked.filter((r) => r.group !== hide));

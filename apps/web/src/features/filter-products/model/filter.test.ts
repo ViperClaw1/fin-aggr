@@ -1,9 +1,8 @@
 // Synthetic products: this feature may not reach shared/api, tests included (profile-stays-local).
 import { Cents, Product, Rate } from '@fa/contracts';
-import type { RankedProduct } from '@fa/engine';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { filterProducts, filterRanked, type InstitutionIndex } from './filter';
+import { filterProducts, type InstitutionIndex } from './filter';
 import type { ProductFilters } from './search-params';
 
 type Filters = Omit<ProductFilters, 'hide'>;
@@ -142,26 +141,5 @@ describe('filterProducts properties', () => {
         expect(ids(f, EMPTY)).toEqual(needsIssuer ? [] : ids(f));
       }),
     );
-  });
-});
-
-describe('filterRanked', () => {
-  const ranked = (['eligible', 'needs_profile', 'ineligible'] as const).map(
-    (group, i) =>
-      ({
-        productId: `p${String(i)}`,
-        group,
-        rank: group === 'eligible' ? 1 : null,
-      }) as RankedProduct,
-  );
-  it('hides only the ineligible group and keeps ranks', () => {
-    expect(filterRanked(ranked, 'ineligible').map((r) => [r.productId, r.rank])).toEqual([
-      ['p0', 1],
-      ['p1', null],
-    ]);
-  });
-  it('without hide returns a copy of everything', () => {
-    const out = filterRanked(ranked, null);
-    expect([out, out === ranked]).toEqual([ranked, false]);
   });
 });
