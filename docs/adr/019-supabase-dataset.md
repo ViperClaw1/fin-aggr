@@ -34,7 +34,7 @@ Tables (created in step 2 with `supabase migration new`): `sources`, `dataset_ve
 - The free Supabase plan: rejected. No daily backups, and an idle project is paused. Pro is already the organization plan.
 
 ## Consequences
-- Step 1 adds the package boundary and the ESLint bans before any key exists. It starts after M5 (plan decision 0). `@supabase/supabase-js` and the Supabase CLI are installed there. `pg`, `robots-parser` and `cheerio` stay uninstalled until the step that imports them.
+- Step 1 adds the package boundary and the ESLint bans before any key exists. It starts after M5 (plan decision 0). `@supabase/supabase-js` and the Supabase CLI are installed there. `pg` is installed at step 2 for the seed and rollback scripts. `robots-parser` and `cheerio` stay uninstalled until step 8.
 - Step 3 adds the `supabase` arm, the `domains` field, and the contract tests against `supabase start`. Fixtures and the mock gateway gain `domains` in that same change.
 - `listSponsored` reads `ads.sponsored_items` directly. Partner feeds stay out of scope, so the table may hold only fixture rows.
 - A leaked anon key can read published rows and cannot write them. A leaked service role can. The service role stays in ingest and in GitHub Actions secrets.

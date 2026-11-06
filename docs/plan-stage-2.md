@@ -114,6 +114,8 @@
 
 ## Шаг 2. База Supabase (1–1,5 недели)
 
+Миграция `supabase/migrations/20261106095910_initial_schema.sql`: таблицы ADR-019, RLS на чтение текущей версии, `publish_domain` / `rollback_domain`, представления `*_text`. Загрузка фикстур: `pnpm db:seed --target local|staging|prod` (`--dry-run`, для prod ещё `--confirm prod`). `pg` 8.23.1. Проекты staging и prod по-прежнему создаёт владелец.
+
 Состав таблиц, RLS, ставки и версии — ADR-019. Миграции через `supabase migration new`.
 
 | Таблица | Что хранит |

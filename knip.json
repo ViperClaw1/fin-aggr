@@ -3,7 +3,7 @@
   "ignore": ["**/*.canary.ts", "**/*.canary.tsx"],
   "workspaces": {
     ".": {
-      "entry": ["tools/*.mjs", "tools/lhci*.cjs", ".cursor/hooks/*.mjs"]
+      "entry": ["tools/*.mjs", "tools/lhci*.cjs", ".cursor/hooks/*.mjs", "supabase/scripts/*.mjs"]
     },
     "apps/web": {},
     "packages/*": {}

@@ -25,13 +25,16 @@
     "rules:sync": "node tools/sync-agent-rules.mjs",
     "rules:check": "node tools/sync-agent-rules.mjs --check",
     "db:start": "supabase start",
-    "db:seed:sql": "node supabase/scripts/generate-seed.mjs"
+    "db:seed:sql": "node supabase/scripts/generate-seed.mjs",
+    "db:seed": "node supabase/scripts/db-seed.mjs",
+    "db:rollback": "node supabase/scripts/db-rollback.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@fa/fixtures": "workspace:*",
     "@lhci/cli": "0.15.1",
     "@next/eslint-plugin-next": "16.4.3",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.0.5",
     "@vitest/eslint-plugin": "1.6.28",
     "dependency-cruiser": "18.7.0",
@@ -62,5 +65,8 @@
       "prettier --write"
     ],
     "*.{json,css,yaml,yml}": "prettier --write"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
   }
 }

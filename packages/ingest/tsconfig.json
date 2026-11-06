@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "erasableSyntaxOnly": true },
+  "compilerOptions": { "erasableSyntaxOnly": true, "types": ["node"] },
   "include": ["src"]
 }
