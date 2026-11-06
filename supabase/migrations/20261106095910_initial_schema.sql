@@ -4,13 +4,26 @@
 
 create schema if not exists ads;
 
-create domain cents as bigint
-  constraint cents_safe check (value between -9007199254740991 and 9007199254740991);
+-- Preview forks a database that already has this schema, then applies the file again.
+do $$
+begin
+  create domain cents as bigint
+    constraint cents_safe check (value between -9007199254740991 and 9007199254740991);
+exception
+  when duplicate_object then null;
+end
+$$;
 
-create domain rate as numeric(11, 8)
-  constraint rate_unit check (value >= 0 and value <= 1);
+do $$
+begin
+  create domain rate as numeric(11, 8)
+    constraint rate_unit check (value >= 0 and value <= 1);
+exception
+  when duplicate_object then null;
+end
+$$;
 
-create table dataset_versions (
+create table if not exists dataset_versions (
   id bigint generated always as identity primary key,
   domain text not null check (
     domain in (
@@ -28,10 +41,10 @@ create table dataset_versions (
   created_at timestamptz not null default now()
 );
 
-create unique index dataset_versions_one_current on dataset_versions (domain)
+create unique index if not exists dataset_versions_one_current on dataset_versions (domain)
   where is_current;
 
-create table sources (
+create table if not exists sources (
   id text primary key check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   name text not null check (name <> ''),
   url text not null,
@@ -50,7 +63,7 @@ create table sources (
   excluded boolean not null default false
 );
 
-create table institutions (
+create table if not exists institutions (
   version_id bigint not null references dataset_versions (id),
   id text not null check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   name text not null check (name <> ''),
@@ -63,7 +76,7 @@ create table institutions (
   primary key (version_id, id)
 );
 
-create table bank_metrics (
+create table if not exists bank_metrics (
   version_id bigint not null references dataset_versions (id),
   institution_id text not null,
   as_of date not null,
@@ -74,7 +87,7 @@ create table bank_metrics (
   primary key (version_id, institution_id)
 );
 
-create table products (
+create table if not exists products (
   version_id bigint not null references dataset_versions (id),
   id text not null check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   institution_id text not null,
@@ -113,7 +126,7 @@ create table products (
   check (max_deposit is null or max_deposit >= min_opening)
 );
 
-create table product_tiers (
+create table if not exists product_tiers (
   version_id bigint not null,
   product_id text not null,
   ord integer not null check (ord >= 0),
@@ -125,7 +138,7 @@ create table product_tiers (
   check (max_balance is null or max_balance >= min_balance)
 );
 
-create table documents (
+create table if not exists documents (
   version_id bigint not null references dataset_versions (id),
   id text not null check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   title text not null check (title <> ''),
@@ -137,7 +150,7 @@ create table documents (
   primary key (version_id, id)
 );
 
-create table facts (
+create table if not exists facts (
   version_id bigint not null references dataset_versions (id),
   id text not null check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   product_id text,
@@ -160,14 +173,14 @@ create table facts (
   primary key (version_id, id)
 );
 
-create table tax_tables (
+create table if not exists tax_tables (
   version_id bigint not null references dataset_versions (id),
   tax_year integer not null,
   provenance jsonb not null,
   primary key (version_id, tax_year)
 );
 
-create table tax_brackets (
+create table if not exists tax_brackets (
   version_id bigint not null,
   tax_year integer not null,
   filing_status text not null check (
@@ -180,7 +193,7 @@ create table tax_brackets (
   foreign key (version_id, tax_year) references tax_tables (version_id, tax_year)
 );
 
-create table state_tax_rates (
+create table if not exists state_tax_rates (
   version_id bigint not null,
   tax_year integer not null,
   state_code text not null check (char_length(state_code) = 2),
@@ -189,7 +202,7 @@ create table state_tax_rates (
   foreign key (version_id, tax_year) references tax_tables (version_id, tax_year)
 );
 
-create table insurance_rules (
+create table if not exists insurance_rules (
   version_id bigint primary key references dataset_versions (id),
   as_of date not null,
   supported_categories text[] not null,
@@ -200,14 +213,14 @@ create table insurance_rules (
   provenance jsonb not null
 );
 
-create table insurance_limits (
+create table if not exists insurance_limits (
   version_id bigint not null references insurance_rules (version_id),
   regulator text not null check (regulator in ('FDIC', 'NCUA')),
   limit_per_owner cents not null,
   primary key (version_id, regulator)
 );
 
-create table ads.sponsored_items (
+create table if not exists ads.sponsored_items (
   id text primary key check (id ~ '^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$'),
   placement text not null check (placement in ('compare_top', 'compare_sidebar', 'product_aside')),
   advertiser text not null check (advertiser <> ''),
@@ -219,7 +232,7 @@ create table ads.sponsored_items (
   compensation_type text not null check (compensation_type in ('cpa', 'cpc', 'flat_fee'))
 );
 
-create table raw_snapshots (
+create table if not exists raw_snapshots (
   id bigint generated always as identity primary key,
   source_id text not null references sources (id),
   sha256 text not null check (sha256 ~ '^[0-9a-f]{64}$'),
@@ -228,7 +241,7 @@ create table raw_snapshots (
   created_at timestamptz not null default now()
 );
 
-create table job_runs (
+create table if not exists job_runs (
   id bigint generated always as identity primary key,
   source_id text not null references sources (id),
   domain text not null,
@@ -241,7 +254,7 @@ create table job_runs (
   request_count integer not null default 0 check (request_count >= 0)
 );
 
-create table review_queue (
+create table if not exists review_queue (
   id bigint generated always as identity primary key,
   source_id text not null references sources (id),
   domain text not null,
@@ -252,7 +265,7 @@ create table review_queue (
 );
 
 -- A product's version domain follows its category (ADR-019): treasury publishes alone.
-create function product_version_domain() returns trigger
+create or replace function product_version_domain() returns trigger
 language plpgsql
 as $$
 declare
@@ -269,11 +282,12 @@ begin
 end;
 $$;
 
+drop trigger if exists product_version_domain on products;
 create trigger product_version_domain
 before insert or update on products
 for each row execute function product_version_domain();
 
-create function publish_domain(p_domain text, p_version bigint) returns void
+create or replace function publish_domain(p_domain text, p_version bigint) returns void
 language plpgsql
 as $$
 begin
@@ -287,7 +301,7 @@ begin
 end;
 $$;
 
-create function rollback_domain(p_domain text, p_version bigint) returns void
+create or replace function rollback_domain(p_domain text, p_version bigint) returns void
 language plpgsql
 as $$
 declare
@@ -306,15 +320,15 @@ begin
 end;
 $$;
 
-create view product_tiers_text as
+create or replace view product_tiers_text as
 select version_id, product_id, ord, min_balance, max_balance, apy::text as apy
 from product_tiers;
 
-create view tax_brackets_text as
+create or replace view tax_brackets_text as
 select version_id, tax_year, filing_status, ord, up_to, rate::text as rate
 from tax_brackets;
 
-create view state_tax_rates_text as
+create or replace view state_tax_rates_text as
 select version_id, tax_year, state_code, assumed_marginal_rate::text as assumed_marginal_rate
 from state_tax_rates;
 
@@ -336,55 +350,69 @@ alter table job_runs enable row level security;
 alter table review_queue enable row level security;
 alter table ads.sponsored_items enable row level security;
 
+drop policy if exists dataset_versions_read on dataset_versions;
 create policy dataset_versions_read on dataset_versions
 for select to anon, authenticated using (is_current);
 
+drop policy if exists sources_read on sources;
 create policy sources_read on sources for select to anon, authenticated using (true);
 
+drop policy if exists institutions_read on institutions;
 create policy institutions_read on institutions
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists bank_metrics_read on bank_metrics;
 create policy bank_metrics_read on bank_metrics
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists products_read on products;
 create policy products_read on products
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists product_tiers_read on product_tiers;
 create policy product_tiers_read on product_tiers
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists documents_read on documents;
 create policy documents_read on documents
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists facts_read on facts;
 create policy facts_read on facts
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists tax_tables_read on tax_tables;
 create policy tax_tables_read on tax_tables
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists tax_brackets_read on tax_brackets;
 create policy tax_brackets_read on tax_brackets
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists state_tax_rates_read on state_tax_rates;
 create policy state_tax_rates_read on state_tax_rates
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists insurance_rules_read on insurance_rules;
 create policy insurance_rules_read on insurance_rules
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists insurance_limits_read on insurance_limits;
 create policy insurance_limits_read on insurance_limits
 for select to anon, authenticated
 using (version_id in (select id from dataset_versions where is_current));
 
+drop policy if exists sponsored_read on ads.sponsored_items;
 create policy sponsored_read on ads.sponsored_items
 for select to anon, authenticated using (true);
 
