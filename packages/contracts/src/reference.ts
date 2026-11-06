@@ -68,6 +68,50 @@ export const SourceRegistryEntry = z.strictObject({
 });
 export type SourceRegistryEntry = z.infer<typeof SourceRegistryEntry>;
 
-/** What the data set describes (ADR-016 D6): freshness of mock data counts from `asOf`. */
-export const DatasetInfo = z.strictObject({ asOf: IsoDate, isMock: z.boolean() });
+/** Version domains (ADR-019). Ads are not one of them. */
+export const DATASET_DOMAINS = [
+  'institutions',
+  'bank_metrics',
+  'products',
+  'treasury',
+  'reference',
+  'documents',
+] as const;
+export type DatasetDomain = (typeof DATASET_DOMAINS)[number];
+
+export const DatasetDomainInfo = z.strictObject({ asOf: IsoDate, isMock: z.boolean() });
+export type DatasetDomainInfo = z.infer<typeof DatasetDomainInfo>;
+
+const DatasetDomains = z.strictObject({
+  institutions: DatasetDomainInfo,
+  bank_metrics: DatasetDomainInfo,
+  products: DatasetDomainInfo,
+  treasury: DatasetDomainInfo,
+  reference: DatasetDomainInfo,
+  documents: DatasetDomainInfo,
+});
+
+/**
+ * What the data set describes (ADR-016 D6, ADR-019). `isMock` is true only when every domain is
+ * mock. `asOf` is that shared mock date, or the latest real domain date otherwise.
+ */
+export const DatasetInfo = z.strictObject({
+  asOf: IsoDate,
+  isMock: z.boolean(),
+  domains: DatasetDomains,
+});
 export type DatasetInfo = z.infer<typeof DatasetInfo>;
+
+/** Rollup of per-domain dates. Callers keep reading `asOf` and `isMock`. */
+export function datasetRollup(domains: DatasetInfo['domains']): {
+  asOf: IsoDate;
+  isMock: boolean;
+} {
+  const rows = DATASET_DOMAINS.map((domain) => domains[domain]);
+  const allMock = rows.every((row) => row.isMock);
+  const dated = allMock ? rows : rows.filter((row) => !row.isMock);
+  const first = dated[0];
+  if (first === undefined) throw new Error('dataset has no domains');
+  const asOf = dated.reduce((latest, row) => (row.asOf > latest ? row.asOf : latest), first.asOf);
+  return { asOf, isMock: allMock };
+}

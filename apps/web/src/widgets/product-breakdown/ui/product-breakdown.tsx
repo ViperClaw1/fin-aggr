@@ -78,7 +78,10 @@ function View({ data, handlers }: { data: ProductData; handlers: Handlers | null
     ...(net?.assumptions ?? []),
     ...defaultAssumptions(draft, taxTables.taxYear),
   ]);
-  const now = freshnessNow(dataset);
+  const now = freshnessNow(dataset, undefined, {
+    isMock: product.provenance.isMock,
+    domain: product.category === 'treasury' ? 'treasury' : 'products',
+  });
   return (
     <article className="flex min-w-0 flex-col gap-8">
       <Conditions

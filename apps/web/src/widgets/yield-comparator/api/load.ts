@@ -1,6 +1,6 @@
 // Products and tax tables for the after-tax comparison, loaded at build (ADR-016).
 import { type Product, type TaxTables } from '@fa/contracts';
-import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { productsQuery } from '@/entities/product/queries';
 import { taxTablesQuery } from '@/entities/reference/queries';
 import { TAX_YEAR } from '@/shared/config';
@@ -13,7 +13,7 @@ export interface YieldData {
 
 export async function loadYieldData(): Promise<YieldData> {
   'use cache';
-  cacheLife('max');
+  cacheFor(CACHE_REVALIDATE.products, 'products', 'treasury', 'reference');
   const client = makeQueryClient();
   const [taxTables, cd, savings, treasury] = await Promise.all([
     client.query(taxTablesQuery(TAX_YEAR)),

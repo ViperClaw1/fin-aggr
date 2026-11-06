@@ -29,7 +29,13 @@ const METRIC_LABEL: Record<(typeof METRIC_KEYS)[number], string> = {
 };
 
 export function BankHealth({ institution, metrics, products, dataset }: BankDetail) {
-  const now = freshnessNow(dataset);
+  const metricsNow =
+    metrics === null
+      ? freshnessNow(dataset)
+      : freshnessNow(dataset, undefined, {
+          isMock: metrics.provenance.isMock,
+          domain: 'bank_metrics',
+        });
   const [onOpen, setOnOpen] = useState<((ref: OpenCitation) => void) | null>(null);
   const open = onOpen === null ? {} : { onOpenCitation: onOpen };
   return (
@@ -37,8 +43,18 @@ export function BankHealth({ institution, metrics, products, dataset }: BankDeta
       <Suspense fallback={null}>
         <OpenSync onChange={setOnOpen} />
       </Suspense>
-      <CallReport metrics={metrics} now={now} open={open} />
-      <Products institutionName={institution.name} products={products} now={now} open={open} />
+      <CallReport metrics={metrics} now={metricsNow} open={open} />
+      <Products
+        institutionName={institution.name}
+        products={products}
+        nowFor={(product) =>
+          freshnessNow(dataset, undefined, {
+            isMock: product.provenance.isMock,
+            domain: product.category === 'treasury' ? 'treasury' : 'products',
+          })
+        }
+        open={open}
+      />
     </div>
   );
 }
@@ -132,12 +148,12 @@ function CallReport({
 function Products({
   institutionName,
   products,
-  now,
+  nowFor,
   open,
 }: {
   institutionName: string;
   products: BankDetail['products'];
-  now: Date;
+  nowFor: (product: BankDetail['products'][number]) => Date;
   open: { onOpenCitation?: (ref: OpenCitation) => void };
 }) {
   return (
@@ -169,7 +185,7 @@ function Products({
                 <td className="py-2">
                   <FactValue
                     fact={{ value: headlineApy(product), provenance: product.provenance }}
-                    now={now}
+                    now={nowFor(product)}
                     {...open}
                     render={(rate) => <RateValue rate={rate} />}
                   />

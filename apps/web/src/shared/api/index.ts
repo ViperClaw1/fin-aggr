@@ -42,15 +42,20 @@ export function createLazyGateway(load: () => Promise<DataGateway>): DataGateway
 
 /** On the server and at build time the mock never fails or waits, so a build is never random. */
 export function loadGateway(config: Env, server: boolean): Promise<DataGateway> {
-  return config.dataSource === 'http'
-    ? import('./gateway.http').then((m) => m.httpGateway)
-    : import('./gateway.mock').then((m) =>
-        m.createMockGateway({
-          seed: config.seed,
-          latency: server ? 'none' : 'simulated',
-          failureRate: server ? 0 : config.mockFailureRate,
-        }),
-      );
+  if (config.dataSource === 'http') return import('./gateway.http').then((m) => m.httpGateway);
+  if (config.dataSource === 'supabase') {
+    if (!server) {
+      return Promise.reject(new Error('the supabase gateway loads only on the server'));
+    }
+    return import('./gateway.supabase').then((m) => m.createSupabaseGateway());
+  }
+  return import('./gateway.mock').then((m) =>
+    m.createMockGateway({
+      seed: config.seed,
+      latency: server ? 'none' : 'simulated',
+      failureRate: server ? 0 : config.mockFailureRate,
+    }),
+  );
 }
 
 let instance: DataGateway | undefined;

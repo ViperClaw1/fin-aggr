@@ -2,6 +2,7 @@
 // pagination, deterministic latency and failure injection keyed by a hash of the request.
 import {
   BankMetrics,
+  datasetRollup,
   DatasetInfo,
   DocumentMeta,
   FactQuery,
@@ -211,6 +212,16 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
         f.sponsored.filter((s) => s.placement === placement),
       ),
     getDatasetInfo: () =>
-      respond('getDatasetInfo', [], DatasetInfo, (f) => ({ asOf: f.asOf, isMock: true })),
+      respond('getDatasetInfo', [], DatasetInfo, (f) => {
+        const domains = {
+          institutions: { asOf: f.asOf, isMock: true },
+          bank_metrics: { asOf: f.asOf, isMock: true },
+          products: { asOf: f.asOf, isMock: true },
+          treasury: { asOf: f.asOf, isMock: true },
+          reference: { asOf: f.asOf, isMock: true },
+          documents: { asOf: f.asOf, isMock: true },
+        };
+        return { ...datasetRollup(domains), domains };
+      }),
   };
 }

@@ -71,7 +71,6 @@ function UrlSync({ onChange }: { onChange: (filters: Filters) => void }) {
 
 function List({ items, dataset, filters }: BankListData & { filters: Filters | null }) {
   const shown = filters === null ? items : filterBanks(items, filters.query, filters.kind);
-  const now = freshnessNow(dataset);
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted" aria-live="polite">
@@ -96,8 +95,11 @@ function List({ items, dataset, filters }: BankListData & { filters: Filters | n
                 <p className="text-sm text-muted">No product</p>
               ) : (
                 <FactValue
-                  fact={item.bestApy}
-                  now={now}
+                  fact={item.bestApy.fact}
+                  now={freshnessNow(dataset, undefined, {
+                    isMock: item.bestApy.fact.provenance.isMock,
+                    domain: item.bestApy.domain,
+                  })}
                   render={(rate) => <RateValue rate={rate} />}
                 />
               )}

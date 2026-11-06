@@ -38,7 +38,8 @@ export function FinePrint({
   const notes = facts.filter((fact) => fact.key !== 'earlyWithdrawalPenalty');
   const [onOpen, setOnOpen] = useState<OnOpen | null>(null);
   if (notes.length === 0) return null;
-  const now = freshnessNow(dataset);
+  const nowFor = (isMock: boolean): Date =>
+    freshnessNow(dataset, undefined, { isMock, domain: 'documents' });
   return (
     <section className="mt-8 space-y-3" aria-labelledby="fine-print-heading">
       <h2 id="fine-print-heading" className="text-lg font-semibold">
@@ -55,7 +56,7 @@ export function FinePrint({
               <FactValue
                 fact={fromRecord(product, fact)}
                 render={(text) => text}
-                now={now}
+                now={nowFor(fact.isMock)}
                 {...(onOpen === null ? {} : { onOpenCitation: onOpen })}
               />
             </dd>

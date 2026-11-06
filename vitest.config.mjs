@@ -6,6 +6,10 @@ export default defineConfig({
     // same alias as apps/web/tsconfig.json
     alias: [
       { find: /^@\//, replacement: fileURLToPath(new URL('apps/web/src/', import.meta.url)) },
+      {
+        find: 'server-only',
+        replacement: fileURLToPath(new URL('tools/server-only-stub.mjs', import.meta.url)),
+      },
     ],
   },
   test: {

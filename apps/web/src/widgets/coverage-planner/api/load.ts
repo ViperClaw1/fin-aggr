@@ -1,6 +1,6 @@
 // Insurance rules and the institution list at build time. The limit is never copied into code.
 import type { Id, Institution, InsuranceRules } from '@fa/contracts';
-import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { institutionsQuery } from '@/entities/institution/queries';
 import { insuranceRulesQuery } from '@/entities/reference/queries';
 import { makeQueryClient } from '@/shared/lib/query-client';
@@ -19,7 +19,7 @@ export interface CoverageData {
 
 export async function loadCoverageData(): Promise<CoverageData> {
   'use cache';
-  cacheLife('max');
+  cacheFor(CACHE_REVALIDATE.institutions, 'institutions', 'reference');
   const client = makeQueryClient();
   const [institutions, rules] = await Promise.all([
     client.query(institutionsQuery({ limit: 100 })),

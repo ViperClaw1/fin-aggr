@@ -7,6 +7,7 @@ import { institutionsQuery } from '@/entities/institution/queries';
 import { productsQuery } from '@/entities/product/queries';
 import { taxTablesQuery } from '@/entities/reference/queries';
 import { TAX_YEAR } from '@/shared/config';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { makeQueryClient } from '@/shared/lib/query-client';
 import { packCompareProducts, type CompareWire } from '../model/wire';
 
@@ -35,6 +36,12 @@ function shownInstitutions(
 
 export async function loadCompareData(category: ProductCategory): Promise<CompareData> {
   'use cache';
+  cacheFor(
+    CACHE_REVALIDATE.products,
+    'institutions',
+    'reference',
+    category === 'treasury' ? 'treasury' : 'products',
+  );
   const client = makeQueryClient();
   const [products, institutions, dataset, taxTables] = await Promise.all([
     client.query(productsQuery({ category })),

@@ -3,9 +3,12 @@
 // them, and the slot does not appear after hydration (no layout shift).
 import type { SponsoredItem, SponsoredPlacement } from '@fa/contracts/ads';
 import { sponsoredQuery } from '@/entities/sponsored/queries';
+import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE } from '@/shared/api/cache-policy';
 import { makeQueryClient } from '@/shared/lib/query-client';
 
 export async function loadSponsored(placement: SponsoredPlacement): Promise<SponsoredItem[]> {
   'use cache';
+  cacheLife({ revalidate: CACHE_REVALIDATE.ads });
   return makeQueryClient().query(sponsoredQuery(placement));
 }

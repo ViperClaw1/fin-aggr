@@ -4,10 +4,9 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { ThemeToggle } from '@/features/toggle-theme';
 import { env, PROFILE_STORAGE_KEY } from '@/shared/config';
-import { DemoDataBanner } from '@/shared/ui/demo-banner';
+import { DemoDataGate, SiteFooter } from '@/widgets/site-footer';
 import { CitationViewerHost } from '@/widgets/citation-viewer';
 import { ProfileDrawer, ProfileDrawerFallback } from '@/widgets/profile-drawer';
-import { SiteFooter } from '@/widgets/site-footer';
 import { SiteNav } from '@/widgets/site-nav';
 import './globals.css';
 import { Providers } from './providers';
@@ -76,7 +75,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       {/* block, not flex: a flex column makes `mx-auto` children shrink-wrap their content */}
       <body className="min-h-full">
         <ProfilePresenceScript />
-        <DemoDataBanner />
+        <DemoDataGate />
         <Providers>
           <header className="sticky top-0 z-30 border-b border-divider bg-background">
             <div className="mx-auto flex min-h-16 max-w-page flex-wrap items-center gap-x-8 gap-y-2 px-4 sm:px-8">

@@ -136,7 +136,7 @@
 
 ## Шаг 3. `gateway.supabase.ts` и переключение источника (1 неделя)
 
-- `NEXT_PUBLIC_DATA_SOURCE=mock|http|supabase`, ленивая загрузка реализации (ADR-016 D2), `import 'server-only'`.
+- `NEXT_PUBLIC_DATA_SOURCE=mock|http|supabase`, ленивая загрузка реализации (ADR-016 D2), `import 'server-only'`. Сделано: `gateway.supabase.ts` читает опубликованные строки anon-ключом, `DatasetInfo.domains`, `POST /api/revalidate`, кэш по домену. Контракт против `supabase start` — workflow `DB contract` (метка `db` или ночной запуск). e2e на staging и Lighthouse на этой сборке ждут стабильный staging.
 - Ошибки в `GatewayError`: `not_found`, `unavailable` (повторяемо), `validation_failed`.
 - `getDatasetInfo()` с `domains`; баннер DEMO, пока на странице есть моковый домен; свежесть по домену факта.
 - `cacheLife` по таблице `s-maxage` (спека §4), `cacheTag` по домену, `POST /api/revalidate` с секретом. Сигнатуру `revalidateTag` в Next 16.4 сверить по `node_modules/next/dist/docs/`.

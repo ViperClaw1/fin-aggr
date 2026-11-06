@@ -10,7 +10,7 @@ import {
   type Product,
   type TaxTables,
 } from '@fa/contracts';
-import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { datasetInfoQuery, factsQuery } from '@/entities/fact/queries';
 import { institutionQuery, institutionsQuery } from '@/entities/institution/queries';
 import { productQuery, productsQuery } from '@/entities/product/queries';
@@ -43,7 +43,14 @@ export async function loadProductParams(): Promise<{ id: string }[]> {
 
 export async function loadProductData(id: Id): Promise<ProductData | null> {
   'use cache';
-  cacheLife('max');
+  cacheFor(
+    CACHE_REVALIDATE.products,
+    'products',
+    'treasury',
+    'documents',
+    'institutions',
+    'reference',
+  );
   const client = makeQueryClient();
   try {
     const product = await client.query(productQuery(id));

@@ -10,6 +10,9 @@ describe('readEnv', () => {
       siteUrl: 'https://fin-aggr.vercel.app',
     });
   });
+  it('accepts the supabase source', () => {
+    expect(readEnv({ NEXT_PUBLIC_DATA_SOURCE: 'supabase' }).dataSource).toBe('supabase');
+  });
   it('reads explicit values', () => {
     const env = readEnv({
       NEXT_PUBLIC_DATA_SOURCE: 'http',

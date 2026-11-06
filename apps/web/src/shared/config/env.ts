@@ -1,7 +1,7 @@
 // The only place that reads process.env. Values are public (NEXT_PUBLIC_*) and inlined at build
 // time, so the server and the browser generate the same fixtures (no hydration mismatch).
 
-type DataSource = 'mock' | 'http';
+type DataSource = 'mock' | 'http' | 'supabase';
 
 export interface Env {
   dataSource: DataSource;
@@ -38,13 +38,18 @@ function checked(
 
 /** Parses raw variables; an invalid value throws at startup instead of misbehaving later. */
 export function readEnv(raw: RawEnv): Env {
-  const source = checked(raw, 'NEXT_PUBLIC_DATA_SOURCE', /^(mock|http)$/, '"mock" or "http"');
+  const source = checked(
+    raw,
+    'NEXT_PUBLIC_DATA_SOURCE',
+    /^(mock|http|supabase)$/,
+    '"mock", "http" or "supabase"',
+  );
   const seed = checked(raw, 'NEXT_PUBLIC_FA_SEED', /^\d{1,9}$/, 'a non-negative integer');
   const rate = checked(raw, 'NEXT_PUBLIC_MOCK_FAILURE_RATE', /^(0(\.\d+)?|1(\.0+)?)$/, '0..1');
   const site = checked(raw, 'NEXT_PUBLIC_SITE_URL', /^https?:\/\/[^/\s]+$/, 'an origin');
   return {
     siteUrl: site ?? DEFAULT_SITE_URL,
-    dataSource: source === 'http' ? 'http' : 'mock',
+    dataSource: source === 'http' || source === 'supabase' ? source : 'mock',
     seed: seed === undefined ? DEFAULT_SEED : Number(seed),
     // a probability for mock failure injection, not money
     mockFailureRate: rate === undefined ? 0 : Number(rate),

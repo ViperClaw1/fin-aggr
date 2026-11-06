@@ -42,12 +42,16 @@ export {
 } from './entities';
 export { INSTITUTION_KINDS, METRIC_KEYS, RULE_PROFILE_FIELDS, STAGE1_CATEGORIES } from './enums';
 export {
+  DATASET_DOMAINS,
+  DatasetDomainInfo,
   DatasetInfo,
+  datasetRollup,
   FilingStatus,
   InsuranceRules,
   SourceRegistryEntry,
   TaxBracket,
   TaxTables,
+  type DatasetDomain,
 } from './reference';
 export { Profile, ProfileDraft } from './profile';
 export { isProfile, isProfileDraft } from './profile-checks';

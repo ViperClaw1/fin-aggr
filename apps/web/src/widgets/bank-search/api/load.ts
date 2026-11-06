@@ -1,6 +1,5 @@
-// Banks at build time. cacheLife('days') is the cacheComponents stand-in for ISR: the `days`
-// profile revalidates in the background after one day (Next.js cacheLife), matching the metrics
-// response's one-day freshness. Colons in ids are rewritten for the route (Windows build paths).
+// Banks at build time. Product rows set the revalidate to 900s (spec §4). Colons in ids are
+// rewritten for the route (Windows build paths).
 import {
   compareRate,
   STAGE1_CATEGORIES,
@@ -8,12 +7,13 @@ import {
   type Fact,
   type Id,
   type Institution,
+  type DatasetDomain,
   type Product,
   type ProductCategory,
   type Rate,
 } from '@fa/contracts';
 import type { QueryClient } from '@tanstack/react-query';
-import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { datasetInfoQuery } from '@/entities/fact/queries';
 import { institutionsQuery } from '@/entities/institution/queries';
 import { headlineApy } from '@/entities/product';
@@ -26,7 +26,7 @@ interface BankListItem {
   kind: Institution['kind'];
   partners: { id: Id; name: string }[];
   productCount: number;
-  bestApy: Fact<Rate> | null;
+  bestApy: { fact: Fact<Rate>; domain: DatasetDomain } | null;
 }
 
 export interface BankListData {
@@ -39,18 +39,21 @@ async function productsIn(client: QueryClient, category: ProductCategory): Promi
   return page.items;
 }
 
-function bestApy(products: readonly Product[]): Fact<Rate> | null {
+function bestApy(products: readonly Product[]): BankListItem['bestApy'] {
   const best = products.reduce<Product | null>((top, product) => {
     if (top === null) return product;
     return compareRate(headlineApy(product), headlineApy(top)) > 0 ? product : top;
   }, null);
   if (best === null) return null;
-  return { value: headlineApy(best), provenance: best.provenance };
+  return {
+    fact: { value: headlineApy(best), provenance: best.provenance },
+    domain: best.category === 'treasury' ? 'treasury' : 'products',
+  };
 }
 
 export async function loadBankList(): Promise<BankListData> {
   'use cache';
-  cacheLife('days');
+  cacheFor(CACHE_REVALIDATE.products, 'institutions', 'bank_metrics', 'products', 'treasury');
   const client = makeQueryClient();
   const [institutions, dataset, groups] = await Promise.all([
     client.query(institutionsQuery({ limit: 100 })),

@@ -1,0 +1,40 @@
+# DataGateway contract against supabase start (ADR-019 step 3).
+# Pull requests run it only with the `db` label. The nightly run does not need the label.
+name: DB contract
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  contract:
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'db')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - run: pnpm install --frozen-lockfile
+      - run: supabase start -x studio,imgproxy,logflare,vector,edge-runtime,supavisor
+      - run: pnpm db:seed --target local
+        env:
+          SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - id: keys
+        run: |
+          supabase status -o env > status.env
+          key=$(sed -n 's/^ANON_KEY=//p' status.env | tr -d '"')
+          echo "anon=$key" >> "$GITHUB_OUTPUT"
+      - name: Contract tests
+        run: pnpm vitest run apps/web/src/shared/api/gateway.supabase.test.ts
+        env:
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_ANON_KEY: ${{ steps.keys.outputs.anon }}

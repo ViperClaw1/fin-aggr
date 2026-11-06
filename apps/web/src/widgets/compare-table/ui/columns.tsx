@@ -2,7 +2,7 @@
 // can only name a column the feature knows. Net columns are always in the markup so a saved profile
 // does not change the table width; without a complete profile their cells are a placeholder.
 // Calculated values are marked with data-assumption (AC-3).
-import { compareRate, formatUsd, formatUsdShort } from '@fa/contracts';
+import { compareRate, formatUsd, formatUsdShort, type Product } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
 import Link from 'next/link';
 import { FactValue } from '@/entities/fact';
@@ -30,7 +30,7 @@ const netOf = (r: Row): NetYieldResult | null => r.ranked?.netYield ?? null;
 
 export function columns(
   institutions: InstitutionIndex,
-  now: Date,
+  nowFor: (product: Pick<Product, 'category' | 'provenance'>) => Date,
   withProfile: boolean,
   onOpen: ((ref: OpenCitation) => void) | null,
 ) {
@@ -80,7 +80,7 @@ export function columns(
         <FactValue
           fact={{ value: headlineApy(p), provenance: p.provenance }}
           render={(rate) => <RateValue rate={rate} />}
-          now={now}
+          now={nowFor(p)}
           compact
           align="end"
           {...(onOpen === null ? {} : { onOpenCitation: onOpen })}

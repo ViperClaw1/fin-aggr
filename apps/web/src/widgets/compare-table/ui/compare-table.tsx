@@ -296,7 +296,16 @@ function Table(props: Props & UrlState) {
         {props.withForm && needs !== null ? <NeedsDataNote needs={needs} /> : null}
         <Catalog
           caption={CAPTION[category] ?? 'Products'}
-          columns={columns(index, freshnessNow(dataset), withProfile, props.onOpenCitation)}
+          columns={columns(
+            index,
+            (product) =>
+              freshnessNow(dataset, undefined, {
+                isMock: product.provenance.isMock,
+                domain: product.category === 'treasury' ? 'treasury' : 'products',
+              }),
+            withProfile,
+            props.onOpenCitation,
+          )}
           rows={rows}
           hiddenRowIds={hiddenRowIds}
           showEmpty={visibleCount === 0}

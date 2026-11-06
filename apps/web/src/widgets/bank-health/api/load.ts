@@ -1,4 +1,4 @@
-// One bank at build time. cacheLife('days'): background refresh after one day (see bank-search).
+// One bank at build time. Product rows set the revalidate to 900s (spec §4).
 import {
   GatewayError,
   STAGE1_CATEGORIES,
@@ -10,7 +10,7 @@ import {
   type ProductCategory,
 } from '@fa/contracts';
 import type { QueryClient } from '@tanstack/react-query';
-import { cacheLife } from 'next/cache';
+import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { datasetInfoQuery } from '@/entities/fact/queries';
 import {
   bankMetricsQuery,
@@ -41,7 +41,7 @@ async function productsOf(
 
 export async function loadBank(id: Id): Promise<BankDetail | null> {
   'use cache';
-  cacheLife('days');
+  cacheFor(CACHE_REVALIDATE.products, 'institutions', 'bank_metrics', 'products', 'treasury');
   const client = makeQueryClient();
   try {
     const institution = await client.query(institutionQuery(id));
