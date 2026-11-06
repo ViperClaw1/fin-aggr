@@ -125,7 +125,7 @@
 | `institutions`, `bank_metrics`, `products` | данные каталога; ставки `numeric(11,8)` с check `0..1` |
 | `documents`, `facts` | документы банков и факты с цитатой и страницей |
 | `tax_tables`, `insurance_rules` | справочники по году |
-| `ads.sponsored_items` | реклама в отдельной схеме, не домен версии |
+| `ads.sponsored_items` | реклама в отдельной схеме, не домен версии. На хосте схему нужно добавить в Exposed schemas (Data API); `config.toml` покрывает только `supabase start` |
 | `raw_snapshots`, `job_runs`, `review_queue` | снимки, журнал запусков с нагрузкой по домену, очередь проверки |
 
 - Ставки наружу только через представления с `::text`; тест: каждая ставка проходит `Rate` без потерь.
