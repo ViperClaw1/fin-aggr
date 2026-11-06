@@ -1,0 +1,26 @@
+# Comments on private review issues that have been open for more than 3 days (ADR-020).
+# Stdout is counters and "overdue #N mentioned". Diffs, snapshot URLs, and artifacts stay out.
+name: Review age
+
+on:
+  schedule:
+    # 08:00 UTC+4
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  overdue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --experimental-strip-types packages/ingest/src/overdue.ts
+        env:
+          REVIEW_REPO_TOKEN: ${{ secrets.REVIEW_REPO_TOKEN }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

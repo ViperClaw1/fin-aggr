@@ -208,13 +208,25 @@ importers:
 
   packages/ingest:
     dependencies:
+      '@fa/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@supabase/supabase-js':
         specifier: 2.118.0
         version: 2.118.0
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
     devDependencies:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
       typescript:
         specifier: 6.0.3
         version: 6.0.3

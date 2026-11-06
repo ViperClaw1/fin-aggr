@@ -14,5 +14,5 @@ export const DATASET_DOMAINS = [
 
 export type DatasetDomain = (typeof DATASET_DOMAINS)[number];
 
-/** The server client. The first call is the publish transaction in step 4. */
+/** The server client. Publish and the queue write share one transaction (ADR-019, ADR-020). */
 export type IngestDb = SupabaseClient;

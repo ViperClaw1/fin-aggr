@@ -27,7 +27,10 @@
     "db:start": "supabase start",
     "db:seed:sql": "node supabase/scripts/generate-seed.mjs",
     "db:seed": "node supabase/scripts/db-seed.mjs",
-    "db:rollback": "node supabase/scripts/db-rollback.mjs"
+    "db:rollback": "node supabase/scripts/db-rollback.mjs",
+    "ingest:review": "node --experimental-strip-types packages/ingest/src/cli.ts review",
+    "ingest:approve": "node --experimental-strip-types packages/ingest/src/cli.ts approve",
+    "ingest:reject": "node --experimental-strip-types packages/ingest/src/cli.ts reject"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

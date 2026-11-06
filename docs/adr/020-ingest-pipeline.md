@@ -30,7 +30,7 @@ interface Source<Raw, Parsed> {
 
 1. `fetch` stores the raw body in the private `raw` bucket with its sha256. An unchanged hash stops the run.
 2. `parse` is pure. Tests use saved snapshots.
-3. `validate` checks `@fa/contracts`, then the product bounds accepted 2026-11-04: APY from 0 to 15%, a positive term, and a minimum deposit `>= 0`. A rate move of more than 50 basis points goes to review. An empty result, or one smaller than half the previous count, blocks the publish. These bounds can be revised before step 4; the code reads them from one place so a revision is not a hunt through connectors.
+3. `validate` checks `@fa/contracts`, then the product bounds accepted 2026-11-04: APY from 0 to 15%, a positive term, and a minimum deposit `>= 0`. A rate move of more than 50 basis points goes to review. An empty result, or one smaller than half the previous count, blocks the publish. The code reads the bounds from `PRODUCT_BOUNDS` in `packages/ingest`, so a revision is not a hunt through connectors.
 4. A clean report publishes the domain. A scrape publishes its clean products and queues the suspicious ones. Any other suspicious domain is not published. A hard error leaves the previous version in place and notifies.
 5. Publish is the one transaction from ADR-019, then `POST /api/revalidate`.
 6. The run is a row in `job_runs` (source, start, end, status, row count, errors, bytes and request count for that registrable domain).
@@ -39,7 +39,19 @@ Provenance. Official APIs: `verified`, `by: official_api`, `sourceUrl` of the ac
 
 `sources.kind` for operations is `official_api | scrape | manual`. The public `SourceRegistryEntry` stays as it is until the first scraped source is listed. That change adds `scrape` to the enum (additive, step 8). `partner_feed` stays unused.
 
-Review has no admin UI. `pnpm ingest:review`, `pnpm ingest:approve <id>`, and `pnpm ingest:reject <id> --reason` are the interface. A bot opens one issue per batch, with the snapshot and the diff, in a separate private repository. This repository stays public, and review tasks are not filed here. The private repository has no name yet. An admin page waits until the queue is large. Items older than 3 days are the control. Who clears the queue is unnamed; name them before step 4.
+Review has no admin UI. `pnpm ingest:review`, `pnpm ingest:approve <id>`, and `pnpm ingest:reject <id> --reason` are the interface. A bot opens one issue per batch, with the snapshot and the diff, in a separate private repository. This repository stays public, and review tasks are not filed here.
+
+Review owner is the GitHub login `ViperClaw1` (the issue assignee). There is no deputy: an overdue item stays held and the site keeps the previous version. Three days is a signal, not an SLA. A daily workflow comments on the private issue and mentions the assignee when `status = 'open'` and `created_at` is older than three days. The two-person check is the tax rule only.
+
+`decided_by` is that GitHub login, never an email. The CLI reads `gh api user --jq .login` or `FA_REVIEWER` in `.env.local` and refuses to run without one. A rejected row requires a non-empty `decision_reason` (NULL does not pass the check). Approve writes the decision and publishes in one transaction, then calls revalidate. Supabase Studio can show the queue; it cannot approve.
+
+The private repository is `ViperClaw1/fin-aggr-review` (issues only). The bot uses a fine-grained PAT in the Actions secret `REVIEW_REPO_TOKEN` (Issues read and write, that repository only, 90 days). A GitHub App replaces it later. `GITHUB_TOKEN` from this repository cannot write there.
+
+Review data never appears in public Actions logs or artifacts. The bot's stdout is `issue #N created`. Nothing is uploaded as an artifact. Snapshot links in the private issue are signed URLs from the private `raw` bucket, valid for 7 days. `pnpm ingest:review <id>` mints a new one. The workflow is checked for `upload-artifact` and for log lines that are not the fixed counters.
+
+`review_queue` stores `decided_by`, `decided_at`, `decision_reason`, and `issue_url` (the step 4 migration).
+
+An admin UI is revisited only when the queue exceeds 20 items in a week, or more than 2 items in a month waited past 3 days, or a reviewer has no terminal. That UI is a separate `apps/admin`, not `apps/web`.
 
 Raw snapshots in `raw`: a snapshot that a version still in the 30-day window points at is kept while that version is kept. Other snapshots are kept 90 days. This is the working rule (2026-11-04) and is confirmed before step 8. It is both a storage cost and a question of keeping someone else's text; the lawyer sees it at step 9, and the rule still has to be chosen before the first scrape.
 
@@ -76,4 +88,4 @@ Connectors land in the plan's order: FDIC institutions, FDIC financials, NCUA 53
 - Step 1 lands the dependency rules and the package skeleton. Connectors start at step 6, after the pipeline (step 4) and the schedule (step 5).
 - A nightly live request checks that a source's shape still matches the recorded snapshot. The snapshot test does not hit the network.
 - A lawyer is engaged at step 9, before the public launch. Steps 1–8 do not wait. `DEMO_PASSWORD` stays until that launch.
-- The mailbox, the 24-hour opt-out owner, the queue owner, and the GitHub secrets are human setup. This ADR does not create accounts. Field codes of each source are appended in step 6 from that source's dictionary.
+- The mailbox and the 24-hour opt-out owner are still unnamed; both are named before step 8. The queue owner is `ViperClaw1`, and the review repository is `ViperClaw1/fin-aggr-review`. `REVIEW_REPO_TOKEN` is an Actions secret. This ADR does not create accounts. Field codes of each source are appended in step 6 from that source's dictionary.
