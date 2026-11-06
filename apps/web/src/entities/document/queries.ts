@@ -1,1 +1,1 @@
-export { documentQuery, loadDocument } from './api/queries';
+export { documentQuery } from './api/queries';

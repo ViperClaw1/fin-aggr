@@ -1,6 +1,6 @@
 // Citation metadata for the browser. The page stays on our origin; Supabase is not called there.
 import { GatewayError } from '@fa/contracts';
-import { loadDocument } from '@/entities/document/queries';
+import { loadDocument } from '@/entities/document';
 
 export async function GET(
   _request: Request,

@@ -124,7 +124,7 @@ export default {
       severity: 'error',
       from: { path: '^apps/web/src/', pathNot: '\\.test\\.|/contract-suite\\.ts$' },
       to: {
-        path: '^apps/web/src/shared/api/gateway\\.(mock|http)\\.ts$',
+        path: '^apps/web/src/shared/api/gateway\\.(mock|http|supabase)\\.ts$',
         dependencyTypesNot: ['dynamic-import'],
       },
     },

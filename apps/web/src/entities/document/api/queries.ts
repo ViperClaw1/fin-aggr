@@ -1,13 +1,9 @@
 import { GatewayError, type DocumentMeta, type Id } from '@fa/contracts';
 import { queryOptions } from '@tanstack/react-query';
-import { getGateway } from '@/shared/api';
+import { getGateway } from '@/shared/api/browser';
 import { getJson } from '@/shared/api/http';
 import { env } from '@/shared/config';
 import { STALE_TIME } from '@/shared/lib/query-client';
-
-export async function loadDocument(id: Id): Promise<DocumentMeta> {
-  return getGateway().getDocument(id);
-}
 
 function isDocument(body: unknown): body is DocumentMeta {
   return typeof body === 'object' && body !== null && 'id' in body && 'pages' in body;
@@ -29,6 +25,6 @@ export const documentQuery = (id: Id) =>
     queryFn: () =>
       env.dataSource === 'supabase' && typeof window !== 'undefined'
         ? documentInBrowser(id)
-        : loadDocument(id),
+        : getGateway().getDocument(id),
     staleTime: STALE_TIME.documents,
   });

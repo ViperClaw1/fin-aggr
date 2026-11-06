@@ -5,7 +5,7 @@ import { makeQueryClient } from '@/shared/lib/query-client';
 import { documentQuery } from './queries';
 
 const holder = vi.hoisted(() => ({ gateway: undefined as DataGateway | undefined }));
-vi.mock('@/shared/api', () => ({ getGateway: () => holder.gateway }));
+vi.mock('@/shared/api/browser', () => ({ getGateway: () => holder.gateway }));
 
 const client = () => makeQueryClient({ retryDelay: 0 });
 function install(method: keyof DataGateway, failures: MockGatewayOptions['failures'] = {}) {
