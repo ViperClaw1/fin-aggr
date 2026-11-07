@@ -4,6 +4,7 @@ import { Profile } from '@fa/contracts';
 import { rankProducts } from '@fa/engine';
 import { DEFAULT_SEED, generateFixtures } from '@fa/fixtures';
 import { expectNoA11yViolations } from './axe';
+import { fillSingleNy } from './compare-profile';
 
 // a string that exists only in the fixtures package, so only the mock gateway chunk carries it
 const FIXTURE_MARKER = 'mock-call-reports';
@@ -12,8 +13,7 @@ test('the CD table is rendered in the static HTML', async ({ request }) => {
   const html = await (await request.get('/compare/cd')).text();
   // a rendered row, not only the serialized props (which also carry the names)
   expect(html).toMatch(/<caption[^>]*>Certificates of deposit<\/caption>/);
-  // the name is a link to the product page, still in the static cell
-  expect(html).toMatch(/<td[^>]*>\s*<a [^>]*>12-Month CD<\/a><\/td>/);
+  expect(html).toMatch(/<a [^>]*>12-Month CD<\/a>/);
 });
 
 test('after hydration no script with the mock gateway or fixtures is loaded', async ({ page }) => {
@@ -72,14 +72,13 @@ test('an unknown category renders not found, noindex', async ({ page }) => {
 // E5 step 2: default order, column sort in the URL, after-tax ranking with a profile
 const table = (page: Page) => page.getByRole('table', { name: 'Certificates of deposit' });
 const BY_APY = 'Sorted by top APY. Add your profile for after-tax ranking.';
-const RANKED = 'Ranked for your profile: eligible first, then by net interest after tax.';
 
 test('without a profile the order is top APY, said in words', async ({ page }) => {
   await page.goto('/compare/cd');
   await expect(page.getByText(BY_APY)).toBeVisible();
   await expect(table(page).getByRole('columnheader', { name: 'Net interest' })).toBeVisible();
-  await expect(table(page).getByRole('columnheader', { name: 'Net yield' })).toBeVisible();
   await expect(table(page).getByRole('columnheader', { name: 'Fit' })).toBeVisible();
+  await expect(table(page).getByRole('button', { name: 'Add profile' }).first()).toBeVisible();
 });
 
 test('three clicks on a header return to the default order', async ({ page }) => {
@@ -107,20 +106,8 @@ test('with a profile the table ranks after tax, net values marked as assumptions
   page,
 }) => {
   await page.goto('/compare/cd?profile=filingStatus');
-  const drawer = page.getByRole('dialog', { name: 'Your profile' });
-  await drawer.getByLabel('Filing status').selectOption('single');
-  await drawer.getByLabel('State of residence').selectOption('NY');
-  const income = drawer.getByLabel('Taxable income');
-  await income.fill('85000');
-  await income.blur();
-  await drawer.getByLabel('Residency').selectOption('us_citizen');
   // with age known no product needs more data: only eligible and ineligible groups
-  const age = drawer.getByLabel('Age');
-  await age.fill('40');
-  await age.blur();
-  await page.keyboard.press('Escape');
-
-  await expect(page.getByText(RANKED)).toBeVisible();
+  await fillSingleNy(page, '40');
   await expect(table(page).locator('td [data-assumption]').first()).toBeVisible();
 
   // the same order as the engine on the same data: fixtures from the seed the build used
@@ -146,19 +133,19 @@ test('with a profile the table ranks after tax, net values marked as assumptions
   const shown = await table(page)
     .locator('tbody tr')
     .evaluateAll((rows) =>
-      rows.map((r) =>
-        [...r.querySelectorAll<HTMLElement>('th, td')]
-          .slice(0, 2)
-          // the bank cell also holds the expand button and the institution kind: read the name
-          .map((c) => {
-            const copy = c.cloneNode(true) as HTMLElement;
-            copy.querySelectorAll('button, [data-secondary]').forEach((b) => {
-              b.remove();
-            });
-            return copy.textContent.trim();
-          })
-          .join('|'),
-      ),
+      rows.map((row) => {
+        const head = row.querySelector('th');
+        if (head === null) return '';
+        const copy = head.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('button, [data-secondary]').forEach((node) => {
+          node.remove();
+        });
+        const bankNode = copy.querySelector('[data-bank]');
+        const productNode = copy.querySelector('a');
+        const bank = bankNode === null ? '' : bankNode.textContent.trim();
+        const product = productNode === null ? '' : productNode.textContent.trim();
+        return `${bank}|${product}`;
+      }),
     );
   expect(shown).toEqual(expected);
 });
@@ -166,9 +153,10 @@ test('with a profile the table ranks after tax, net values marked as assumptions
 test('the filter form writes the URL, Reset clears it', async ({ page }) => {
   await page.goto('/compare/cd');
   const form = page.getByRole('form', { name: 'Filters' });
-  await form.getByRole('group', { name: 'Term' }).getByLabel('12 mo').check();
+  await form.getByRole('spinbutton', { name: 'Minimum term' }).fill('12');
+  await form.getByRole('spinbutton', { name: 'Maximum term' }).fill('12');
   await expect(page).toHaveURL(/term=12/);
-  const terms = await table(page).locator('tbody tr:visible td:nth-child(3)').allInnerTexts();
+  const terms = await table(page).locator('tbody tr:visible td:nth-child(2)').allInnerTexts();
   expect(new Set(terms)).toEqual(new Set(['12 mo']));
 
   await form.getByLabel('Search bank or product').fill('Granite');
@@ -202,8 +190,14 @@ for (const viewport of [
       const context = await browser.newContext({ viewport, javaScriptEnabled });
       const page = await context.newPage();
       await page.goto('/compare/cd');
-      if (javaScriptEnabled) await expect(page.getByLabel('Search bank or product')).toBeEnabled();
-      const box = await table(page).boundingBox();
+      if (javaScriptEnabled) {
+        const ready =
+          viewport.width >= 1024
+            ? page.getByLabel('Search bank or product')
+            : page.getByRole('button', { name: /^Filters/ });
+        await expect(ready).toBeEnabled();
+      }
+      const box = await page.locator('[data-results]').boundingBox();
       await context.close();
       return box?.y;
     };
@@ -232,25 +226,21 @@ test('an expanded row shows the institution; with a profile, the math and its as
   await expect(table(page).getByText('Add your profile to see the after-tax math.')).toBeVisible();
 
   await page.goto('/compare/cd?profile=filingStatus');
-  const drawer = page.getByRole('dialog', { name: 'Your profile' });
-  await drawer.getByLabel('Filing status').selectOption('single');
-  await drawer.getByLabel('State of residence').selectOption('NY');
-  const income = drawer.getByLabel('Taxable income');
-  await income.fill('85000');
-  await income.blur();
-  await drawer.getByLabel('Residency').selectOption('us_citizen');
-  await page.keyboard.press('Escape');
-  await expect(page.getByText(RANKED)).toBeVisible();
+  await fillSingleNy(page);
 
   await table(page)
     .getByRole('button', { name: /^Show details: / })
     .first()
     .click();
+  await table(page).getByText('How this is calculated').click();
   const math = table(page).getByRole('region', { name: 'How this is calculated' });
   await expect(math).toBeVisible();
   await expect(math).toHaveAttribute('data-assumption', '');
-  await expect(math.getByText('Tax year 2026.')).toBeVisible();
-  await expect(math.getByText(/Scenario: \$10,000\.00 for 12 months/)).toBeVisible();
+  await table(page)
+    .getByText(/^Assumptions/)
+    .click();
+  await expect(table(page).getByText('Tax year 2026.')).toBeVisible();
+  await expect(table(page).getByText(/Scenario: \$10,000\.00 for 12 months/)).toBeVisible();
 });
 
 // E5 step 2: no scroll box inside the page scroll; the region scrolls sideways only
@@ -258,29 +248,39 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
 ]) {
-  test(`at ${String(viewport.width)}px the table scrolls with the page, not inside a box`, async ({
+  test(`at ${String(viewport.width)}px the results scroll with the page, not inside a box`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport);
     await page.goto('/compare/cd');
-    const region = page.getByRole('region', { name: 'Certificates of deposit' });
-    const box = await region.evaluate((el) => ({
-      clipsHeight: el.scrollHeight > el.clientHeight + 1,
-      pageOverflowsX: document.documentElement.scrollWidth > window.innerWidth,
-    }));
-    expect(box).toEqual({ clipsHeight: false, pageOverflowsX: false });
+    if (viewport.width < 1024) {
+      await expect(page.getByRole('list', { name: 'Certificates of deposit' })).toBeVisible();
+    } else {
+      const region = page.getByRole('region', { name: 'Certificates of deposit' });
+      const clipsHeight = await region.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      expect(clipsHeight).toBe(false);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+    ).toBe(false);
   });
 }
 
-test('on a phone the header row is not sticky, the first column is', async ({ page }) => {
+test('on a phone the results are cards', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/compare/cd');
+  await expect(page.getByRole('list', { name: 'Certificates of deposit' })).toBeVisible();
+  await expect(table(page)).toBeHidden();
+});
+
+test('at 1280px the header row and the first column stick', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/compare/cd');
   const headers = table(page).getByRole('columnheader');
   const positions = await headers.evaluateAll((cells) =>
-    cells.map((c) => getComputedStyle(c).position),
+    cells.map((cell) => getComputedStyle(cell).position),
   );
-  expect(positions[0]).toBe('sticky');
-  expect(positions.slice(1).every((p) => p !== 'sticky')).toBe(true);
+  expect(positions.every((position) => position === 'sticky')).toBe(true);
 });
 
 test('at 1024px with a profile (all columns) the page does not scroll sideways', async ({
@@ -288,15 +288,7 @@ test('at 1024px with a profile (all columns) the page does not scroll sideways',
 }) => {
   await page.setViewportSize({ width: 1024, height: 800 });
   await page.goto('/compare/cd?profile=filingStatus');
-  const drawer = page.getByRole('dialog', { name: 'Your profile' });
-  await drawer.getByLabel('Filing status').selectOption('single');
-  await drawer.getByLabel('State of residence').selectOption('NY');
-  const income = drawer.getByLabel('Taxable income');
-  await income.fill('85000');
-  await income.blur();
-  await drawer.getByLabel('Residency').selectOption('us_citizen');
-  await page.keyboard.press('Escape');
-  await expect(page.getByText(RANKED)).toBeVisible();
+  await fillSingleNy(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -332,18 +324,10 @@ test('no product matches the filters: the empty state says how to get them back'
 
 test('products that need more data name the field and open the drawer on it', async ({ page }) => {
   await page.goto('/compare/cd?profile=filingStatus');
-  const drawer = page.getByRole('dialog', { name: 'Your profile' });
-  await drawer.getByLabel('Filing status').selectOption('single');
-  await drawer.getByLabel('State of residence').selectOption('NY');
-  const income = drawer.getByLabel('Taxable income');
-  await income.fill('85000');
-  await income.blur();
-  await drawer.getByLabel('Residency').selectOption('us_citizen');
-  await page.keyboard.press('Escape');
-  await expect(page.getByText(RANKED)).toBeVisible();
+  await fillSingleNy(page);
 
   const note = page.getByRole('status').filter({ hasText: /more data from your profile/ });
   await expect(note).toBeVisible();
   await note.getByRole('button', { name: 'Add age' }).click();
-  await expect(drawer.getByLabel('Age')).toBeFocused();
+  await expect(page.getByRole('dialog', { name: 'Your profile' }).getByLabel('Age')).toBeFocused();
 });

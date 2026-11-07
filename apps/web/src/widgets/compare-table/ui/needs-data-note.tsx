@@ -12,7 +12,7 @@ export function NeedsDataNote({ needs }: { needs: NeedsData }) {
   return (
     <div
       role="status"
-      className="flex flex-col gap-3 rounded-lg border border-warn bg-warn-bg p-3 text-warn sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-divider bg-surface px-3 py-2 text-sm"
     >
       <p className="text-sm font-medium">
         {products} more data from your profile to tell whether you can open them.

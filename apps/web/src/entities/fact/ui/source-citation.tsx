@@ -13,7 +13,7 @@ interface CitationRef {
 
 export interface SourceCitationProps {
   provenance: Provenance;
-  variant?: 'chip' | 'inline';
+  variant?: 'chip' | 'inline' | 'line';
   /** Opens the document viewer (features/open-citation writes the URL). */
   onOpen?: (ref: CitationRef) => void;
   /** Without it the retrieval date is shown as an absolute date. */
@@ -27,6 +27,7 @@ export function SourceCitation({
   onOpen,
   now,
 }: SourceCitationProps) {
+  if (variant === 'line') return <CitationLine provenance={p} onOpen={onOpen} />;
   const domain = sourceDomain(p.sourceUrl);
   const doc = p.document;
   const where = doc === undefined ? domain : `${domain}, p. ${String(doc.page)}`;
@@ -73,6 +74,42 @@ export function SourceCitation({
           <blockquote>“{doc.quote}”</blockquote>
         </Disclosure>
       )}
+    </div>
+  );
+}
+
+function CitationLine({
+  provenance: p,
+  onOpen,
+}: {
+  provenance: Provenance;
+  onOpen?: SourceCitationProps['onOpen'];
+}) {
+  const domain = sourceDomain(p.sourceUrl);
+  const doc = p.document;
+  const where =
+    doc !== undefined && onOpen !== undefined ? (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.currentTarget.focus();
+          onOpen({ documentId: doc.id, page: doc.page, quote: doc.quote });
+        }}
+        className="underline"
+      >
+        {domain}
+      </button>
+    ) : (
+      <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">
+        {domain}
+        <span className="sr-only"> (opens in a new tab)</span>
+      </a>
+    );
+  return (
+    <div className="truncate text-xs text-muted" data-citation={p.sourceId}>
+      Source: {where} · <span>{verificationText(p.verification)}</span>
+      {p.isMock ? ' · Demo data' : null} ·{' '}
+      <time dateTime={p.retrievedAt}>Retrieved {absoluteDate(p.retrievedAt)}</time>
     </div>
   );
 }

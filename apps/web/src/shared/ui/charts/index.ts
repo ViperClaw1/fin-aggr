@@ -1,2 +1,2 @@
 export { BulletChart } from './bullet-chart';
-export { percentExtent } from './scale';
+export { percentExtent, position } from './scale';

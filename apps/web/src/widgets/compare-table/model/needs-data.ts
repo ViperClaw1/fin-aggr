@@ -19,6 +19,8 @@ export interface NeedsData {
   fields: { rule: ProfileField; form: ProfileFormField }[];
 }
 
+export const profileFormField = (rule: ProfileField): ProfileFormField => FORM_FIELD[rule];
+
 export function needsData(ranked: readonly RankedProduct[] | null): NeedsData | null {
   if (ranked === null) return null;
   const waiting = ranked.filter((r) => r.group === 'needs_profile');

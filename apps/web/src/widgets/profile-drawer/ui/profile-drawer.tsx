@@ -16,10 +16,13 @@ import {
 import { Skeleton } from '@/shared/ui/states';
 import { profileSummary } from '../model/summary';
 
-const ProfileForm = dynamic(() => import('@/features/edit-profile').then((m) => m.ProfileForm), {
-  ssr: false,
-  loading: () => <Skeleton label="Loading the profile form" className="h-64 w-full" />,
-});
+const ProfileForm = dynamic(
+  () => import('@/features/edit-profile').then((m) => m.loadProfileForm()),
+  {
+    ssr: false,
+    loading: () => <Skeleton label="Loading the profile form" className="h-64 w-full" />,
+  },
+);
 
 const BUTTON = 'btn btn-sm max-w-[60vw] truncate';
 

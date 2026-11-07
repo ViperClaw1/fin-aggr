@@ -156,11 +156,11 @@ test('a compare-row citation opens the panel', async ({ page }) => {
   if (cited === undefined) return;
   const bank = fixtures.institutions.find((item) => item.id === cited.institutionId);
   await page.goto('/compare/cd');
-  await page
-    .getByRole('button', {
-      name: `Show details: Show details: ${bank?.name ?? 'Unknown bank'}, ${cited.name}`,
-    })
-    .click();
+  const details = page.locator(
+    `button[aria-label="Show details: ${bank?.name ?? 'Unknown bank'}, ${cited.name}"]`,
+  );
+  await details.scrollIntoViewIfNeeded();
+  await details.click();
   await page.getByRole('button', { name: /, p\. \d+/ }).click();
   await expect(page.getByRole('dialog', { name: 'Source' })).toBeVisible();
   await expect(page).toHaveURL(/doc=/);

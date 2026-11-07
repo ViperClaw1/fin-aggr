@@ -4,39 +4,39 @@
 // static HTML and the client never loads the gateway. Filters and the column sort are read from
 // the URL. A filter hides rows; it does not drop them, so the body stays mounted (step 2.9).
 // With a complete profile the rows are ranked after tax in the browser
-// (ADR-008); the profile never leaves it (ADR-004). The filter form and row summaries come next.
+// (ADR-008); the profile never leaves it (ADR-004).
 import type { ProductCategory } from '@fa/contracts';
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { freshnessNow } from '@/entities/fact';
+import { headlineApy } from '@/entities/product';
 import {
   PROFILE_FORM_FIELDS,
   useCompleteProfile,
   useProfileDrawer,
   useProfileHydrated,
+  type ProfileFormField,
 } from '@/entities/profile';
 import { useNetYield } from '@/features/compute-net-yield';
 import { useOpenCitation, type OpenCitation } from '@/features/open-citation';
 import {
   effectiveSort,
-  filterProducts,
   FilterForm,
   FilterFormStatic,
+  filterProducts,
   useProductFilters,
   useProductSort,
+  type FilterStats,
+  type ProductFilters,
   type ProductSort,
 } from '@/features/filter-products';
-import { DataTable, type Column } from '@/shared/ui/data-table';
-import { EmptyState } from '@/shared/ui/states';
-import { freshnessNow } from '@/entities/fact';
 import type { CompareData } from '../api/prefetch';
 import { needsData } from '../model/needs-data';
 import { defaultOrder, type Row } from '../model/order';
-import { CONTENT_VISIBILITY_AFTER, hiddenProductIds } from '../model/visibility';
+import { hiddenProductIds } from '../model/visibility';
 import { unpackCompareProducts, type CompareProduct } from '../model/wire';
-import { columns, shownSortKeys } from './columns';
-import { NeedsDataNote } from './needs-data-note';
-import { RowDetails, type InstitutionDetails } from './row-details';
-
-const EMPTY_FILTERS = 'No products match these filters. Remove some, or use Reset filters.';
+import { columns, maxNetInterest, shownSortKeys, sortByNetInterest } from './columns';
+import { ResultsPane } from './results-pane';
+import type { InstitutionDetails } from './row-details';
 
 const CAPTION: Record<string, string> = {
   cd: 'Certificates of deposit',
@@ -44,7 +44,7 @@ const CAPTION: Record<string, string> = {
   treasury: 'Treasury bills and notes',
 };
 
-type Filters = Parameters<typeof filterProducts>[1] & { hide: 'ineligible' | null };
+type Filters = ProductFilters;
 const NO_FILTERS: Filters = {
   term: [],
   kind: [],
@@ -56,19 +56,13 @@ const NO_FILTERS: Filters = {
 
 type Props = CompareData & { category: ProductCategory };
 
-/** Says which rule orders the rows when no column is sorted (ADR-008). */
-const defaultOrderNote = (withProfile: boolean): string =>
-  withProfile
-    ? 'Ranked for your profile: eligible first, then by net interest after tax.'
-    : 'Sorted by top APY. Add your profile for after-tax ranking.';
 interface UrlState {
   filters: Filters;
   sort: ProductSort | null;
   onSortChange: (sort: ProductSort | null) => void;
-  /** opens the profile drawer; null before hydration (the button shows disabled) */
-  onOpenProfile: (() => void) | null;
+  onFiltersChange: (patch: Partial<Filters> | null) => void;
+  onOpenProfile: ((field: ProfileFormField) => void) | null;
   onOpenCitation: ((ref: OpenCitation) => void) | null;
-  /** the filter form reads the URL; the prerendered fallback shows it disabled */
   withForm: boolean;
 }
 
@@ -76,10 +70,38 @@ interface Url {
   filters: Filters;
   sort: ProductSort | null;
   setSort: (sort: ProductSort | null) => void;
-  openProfile: () => void;
+  setFilters: (patch: Partial<Filters> | null) => void;
+  openProfile: (field?: ProfileFormField) => void;
   openCitation: (ref: OpenCitation) => void;
 }
 const noop = () => undefined;
+
+function catalogStats(products: readonly CompareProduct[], index: InstitutionDetails): FilterStats {
+  const termCounts = new Map<number, number>();
+  const apyPercents: number[] = [];
+  const kindCounts = {
+    direct_bank: 0,
+    credit_union: 0,
+    fintech_partner: 0,
+  };
+  for (const product of products) {
+    if (product.termMonths !== null) {
+      termCounts.set(product.termMonths, (termCounts.get(product.termMonths) ?? 0) + 1);
+    }
+    // Histogram geometry only. The rate shown in the table stays a string.
+    apyPercents.push(Number(headlineApy(product)) * 100);
+    const kind = index.get(product.institutionId)?.kind;
+    if (kind !== undefined) kindCounts[kind] += 1;
+  }
+  return {
+    terms: [...termCounts.keys()].sort((a, b) => a - b),
+    termCounts: [...termCounts.entries()]
+      .map(([months, count]) => ({ months, count }))
+      .sort((a, b) => a.months - b.months),
+    apyPercents,
+    kindCounts,
+  };
+}
 
 function useVisibleCatalog(
   products: readonly CompareProduct[],
@@ -93,7 +115,6 @@ function useVisibleCatalog(
     return ids;
   }, [products, filters, index]);
   const profile = useCompleteProfile(taxTables.taxYear);
-  // Rank the whole catalog. A filter change must not rebuild the row list (step 2.9).
   const ranked = useNetYield(products, profile, taxTables);
   const rows = useMemo(() => defaultOrder(products, ranked), [products, ranked]);
   const hiddenRowIds = useMemo(
@@ -115,81 +136,29 @@ function useVisibleCatalog(
   };
 }
 
-/** Drops the pre-hydration cover once the row order will not change again (ADR-017). */
-function ReleaseCatalog({ hold }: { hold: boolean }) {
-  useLayoutEffect(() => {
-    if (hold) return;
-    document.documentElement.removeAttribute('data-has-profile');
-  }, [hold]);
-  return null;
+function urlState(url: Url | null): UrlState {
+  if (url === null) {
+    return {
+      filters: NO_FILTERS,
+      sort: null,
+      onSortChange: noop,
+      onFiltersChange: noop,
+      onOpenProfile: null,
+      onOpenCitation: null,
+      withForm: false,
+    };
+  }
+  return {
+    filters: url.filters,
+    sort: url.sort,
+    onSortChange: url.setSort,
+    onFiltersChange: url.setFilters,
+    onOpenProfile: url.openProfile,
+    onOpenCitation: url.openCitation,
+    withForm: true,
+  };
 }
 
-function Catalog(props: {
-  caption: string;
-  columns: Column<Row>[];
-  rows: readonly Row[];
-  hiddenRowIds: ReadonlySet<string>;
-  showEmpty: boolean;
-  index: InstitutionDetails;
-  taxYear: number;
-  onOpen: ((ref: OpenCitation) => void) | null;
-  sort: ProductSort | null;
-  sortDisabled: boolean;
-  onSortChange: (next: ProductSort | null) => void;
-  hold: boolean;
-}) {
-  return (
-    <>
-      <ReleaseCatalog hold={props.hold} />
-      <div data-catalog-slot>
-        <p
-          data-catalog-pending
-          className="rounded-lg border border-divider bg-surface px-3 py-4 text-sm text-muted"
-        >
-          Ranking for your profile…
-        </p>
-        <div data-catalog>
-          <DataTable
-            caption={props.caption}
-            columns={props.columns}
-            rows={props.rows}
-            hiddenRowIds={props.hiddenRowIds}
-            contentVisibilityAfter={CONTENT_VISIBILITY_AFTER}
-            getRowId={(r) => r.product.id}
-            renderExpanded={(r) => (
-              <RowDetails
-                row={r}
-                institutions={props.index}
-                taxYear={props.taxYear}
-                onOpen={props.onOpen}
-              />
-            )}
-            expandLabel={(r) =>
-              `Show details: ${props.index.get(r.product.institutionId)?.name ?? 'Unknown bank'}, ${r.product.name}`
-            }
-            sort={props.sort}
-            sortDisabled={props.sortDisabled}
-            onSortChange={(next) => {
-              if (next === null) {
-                props.onSortChange(null);
-                return;
-              }
-              props.onSortChange(next as ProductSort);
-            }}
-          />
-          {props.showEmpty ? <EmptyState title={EMPTY_FILTERS} /> : null}
-        </div>
-      </div>
-    </>
-  );
-}
-
-/**
- * Reading the URL suspends during prerendering. Only the reader (UrlSync, renders nothing) sits
- * inside <Suspense>; the table stays outside, so the client hydrates the prerendered table instead
- * of throwing it away and building 60 rows again (Lighthouse TBT, E5 step 2). Until UrlSync reports
- * after hydration, the table shows the static state: the whole catalog by top APY.
- */
 export function CompareTable(props: Props) {
   const [url, setUrl] = useState<Url | null>(null);
   return (
@@ -197,24 +166,14 @@ export function CompareTable(props: Props) {
       <Suspense fallback={null}>
         <UrlSync onChange={setUrl} />
       </Suspense>
-      <Table
-        {...props}
-        filters={url?.filters ?? NO_FILTERS}
-        sort={url?.sort ?? null}
-        onSortChange={url?.setSort ?? noop}
-        onOpenProfile={url?.openProfile ?? null}
-        onOpenCitation={url?.openCitation ?? null}
-        withForm={url !== null}
-      />
+      <Table {...props} {...urlState(url)} />
     </>
   );
 }
 
 function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
-  const [filters] = useProductFilters();
+  const [filters, setFilters] = useProductFilters();
   const [sort, setSort] = useProductSort();
-  // `open` is a new function on every render (it closes over the current field): reported through
-  // a ref, or the effect below would re-run on every render and loop through setUrl
   const { open } = useProfileDrawer();
   const { open: openCitation } = useOpenCitation();
   const openRef = useRef(open);
@@ -230,94 +189,117 @@ function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
       setSort: (next) => {
         void setSort(next);
       },
-      openProfile: () => {
-        openRef.current(PROFILE_FORM_FIELDS[0]);
+      setFilters: (patch) => {
+        void setFilters(patch);
+      },
+      openProfile: (field) => {
+        openRef.current(field ?? PROFILE_FORM_FIELDS[0]);
       },
       openCitation: (ref) => {
         citationRef.current(ref);
       },
     });
-  }, [filters, sort, setSort, onChange]);
+  }, [filters, sort, setSort, setFilters, onChange]);
   return null;
+}
+
+function listingSort(sort: ProductSort | null, rows: readonly Row[]) {
+  if (sort?.columnId !== 'netYield') {
+    return { ordered: rows, tableSort: sort, emphasizeNet: false };
+  }
+  return {
+    ordered: sortByNetInterest(rows, sort.direction),
+    tableSort: null,
+    emphasizeNet: true,
+  };
+}
+
+function holdCatalog(hydrated: boolean, profile: unknown, ranked: unknown): boolean {
+  if (!hydrated) return true;
+  return profile !== null && ranked === null;
 }
 
 function Table(props: Props & UrlState) {
   const { category, institutions, dataset, taxTables, filters } = props;
   const products = useMemo(() => unpackCompareProducts(props.products), [props.products]);
   const index: InstitutionDetails = useMemo(
-    () => new Map(institutions.map((i) => [i.id, i])),
+    () => new Map(institutions.map((item) => [item.id, item])),
     [institutions],
   );
+  const stats = useMemo(() => catalogStats(products, index), [products, index]);
   const catalog = useVisibleCatalog(products, filters, index, taxTables);
   const { rows, hiddenRowIds, visibleCount, profile, ranked } = catalog;
   const withProfile = ranked !== null;
-  const terms = useMemo(
-    () =>
-      [...new Set(products.flatMap((p) => (p.termMonths === null ? [] : [p.termMonths])))].sort(
-        (a, b) => a - b,
-      ),
-    [products],
-  );
   const sort = effectiveSort(props.sort, shownSortKeys(withProfile));
-  const needs = catalog.needs;
-  const onOpenProfile = props.onOpenProfile;
-  const holdCatalog = !useProfileHydrated() || (profile !== null && ranked === null);
+  const listing = listingSort(sort, rows);
+  const netScale = useMemo(
+    () => maxNetInterest(listing.ordered, hiddenRowIds),
+    [listing.ordered, hiddenRowIds],
+  );
+  const hydrated = useProfileHydrated();
+  const nowFor = (product: Pick<CompareProduct, 'category' | 'provenance'>) =>
+    freshnessNow(dataset, undefined, {
+      isMock: product.provenance.isMock,
+      domain: product.category === 'treasury' ? 'treasury' : 'products',
+    });
   return (
-    // filters beside the results from lg; stacked above them below it. minmax(0,1fr): the table
-    // column may shrink below the table's width, so the table scrolls instead of the page
     <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-      {props.withForm ? (
-        <FilterForm terms={terms} withProfile={withProfile} />
-      ) : (
-        <FilterFormStatic terms={terms} />
-      )}
-      <div className="flex min-w-0 flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          {/* one live region: a filter change announces the new count */}
-          <div aria-live="polite" className="min-w-0">
-            <h2 className="text-xl font-semibold tabular-nums">
-              {visibleCount === 1 ? '1 product' : `${String(visibleCount)} products`}
-            </h2>
-            <p className="text-sm text-muted">
-              {sort === null ? defaultOrderNote(withProfile) : 'Sorted by the chosen column.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={onOpenProfile === null}
-            onClick={() => {
-              onOpenProfile?.();
-            }}
-            className={`btn ${withProfile ? '' : 'btn-primary'}`}
-          >
-            {withProfile ? 'Edit profile' : 'Add your profile'}
-          </button>
-        </div>
-        {props.withForm && needs !== null ? <NeedsDataNote needs={needs} /> : null}
-        <Catalog
-          caption={CAPTION[category] ?? 'Products'}
-          columns={columns(
-            index,
-            (product) =>
-              freshnessNow(dataset, undefined, {
-                isMock: product.provenance.isMock,
-                domain: product.category === 'treasury' ? 'treasury' : 'products',
-              }),
-            withProfile,
-            props.onOpenCitation,
-          )}
-          rows={rows}
-          hiddenRowIds={hiddenRowIds}
-          showEmpty={visibleCount === 0}
-          index={index}
-          taxYear={taxTables.taxYear}
-          onOpen={props.onOpenCitation}
-          sort={sort}
-          sortDisabled={!props.withForm}
-          onSortChange={props.onSortChange}
-          hold={holdCatalog}
-        />
-      </div>
+      <FilterSide
+        withForm={props.withForm}
+        category={category}
+        stats={stats}
+        withProfile={withProfile}
+        visibleCount={visibleCount}
+      />
+      <ResultsPane
+        category={category}
+        caption={CAPTION[category] ?? 'Products'}
+        taxYear={taxTables.taxYear}
+        filters={filters}
+        withForm={props.withForm}
+        withProfile={withProfile}
+        visibleCount={visibleCount}
+        sort={sort}
+        ordered={listing.ordered}
+        hiddenRowIds={hiddenRowIds}
+        netScale={netScale}
+        institutions={index}
+        needs={catalog.needs}
+        holdCatalog={holdCatalog(hydrated, profile, ranked)}
+        tableSort={listing.tableSort}
+        emphasizeNet={listing.emphasizeNet}
+        columns={columns({
+          institutions: index,
+          nowFor,
+          withProfile,
+          onOpen: props.onOpenCitation,
+          onOpenProfile: props.onOpenProfile,
+          netScale,
+        })}
+        nowFor={nowFor}
+        onSortChange={props.onSortChange}
+        onFiltersChange={props.onFiltersChange}
+        onOpenProfile={props.onOpenProfile}
+        onOpenCitation={props.onOpenCitation}
+      />
     </div>
+  );
+}
+
+function FilterSide(props: {
+  withForm: boolean;
+  category: ProductCategory;
+  stats: FilterStats;
+  withProfile: boolean;
+  visibleCount: number;
+}) {
+  if (!props.withForm) return <FilterFormStatic category={props.category} stats={props.stats} />;
+  return (
+    <FilterForm
+      category={props.category}
+      stats={props.stats}
+      withProfile={props.withProfile}
+      visibleCount={props.visibleCount}
+    />
   );
 }

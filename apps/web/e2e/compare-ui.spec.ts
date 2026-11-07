@@ -36,5 +36,5 @@ test('a filter hides rows and leaves them mounted', async ({ page }) => {
   await page.goto('/compare/cd?term=12');
   await expect(page.locator('table tbody tr')).toHaveCount(60);
   await expect(page.locator('table tbody tr[hidden]')).not.toHaveCount(0);
-  await expect(page.locator('table tbody tr:visible td:nth-child(3)').first()).toHaveText('12 mo');
+  await expect(page.locator('table tbody tr:visible td:nth-child(2)').first()).toHaveText('12 mo');
 });

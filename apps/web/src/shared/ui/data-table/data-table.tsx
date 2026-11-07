@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useId, useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { EmptyState, ErrorState } from '../states';
-import { nextSort, resolveSort, sortRows, type SortState } from './sort';
+import { nextSort, resolveSort, type SortState } from './sort';
+import { Body } from './table-body';
 
 export interface Column<T> {
   id: string;
@@ -52,6 +53,14 @@ export interface DataTableProps<T> {
   /** Controlled expansion: pass both. */
   expandedIds?: ReadonlySet<string>;
   onExpandedChange?: (ids: ReadonlySet<string>) => void;
+  /** Extra classes on the data row, for example dimming a row the reader cannot open. */
+  rowClassName?: (row: T) => string | undefined;
+  /** A click on the row toggles its details. Links and controls keep their own action. */
+  expandOnRowClick?: boolean;
+  /** Header cells stick under the site header. Off elsewhere so a short table does not pin. */
+  stickyHeader?: boolean;
+  /** Column id to tint. Defaults to the active sort column. */
+  emphasisColumnId?: string | null;
 }
 
 const SKELETON_ROWS = ['s1', 's2', 's3', 's4', 's5'];
@@ -59,17 +68,26 @@ const ARROW = { asc: '▲', desc: '▼' } as const;
 const alignClass = (align: Column<unknown>['align']): string =>
   align === 'end' ? 'text-right' : 'text-left';
 
-export function DataTable<T>(props: DataTableProps<T>) {
-  const { caption, columns, hiddenColumnIds = [], defaultSort = null, status = 'ready' } = props;
-  const captionId = useId();
+function emphasisColumn(
+  explicit: string | null | undefined,
+  sort: SortState | null,
+): string | null {
+  if (explicit !== undefined && explicit !== null) return explicit;
+  if (sort === null) return null;
+  return sort.columnId;
+}
+
+function useTableState<T>(props: DataTableProps<T>) {
+  const { defaultSort = null, status = 'ready' } = props;
   const [ownSort, setOwnSort] = useState<SortState | null>(defaultSort);
   const [ownExpanded, setOwnExpanded] = useState<ReadonlySet<string>>(new Set());
-
-  const visible = columns.filter((c) => !hiddenColumnIds.includes(c.id));
-  const sortable = (id: string): boolean => visible.some((c) => c.id === id && c.compare);
-  const sort = resolveSort(props.sort === undefined ? ownSort : props.sort, defaultSort, sortable);
+  const hidden = props.hiddenColumnIds ?? [];
+  const visible = props.columns.filter((column) => !hidden.includes(column.id));
+  const sortable = (id: string): boolean =>
+    visible.some((column) => column.id === id && column.compare !== undefined);
+  const incoming = props.sort === undefined ? ownSort : props.sort;
+  const sort = resolveSort(incoming, defaultSort, sortable);
   const expanded = props.expandedIds ?? ownExpanded;
-
   const onSort = (columnId: string): void => {
     const next = nextSort(sort, columnId);
     if (props.sort === undefined) setOwnSort(next);
@@ -81,6 +99,23 @@ export function DataTable<T>(props: DataTableProps<T>) {
     if (props.expandedIds === undefined) setOwnExpanded(next);
     props.onExpandedChange?.(next);
   };
+  return {
+    caption: props.caption,
+    status,
+    visible,
+    sort,
+    expanded,
+    emphasis: emphasisColumn(props.emphasisColumnId, sort),
+    onSort,
+    onToggle,
+    stickyHeader: Boolean(props.stickyHeader),
+    sortDisabled: Boolean(props.sortDisabled),
+  };
+}
+
+export function DataTable<T>(props: DataTableProps<T>) {
+  const captionId = useId();
+  const state = useTableState(props);
 
   return (
     <div>
@@ -89,45 +124,48 @@ export function DataTable<T>(props: DataTableProps<T>) {
         aria-labelledby={captionId}
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-focusable (WCAG 2.1.1, axe scrollable-region-focusable), spec §6 rule 6
         tabIndex={0}
-        // No vertical scroll inside the page scroll (E5): the region scrolls sideways only, the
-        // first column stays. It never stops clipping: beside a filter sidebar no width is wide
-        // enough for every column, and an unclipped table pushes the page sideways.
-        // relative: sr-only text must not escape the scroll box.
-        className="@container relative overflow-x-auto rounded-lg border border-divider"
+        // Below xl the region scrolls sideways so the page does not. At xl the header is pinned
+        // to the page, and that pin cannot sit inside the scroll box or it covers the first rows.
+        className={`@container relative rounded-lg border border-divider ${state.stickyHeader ? 'overflow-x-auto xl:overflow-visible' : 'overflow-x-auto'}`}
       >
-        <table aria-busy={status === 'loading'} className="w-full border-collapse text-sm">
+        <table aria-busy={state.status === 'loading'} className="w-full border-collapse text-sm">
           <caption id={captionId} className="px-3 py-3 text-left font-semibold">
-            {caption}
+            {state.caption}
           </caption>
           <thead>
             <tr>
-              {visible.map((c, i) => (
+              {state.visible.map((column, index) => (
                 <HeaderCell
-                  key={c.id}
-                  column={c}
-                  first={i === 0}
-                  sort={sort}
-                  onSort={onSort}
-                  disabled={props.sortDisabled === true}
+                  key={column.id}
+                  column={column}
+                  first={index === 0}
+                  sort={state.sort}
+                  emphasisId={state.emphasis}
+                  stickyHeader={state.stickyHeader}
+                  onSort={state.onSort}
+                  disabled={state.sortDisabled}
                 />
               ))}
             </tr>
           </thead>
-          {status === 'ready' ? (
+          {state.status === 'ready' ? (
             <Body
               {...props}
               idPrefix={captionId}
-              visible={visible}
-              sort={sort}
-              expanded={expanded}
-              onToggle={onToggle}
+              visible={state.visible}
+              sort={state.sort}
+              emphasis={state.emphasis}
+              expanded={state.expanded}
+              onToggle={state.onToggle}
             />
           ) : null}
-          {status === 'loading' ? <SkeletonRows span={visible.length} /> : null}
+          {state.status === 'loading' ? <SkeletonRows span={state.visible.length} /> : null}
         </table>
       </div>
-      {status === 'empty' ? <EmptyState title={props.emptyTitle ?? 'Nothing to show'} /> : null}
-      {status === 'error' ? (
+      {state.status === 'empty' ? (
+        <EmptyState title={props.emptyTitle ?? 'Nothing to show'} />
+      ) : null}
+      {state.status === 'error' ? (
         <ErrorState error={props.error} {...(props.onRetry ? { onRetry: props.onRetry } : {})} />
       ) : null}
     </div>
@@ -139,11 +177,18 @@ function HeaderCell<T>(p: {
   /** The first column sticks to the left. */
   first: boolean;
   sort: SortState | null;
+  emphasisId: string | null;
+  stickyHeader: boolean;
   onSort: (id: string) => void;
   disabled: boolean;
 }) {
   const { column, sort } = p;
-  const base = `${p.first ? 'sticky left-0 z-(--z-sticky-corner)' : ''} border-y border-divider bg-surface px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
+  const pin = pinClass(p.first, p.stickyHeader);
+  const tint =
+    p.emphasisId === column.id
+      ? 'bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] text-foreground'
+      : 'bg-surface';
+  const base = `${pin} border-y border-divider ${tint} px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (
       <th scope="col" className={base}>
@@ -172,112 +217,10 @@ function HeaderCell<T>(p: {
   );
 }
 
-function Body<T>(
-  p: DataTableProps<T> & {
-    idPrefix: string;
-    visible: Column<T>[];
-    sort: SortState | null;
-    expanded: ReadonlySet<string>;
-    onToggle: (id: string) => void;
-  },
-) {
-  const compare = p.visible.find((c) => c.id === p.sort?.columnId)?.compare;
-  const rows = p.sort && compare ? sortRows(p.rows, compare, p.sort.direction, p.getRowId) : p.rows;
-  const hidden = p.hiddenRowIds;
-  const after = p.contentVisibilityAfter;
-  let shown = 0;
-  return (
-    <tbody>
-      {rows.map((row) => {
-        const id = p.getRowId(row);
-        const isHidden = hidden?.has(id) === true;
-        const below = !isHidden && after !== undefined && shown >= after;
-        if (!isHidden) shown += 1;
-        const open = p.renderExpanded !== undefined && p.expanded.has(id);
-        const detailsId = `${p.idPrefix}-${id}-details`;
-        return (
-          <Fragment key={id}>
-            <tr
-              hidden={isHidden}
-              className={`group border-b border-divider${below ? ' cv-below' : ''}`}
-            >
-              {p.visible.map((c, i) => {
-                // the sticky first column wraps on phones, or a long name would cover the screen
-                const wrap =
-                  i === 0 ? 'w-40 min-w-40 sm:w-auto sm:whitespace-nowrap' : 'whitespace-nowrap';
-                const cls = `px-3 py-2 ${wrap} group-hover:bg-surface ${alignClass(c.align)}`;
-                if (i > 0) {
-                  return (
-                    <td key={c.id} className={cls}>
-                      {c.cell(row)}
-                    </td>
-                  );
-                }
-                return (
-                  <th
-                    key={c.id}
-                    scope="row"
-                    className={`sticky left-0 z-(--z-sticky) bg-background font-normal ${cls}`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {p.renderExpanded === undefined ? null : (
-                        <ExpandButton
-                          open={open}
-                          controls={detailsId}
-                          label={`${open ? 'Hide' : 'Show'} details${p.expandLabel ? `: ${p.expandLabel(row)}` : ''}`}
-                          onClick={() => {
-                            p.onToggle(id);
-                          }}
-                        />
-                      )}
-                      <div className="min-w-0">{c.cell(row)}</div>
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-            {open && p.renderExpanded ? (
-              <tr id={detailsId} hidden={isHidden} className="border-b border-divider">
-                <td colSpan={p.visible.length} className="bg-surface px-3 py-4">
-                  {/* as wide as the visible part of the region and pinned to its left edge: on a
-                      table wider than the screen the details stay readable without scrolling */}
-                  <div className="sticky left-3 max-w-[calc(100cqw-1.5rem)]">
-                    {p.renderExpanded(row)}
-                  </div>
-                </td>
-              </tr>
-            ) : null}
-          </Fragment>
-        );
-      })}
-    </tbody>
-  );
-}
-
-function ExpandButton(p: { open: boolean; controls: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-expanded={p.open}
-      aria-controls={p.controls}
-      aria-label={p.label}
-      onClick={p.onClick}
-      className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border text-muted hover:text-foreground"
-    >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className={`size-4 transition-transform ${p.open ? 'rotate-180' : ''}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
-    </button>
-  );
+function pinClass(first: boolean, stickyHeader: boolean): string {
+  if (!first) return stickyHeader ? 'xl:sticky xl:top-32 xl:z-(--z-sticky)' : '';
+  const top = stickyHeader ? ' xl:top-32' : '';
+  return `sticky left-0 z-(--z-sticky-corner)${top}`;
 }
 
 function SkeletonRows({ span }: { span: number }) {
