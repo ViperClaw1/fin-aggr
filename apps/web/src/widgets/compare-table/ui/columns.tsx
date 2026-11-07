@@ -12,10 +12,7 @@ import {
   type Product,
 } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
-import { config } from '@fortawesome/fontawesome-svg-core';
-import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { FactValue } from '@/entities/fact';
@@ -31,7 +28,9 @@ import { profileFormField } from '../model/needs-data';
 import { roundPercentText } from '../model/percent-display';
 import type { Row } from '../model/order';
 
-config.autoAddCss = false;
+const FitMark = dynamic(() => import('./fit-mark').then((mod) => mod.FitMark), {
+  loading: () => <span className="inline-block size-4" />,
+});
 
 type TableColumn = Column<Row> & { id: SortKey | 'product' | 'eligibility' };
 
@@ -240,15 +239,6 @@ function fitColumn(options: ColumnOptions): TableColumn {
       );
     },
   };
-}
-
-function FitMark({ fit }: { fit: boolean }) {
-  return (
-    <span className={fit ? 'text-primary' : 'text-danger'}>
-      <FontAwesomeIcon icon={fit ? faCheck : faXmark} className="size-4" />
-      <span className="sr-only">{fit ? 'Eligible' : 'Not eligible'}</span>
-    </span>
-  );
 }
 
 function RollingText({ text }: { text: string }) {
