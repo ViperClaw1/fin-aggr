@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useRef } from 'react';
-import type { Column, DataTableProps } from './data-table';
+import type { Column, DataTableProps } from './types';
 import { sortRows, type SortState } from './sort';
 
 const alignClass = (align: Column<unknown>['align']): string =>
