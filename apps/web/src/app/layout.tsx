@@ -78,7 +78,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <DemoDataGate />
         <Providers>
           <header className="sticky top-0 z-30 border-b border-divider bg-background">
-            <div className="mx-auto flex min-h-16 max-w-page flex-wrap items-center gap-x-8 gap-y-2 px-4 sm:px-8">
+            <div className="mx-auto flex min-h-16 max-w-page flex-wrap items-center gap-x-2 gap-y-2 px-4 min-[388px]:gap-x-8 sm:px-8">
               <Link
                 href="/"
                 prefetch={false}

@@ -14,7 +14,8 @@ import {
   useProfileHydrated,
 } from '@/entities/profile';
 import { Skeleton } from '@/shared/ui/states';
-import { profileSummary } from '../model/summary';
+import { profileFill, profileSummary } from '../model/summary';
+import { ProfileGlyph } from './profile-glyph';
 
 const ProfileForm = dynamic(
   () => import('@/features/edit-profile').then((m) => m.loadProfileForm()),
@@ -24,7 +25,7 @@ const ProfileForm = dynamic(
   },
 );
 
-const BUTTON = 'btn btn-sm max-w-[60vw] truncate';
+const BUTTON = 'btn btn-sm max-w-[60vw] shrink-0 truncate';
 
 export function ProfileDrawerFallback() {
   return (
@@ -74,7 +75,14 @@ export function ProfileDrawer() {
           open(PROFILE_FORM_FIELDS[0]);
         }}
       >
-        {hydrated ? profileSummary(draft) : 'Profile'}
+        {hydrated ? (
+          <span className="min-[388px]:hidden">
+            <ProfileGlyph fill={profileFill(draft)} />
+          </span>
+        ) : null}
+        <span className={hydrated ? 'max-[387px]:sr-only' : undefined}>
+          {hydrated ? profileSummary(draft) : 'Profile'}
+        </span>
       </button>
       <dialog
         ref={dialogRef}

@@ -1,6 +1,6 @@
 import { Cents } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
-import { profileSummary } from './summary';
+import { profileFill, profileSummary } from './summary';
 
 const COMPLETE = {
   filingStatus: 'single',
@@ -23,5 +23,10 @@ describe('profileSummary', () => {
   });
   it('never shows the income', () => {
     expect(profileSummary(COMPLETE)).not.toMatch(/85|\$/);
+  });
+  it('marks how full the profile is for the narrow header icon', () => {
+    expect(profileFill({ age: 40 })).toBe('empty');
+    expect(profileFill({ stateCode: 'NY', taxableIncome: Cents.parse(1) })).toBe('partial');
+    expect(profileFill(COMPLETE)).toBe('complete');
   });
 });
