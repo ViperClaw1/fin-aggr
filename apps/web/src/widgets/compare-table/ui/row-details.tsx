@@ -196,28 +196,40 @@ function Waterfall({ net }: { net: NonNullable<Row['ranked']>['netYield'] }) {
       cents: Math.max(0, net.netInterest),
     },
   ];
+  const bar = [
+    ...steps.filter((step) => step.key === 'keep'),
+    ...steps.filter((step) => step.key !== 'keep' && step.key !== 'gross'),
+  ];
   return (
     <div>
       <h3 className="text-sm font-medium">Where your interest goes</h3>
-      <ol className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {steps.map((step) => (
-          <li key={step.key} className="rounded-md border border-divider px-2 py-1.5">
-            <span className="block text-xs text-muted">{step.label}</span>
-            <span className="font-mono text-sm font-semibold tabular-nums">{step.text}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-2 flex h-2 overflow-hidden rounded-sm" aria-hidden="true">
-        {steps.map((step) =>
-          step.key === 'gross' || step.cents <= 0 ? null : (
+      <div className="mt-2 flex h-2.5 overflow-hidden rounded-full" aria-hidden="true">
+        {bar.map((step) =>
+          step.cents <= 0 ? null : (
             <span
               key={step.key}
-              className={step.key === 'keep' ? 'bg-accent' : 'bg-foreground/50'}
+              className={step.key === 'keep' ? 'bg-accent' : 'interest-hatch'}
               style={{ flexGrow: step.cents }}
             />
           ),
         )}
       </div>
+      <ol className="mt-2 grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-6">
+        {steps.map((step) => (
+          <li key={step.key}>
+            <span className="block text-xs text-muted">{step.label}</span>
+            <span
+              className={
+                step.key === 'keep'
+                  ? 'font-mono text-sm font-semibold text-accent tabular-nums'
+                  : 'font-mono text-sm font-semibold tabular-nums'
+              }
+            >
+              {step.text}
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

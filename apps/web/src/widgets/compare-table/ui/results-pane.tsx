@@ -11,6 +11,7 @@ import { EmptyState } from '@/shared/ui/states';
 import type { NeedsData } from '../model/needs-data';
 import type { Row } from '../model/order';
 import { CONTENT_VISIBILITY_AFTER } from '../model/visibility';
+import { CatalogPending } from './catalog-pending';
 import { NeedsDataNote } from './needs-data-note';
 import { ResultCards } from './result-cards';
 import { RowDetails, type InstitutionDetails } from './row-details';
@@ -194,12 +195,7 @@ function CatalogBody(props: ResultsPaneProps & { density: 'table' | 'cards' }) {
   const cardsClass = props.density === 'cards' ? 'block' : 'lg:hidden';
   return (
     <div data-catalog-slot>
-      <p
-        data-catalog-pending
-        className="rounded-lg border border-divider bg-surface px-3 py-4 text-sm text-muted"
-      >
-        Ranking for your profile…
-      </p>
+      <CatalogPending />
       <div data-catalog className="flex flex-col gap-4">
         <div className={tableClass}>
           <ProductTable {...props} />

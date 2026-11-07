@@ -11,22 +11,25 @@ interface ApyFilterProps {
   onChange: (value: Rate | null) => void;
 }
 
-const BINS = APY_STEPS;
+const BARS = 16;
+
+/** Visual only: a smooth bell across the rates, not the raw bin counts. */
+function bellHeights(percents: readonly number[]): number[] {
+  if (percents.length === 0) return [];
+  const mid = (BARS - 1) / 2;
+  const spread = BARS / 4.2;
+  return Array.from({ length: BARS }, (_, index) => {
+    const z = (index - mid) / spread;
+    return Math.exp(-0.5 * z * z);
+  });
+}
 
 export function ApyFilter({ percents, value, onChange }: ApyFilterProps) {
   const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
   const index = value === null ? 0 : percentTextToApyIndex(formatRate(value).slice(0, -1));
   const thumb = index ?? 0;
-  const bins = useMemo(() => {
-    const counts = Array.from({ length: BINS }, () => 0);
-    for (const percent of percents) {
-      const bin = Math.min(BINS - 1, Math.max(0, Math.floor(percent / 0.05)));
-      const current = counts[bin];
-      if (current !== undefined) counts[bin] = current + 1;
-    }
-    return counts;
-  }, [percents]);
+  const bins = useMemo(() => bellHeights(percents), [percents]);
   const peak = Math.max(1, ...bins);
   const writeIndex = (next: number) => {
     setDraft(null);
@@ -42,15 +45,15 @@ export function ApyFilter({ percents, value, onChange }: ApyFilterProps) {
       <label htmlFor={id} className="text-sm font-medium">
         Minimum APY
       </label>
-      <div className="relative h-10">
+      <div className="relative h-16">
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-3 flex h-6 items-end"
+          className="pointer-events-none absolute inset-x-0 bottom-6 flex h-8 items-end gap-0.5"
           aria-hidden="true"
         >
           {bins.map((count, bin) => (
             <span
               key={apyIndexToPercentText(bin)}
-              className="flex-1 bg-accent/30"
+              className="min-w-0 flex-1 rounded-t-sm bg-primary/25"
               style={{ height: count === 0 ? '0px' : `${String((count / peak) * 100)}%` }}
             />
           ))}
@@ -67,7 +70,7 @@ export function ApyFilter({ percents, value, onChange }: ApyFilterProps) {
           onChange={(event) => {
             writeIndex(Number(event.target.value));
           }}
-          className="absolute inset-x-0 bottom-1 w-full"
+          className="apy-range absolute inset-x-0 bottom-0 w-full"
         />
       </div>
       <input
