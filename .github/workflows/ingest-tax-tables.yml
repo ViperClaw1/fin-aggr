@@ -1,0 +1,16 @@
+# Tax tables. Manual, once a year (plan step 5). No schedule.
+name: Ingest tax tables
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tax-tables:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: tax-tables
+      timeout-minutes: 15
+    secrets: inherit

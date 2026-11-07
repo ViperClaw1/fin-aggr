@@ -1,0 +1,39 @@
+# eCFR 12 CFR 330, 745, 328 and the Federal Register. 05:00 UTC (plan step 5).
+name: Ingest daily rules
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ecfr-330:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: ecfr-330
+      timeout-minutes: 15
+    secrets: inherit
+
+  ecfr-745:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: ecfr-745
+      timeout-minutes: 15
+    secrets: inherit
+
+  ecfr-328:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: ecfr-328
+      timeout-minutes: 15
+    secrets: inherit
+
+  federal-register:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: federal-register
+      timeout-minutes: 15
+    secrets: inherit

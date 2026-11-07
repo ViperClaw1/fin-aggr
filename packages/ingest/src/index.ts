@@ -1,4 +1,4 @@
-// Connectors, bank adapters, the pipeline and the CLI (ADR-020).
+// Connectors, bank adapters, the pipeline, the schedule and the CLI (ADR-020).
 // apps/web does not import this package. Connectors start at plan step 6.
 import type { SupabaseClient } from '@supabase/supabase-js';
 

@@ -30,7 +30,8 @@
     "db:rollback": "node supabase/scripts/db-rollback.mjs",
     "ingest:review": "node --experimental-strip-types packages/ingest/src/cli.ts review",
     "ingest:approve": "node --experimental-strip-types packages/ingest/src/cli.ts approve",
-    "ingest:reject": "node --experimental-strip-types packages/ingest/src/cli.ts reject"
+    "ingest:reject": "node --experimental-strip-types packages/ingest/src/cli.ts reject",
+    "ingest:run": "node --experimental-strip-types packages/ingest/src/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

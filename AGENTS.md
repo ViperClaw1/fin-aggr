@@ -3,7 +3,7 @@
 Общие инструкции для ИИ-агентов (Cursor, Claude Code, Codex). Единственный источник: правки вносить сюда. `CLAUDE.md` подключает этот файл.
 
 Монорепо pnpm: `apps/web` (Next.js App Router, TypeScript strict), `packages/contracts` (zod-схемы, `DataGateway`), `packages/engine` (чистые расчёты), `packages/fixtures` (детерминированные моки), `packages/ingest` (конвейер, ADR-020), `supabase/` (схема и скрипты, ADR-019).
-Спека этапа 1: `specs/Finance Aggregator Spec.md`. Читать по необходимости, целиком не загружать. Этап 1 закрыт (`docs/plan-e7.md`). Сейчас этап 2, шаг 4 — ядро конвейера: `docs/plan-stage-2.md`, решения по очереди в ADR-020. Коннекторы начинаются на шаге 6. `robots-parser`, `cheerio` и `apps/admin` не добавлять раньше их шага.
+Спека этапа 1: `specs/Finance Aggregator Spec.md`. Читать по необходимости, целиком не загружать. Этап 1 закрыт (`docs/plan-e7.md`). Сейчас этап 2, шаг 6 — государственные источники: `docs/plan-stage-2.md`, решения по очереди в ADR-020. Шаг 5 (расписание) закрыт. Коннекторы начинаются на шаге 6. `robots-parser`, `cheerio` и `apps/admin` не добавлять раньше их шага.
 
 ## Команды
 - `pnpm dev`: приложение (`NEXT_PUBLIC_DATA_SOURCE=mock`)

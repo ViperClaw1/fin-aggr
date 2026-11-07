@@ -1,0 +1,39 @@
+# FDIC financials, NCUA 5300, FDIC national rates, bank PDF hashes. Monday 11:00 UTC (plan step 5).
+name: Ingest weekly
+
+on:
+  schedule:
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fdic-financials:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: fdic-financials
+      timeout-minutes: 45
+    secrets: inherit
+
+  ncua-5300:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: ncua-5300
+      timeout-minutes: 45
+    secrets: inherit
+
+  fdic-national-rates:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: fdic-national-rates
+      timeout-minutes: 45
+    secrets: inherit
+
+  bank-pdf-hashes:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: bank-pdf-hashes
+      timeout-minutes: 45
+    secrets: inherit

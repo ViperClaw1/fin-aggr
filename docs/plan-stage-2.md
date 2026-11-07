@@ -161,16 +161,20 @@
 
 ## Шаг 5. Расписание (0,5 недели, вместе с шагом 4)
 
-GitHub Actions `schedule`, отдельный workflow на частоту, `concurrency` по источнику, `timeout-minutes`, один повтор при сетевой ошибке. Репозиторий публичный, минуты стандартных раннеров не ограничивают.
+Сделано 2026-11-07. GitHub Actions `schedule`, отдельный workflow на частоту, `concurrency` по источнику (`ingest-<id>`, без отмены текущего запуска), `timeout-minutes`, один повтор при сетевой ошибке в `packages/ingest` (`onceOnNetworkError`). Репозиторий публичный, минуты стандартных раннеров не ограничивают.
 
-| Когда (UTC) | Задачи |
-| --- | --- |
-| каждый день 07:00 | FDIC институты; Treasury Fiscal Data, TreasuryDirect |
-| каждый день 23:30 | Treasury Daily Par Yield Curve |
-| каждый день 08:00–10:00 | ставки банков, по одному банку за раз |
-| каждый день | eCFR (12 CFR 330, 745, 328), Federal Register |
-| каждый понедельник | FDIC Financials, NCUA 5300, FDIC National Rates (FRED), хеши PDF банков |
-| раз в год, вручную | налоговые таблицы |
+Коннекторов ещё нет (шаг 6). `pnpm ingest:run <id>` пишет `source <id> pending` и выходит с кодом 0. Джоба зелёная, данные не публикуются. Секреты базы на этом шаге не обязательны: пустое значение не читается, пока источник не зарегистрирован.
+
+Час для строк без времени выбран так, чтобы не пересечься с уже стоящими workflow: контракт базы в 03:00, возраст очереди в 04:00, браузеры в 22:00. Понедельник 11:00 — после окна банков 08:00–10:00.
+
+| Когда (UTC) | Cron | Workflow | Задачи |
+| --- | --- | --- | --- |
+| каждый день 07:00 | `0 7 * * *` | `ingest-daily-0700.yml` | `fdic-institutions`; `treasury-fiscal-data`, `treasurydirect` |
+| каждый день 23:30 | `30 23 * * *` | `ingest-daily-2330.yml` | `treasury-par-yield` |
+| каждый день 08:00, таймаут 120 мин | `0 8 * * *` | `ingest-bank-rates.yml` | `bank-rates`, одна джоба, банки по очереди (`runOneAtATime`) |
+| каждый день 05:00 | `0 5 * * *` | `ingest-daily-rules.yml` | `ecfr-330`, `ecfr-745`, `ecfr-328`, `federal-register` |
+| каждый понедельник 11:00 | `0 11 * * 1` | `ingest-weekly.yml` | `fdic-financials`, `ncua-5300`, `fdic-national-rates`, `bank-pdf-hashes` |
+| раз в год, вручную | нет | `ingest-tax-tables.yml` | `tax-tables` |
 
 ## Шаг 6. Государственные источники (1,5–2 недели)
 

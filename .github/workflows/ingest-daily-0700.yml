@@ -1,0 +1,32 @@
+# FDIC institutions, Treasury Fiscal Data, TreasuryDirect. 07:00 UTC (plan step 5).
+name: Ingest daily 07:00
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fdic-institutions:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: fdic-institutions
+      timeout-minutes: 15
+    secrets: inherit
+
+  treasury-fiscal-data:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: treasury-fiscal-data
+      timeout-minutes: 15
+    secrets: inherit
+
+  treasurydirect:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: treasurydirect
+      timeout-minutes: 15
+    secrets: inherit

@@ -1,0 +1,42 @@
+# One scheduled source (ADR-020). Callers own the cron. This job owns the lock and the timeout.
+# Stdout is the runner's fixed line. No artifacts.
+name: Ingest source
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        description: Schedule id from packages/ingest/src/schedule.ts
+        required: true
+        type: string
+      timeout-minutes:
+        description: Job timeout in minutes
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    concurrency:
+      group: ingest-${{ inputs.source }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --experimental-strip-types packages/ingest/src/run.ts ${{ inputs.source }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          REVIEW_REPO_TOKEN: ${{ secrets.REVIEW_REPO_TOKEN }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

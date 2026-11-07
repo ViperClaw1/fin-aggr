@@ -1,0 +1,18 @@
+# Treasury Daily Par Yield Curve. 23:30 UTC (plan step 5).
+name: Ingest daily 23:30
+
+on:
+  schedule:
+    - cron: '30 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  treasury-par-yield:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: treasury-par-yield
+      timeout-minutes: 15
+    secrets: inherit

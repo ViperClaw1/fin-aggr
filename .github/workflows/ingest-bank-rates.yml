@@ -1,0 +1,18 @@
+# Bank rates, one source at a time. Starts 08:00 UTC and stops after 120 minutes (plan step 5).
+name: Ingest bank rates
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bank-rates:
+    uses: ./.github/workflows/ingest-source.yml
+    with:
+      source: bank-rates
+      timeout-minutes: 120
+    secrets: inherit
