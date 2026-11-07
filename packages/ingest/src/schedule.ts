@@ -1,6 +1,6 @@
 import { onceOnNetworkError } from './network';
 
-export type Cadence =
+type Cadence =
   'daily-0700' | 'daily-2330' | 'bank-rates' | 'daily-rules' | 'weekly-monday' | 'manual-yearly';
 
 export interface ScheduleEntry {
