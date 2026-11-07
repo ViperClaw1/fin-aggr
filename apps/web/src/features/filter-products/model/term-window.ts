@@ -1,9 +1,9 @@
 // Term filter as a day window. Products store whole months; days and weeks are a view of that
 // window (30-day months, 7-day weeks). The URL still stores the catalog months inside the window.
 
-export const TERM_MAX_MONTHS = 60;
+const TERM_MAX_MONTHS = 60;
 export const DAYS_PER_MONTH = 30;
-export const DAYS_PER_WEEK = 7;
+const DAYS_PER_WEEK = 7;
 export const TERM_MIN_DAYS = 1;
 export const TERM_MAX_DAYS = TERM_MAX_MONTHS * DAYS_PER_MONTH;
 

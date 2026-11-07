@@ -9,7 +9,7 @@ import { ApyFilter } from './apy-filter';
 import { OpeningFilter } from './opening-filter';
 import { TermRangeFilter } from './term-range-filter';
 
-export interface TermCount {
+interface TermCount {
   months: number;
   count: number;
 }

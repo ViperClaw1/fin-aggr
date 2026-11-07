@@ -51,13 +51,13 @@ interface ViewProps extends FilterFormProps {
   disabled: boolean;
 }
 
-export const activeFilterCount = (filters: ProductFilters): number =>
+const activeFilterCount = (filters: ProductFilters): number =>
   (filters.term.length > 0 ? 1 : 0) +
   filters.kind.length +
   [filters.minApy, filters.maxOpening, filters.hide].filter((value) => value !== null).length +
   (filters.search === '' ? 0 : 1);
 
-export function FilterFormView({
+function FilterFormView({
   category,
   stats,
   withProfile,

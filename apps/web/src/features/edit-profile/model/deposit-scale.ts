@@ -7,9 +7,6 @@ const MAX_DOLLARS = 250_000;
 const STEP_DOLLARS = 500;
 const SLIDER_END = 1000;
 
-export const DEPOSIT_MIN = centsFromSafeInteger(MIN_DOLLARS * 100);
-export const DEPOSIT_MAX = centsFromSafeInteger(MAX_DOLLARS * 100);
-
 function clampDollars(dollars: number): number {
   return Math.min(MAX_DOLLARS, Math.max(MIN_DOLLARS, dollars));
 }
