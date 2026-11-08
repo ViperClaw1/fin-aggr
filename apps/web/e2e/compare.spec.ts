@@ -110,6 +110,8 @@ test('with a profile the table ranks after tax, net values marked as assumptions
   await fillSingleNy(page, '40');
   await expect(table(page).locator('td [data-assumption]').first()).toBeVisible();
 
+  // the ranked banner is already up before age is filled: the profile is complete without it.
+  // age reaches the table through useDeferredValue, so the row order can lag that banner.
   // the same order as the engine on the same data: fixtures from the seed the build used
   const f = generateFixtures(Number(process.env.NEXT_PUBLIC_FA_SEED ?? DEFAULT_SEED));
   const cds = f.products.filter((p) => p.category === 'cd');
@@ -130,24 +132,25 @@ test('with a profile the table ranks after tax, net values marked as assumptions
     const p = byId.get(r.productId);
     return `${bank.get(p?.institutionId ?? '') ?? ''}|${p?.name ?? ''}`;
   });
-  const shown = await table(page)
-    .locator('tbody tr')
-    .evaluateAll((rows) =>
-      rows.map((row) => {
-        const head = row.querySelector('th');
-        if (head === null) return '';
-        const copy = head.cloneNode(true) as HTMLElement;
-        copy.querySelectorAll('button, [data-secondary]').forEach((node) => {
-          node.remove();
-        });
-        const bankNode = copy.querySelector('[data-bank]');
-        const productNode = copy.querySelector('a');
-        const bank = bankNode === null ? '' : bankNode.textContent.trim();
-        const product = productNode === null ? '' : productNode.textContent.trim();
-        return `${bank}|${product}`;
-      }),
-    );
-  expect(shown).toEqual(expected);
+  const shown = () =>
+    table(page)
+      .locator('tbody tr')
+      .evaluateAll((rows) =>
+        rows.map((row) => {
+          const head = row.querySelector('th');
+          if (head === null) return '';
+          const copy = head.cloneNode(true) as HTMLElement;
+          copy.querySelectorAll('button, [data-secondary]').forEach((node) => {
+            node.remove();
+          });
+          const bankNode = copy.querySelector('[data-bank]');
+          const productNode = copy.querySelector('a');
+          const bank = bankNode === null ? '' : bankNode.textContent.trim();
+          const product = productNode === null ? '' : productNode.textContent.trim();
+          return `${bank}|${product}`;
+        }),
+      );
+  await expect.poll(shown).toEqual(expected);
 });
 
 test('the filter form writes the URL, Reset clears it', async ({ page }) => {
