@@ -96,7 +96,7 @@ function FilterFormView({
       aria-label="Filters"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-focusable (WCAG 2.1.1, axe scrollable-region-focusable), spec §6 rule 6
       tabIndex={0}
-      className="lg:sticky lg:top-16 lg:flex lg:max-h-[calc(100dvh-5rem)] lg:w-64 lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:rounded-lg lg:border lg:border-divider lg:bg-surface lg:p-4"
+      className="lg:sticky lg:top-[4.5rem] lg:flex lg:max-h-[calc(100dvh-5.5rem)] lg:w-64 lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:rounded-lg lg:border lg:border-divider lg:bg-surface lg:p-4"
       onSubmit={(event) => {
         event.preventDefault();
       }}

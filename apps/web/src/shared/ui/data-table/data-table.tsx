@@ -133,7 +133,10 @@ function HeaderCell<T>(p: {
   const { column, sort } = p;
   const pin = pinClass(p.first, p.stickyHeader);
   const tint = p.emphasisId === column.id ? 'bg-(--net-header) text-muted' : 'bg-surface';
-  const base = `${pin} border-y border-divider ${tint} px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
+  const cover = p.stickyHeader
+    ? 'xl:before:pointer-events-none xl:before:absolute xl:before:inset-x-0 xl:before:-top-2 xl:before:h-2 xl:before:bg-inherit xl:before:content-[""]'
+    : '';
+  const base = `${pin} ${cover} border-y border-divider ${tint} px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (
       <th scope="col" className={base}>
@@ -163,7 +166,7 @@ function HeaderCell<T>(p: {
 }
 
 function pinClass(first: boolean, stickyHeader: boolean): string {
-  if (!first) return stickyHeader ? 'xl:sticky xl:top-32 xl:z-(--z-sticky)' : '';
+  if (!first) return stickyHeader ? 'xl:sticky xl:top-32 xl:z-(--z-sticky-corner)' : '';
   const top = stickyHeader ? ' xl:top-32' : '';
   return `sticky left-0 z-(--z-sticky-corner)${top}`;
 }
