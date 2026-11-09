@@ -1,0 +1,29 @@
+# One FDIC institutions row, nightly, to check the response shape (plan step 6).
+# Stdout is "fdic institutions shape ok" or a fixed problem list. No artifacts.
+name: Ingest live shape
+
+on:
+  schedule:
+    # 06:30 UTC, before the 07:00 directory pull
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fdic-institutions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: ingest-fdic-institutions-shape
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --experimental-strip-types packages/ingest/src/fdic/live.ts

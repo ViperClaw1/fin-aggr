@@ -49,7 +49,6 @@ export interface ResultsPaneProps {
   needs: NeedsData | null;
   holdCatalog: boolean;
   tableSort: ProductSort | null;
-  emphasizeNet: boolean;
   columns: Column<Row>[];
   nowFor: (product: Row['product']) => Date;
   onSortChange: (sort: ProductSort | null) => void;
@@ -234,7 +233,6 @@ function CatalogBody(props: ResultsPaneProps & { density: 'table' | 'cards' }) {
 }
 
 function ProductTable(props: ResultsPaneProps) {
-  const emphasis = props.emphasizeNet ? { emphasisColumnId: 'netInterest' as const } : {};
   return (
     <DataTable
       caption={props.caption}
@@ -254,7 +252,7 @@ function ProductTable(props: ResultsPaneProps) {
       expandLabel={(row) => expandName(row, props.institutions)}
       expandOnRowClick
       stickyHeader
-      {...emphasis}
+      emphasisColumnId="netInterest"
       sort={props.tableSort}
       sortDisabled={!props.withForm}
       onSortChange={(next) => {

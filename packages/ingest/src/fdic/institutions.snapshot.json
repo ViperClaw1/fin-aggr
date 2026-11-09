@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "total": 1,
+    "parameters": {
+      "filters": "CERT:3510",
+      "fields": "CERT,NAME,STALP,WEBADDR,ACTIVE,BKCLASS,REPTE",
+      "limit": "1"
+    },
+    "index": { "name": "institutions_20261106100008", "createTimestamp": "2026-11-06T13:05:30Z" }
+  },
+  "data": [
+    {
+      "data": {
+        "ACTIVE": 1,
+        "BKCLASS": "N",
+        "WEBADDR": "www.bankofamerica.com",
+        "CERT": 3510,
+        "STALP": "NC",
+        "NAME": "Bank of America, National Association",
+        "ID": "3510"
+      },
+      "score": 0
+    }
+  ],
+  "totals": { "count": 1 }
+}

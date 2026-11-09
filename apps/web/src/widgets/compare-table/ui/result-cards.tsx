@@ -153,7 +153,7 @@ function NetFigure(props: {
     );
   }
   return (
-    <p className="font-mono text-xl font-semibold tabular-nums" data-assumption>
+    <p className="font-sans text-xl font-semibold tabular-nums" data-assumption>
       <span
         title="Estimate based on your profile"
         className="underline decoration-dotted underline-offset-4"

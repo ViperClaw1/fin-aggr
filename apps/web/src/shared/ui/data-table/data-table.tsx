@@ -73,7 +73,10 @@ export function DataTable<T>(props: DataTableProps<T>) {
         // to the page, and that pin cannot sit inside the scroll box or it covers the first rows.
         className={`@container relative rounded-lg border border-divider ${state.stickyHeader ? 'overflow-x-auto xl:overflow-visible' : 'overflow-x-auto'}`}
       >
-        <table aria-busy={state.status === 'loading'} className="w-full border-collapse text-sm">
+        <table
+          aria-busy={state.status === 'loading'}
+          className="w-full border-collapse font-sans text-sm"
+        >
           <caption id={captionId} className="px-3 py-3 text-left font-semibold">
             {state.caption}
           </caption>
@@ -129,10 +132,7 @@ function HeaderCell<T>(p: {
 }) {
   const { column, sort } = p;
   const pin = pinClass(p.first, p.stickyHeader);
-  const tint =
-    p.emphasisId === column.id
-      ? 'bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] text-foreground'
-      : 'bg-surface';
+  const tint = p.emphasisId === column.id ? 'bg-(--net-header) text-muted' : 'bg-surface';
   const base = `${pin} border-y border-divider ${tint} px-3 py-2 text-xs font-medium text-muted whitespace-nowrap ${alignClass(column.align)}`;
   if (column.compare === undefined) {
     return (

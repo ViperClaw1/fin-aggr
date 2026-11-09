@@ -76,6 +76,25 @@ Bank PDFs (Truth in Savings) are hashed into `documents`. Text comes from pdf.js
 
 Connectors land in the plan's order: FDIC institutions, FDIC financials, NCUA 5300, FDIC national rates via FRED, then Treasury. Market median, mean, and percentile for bank health are computed in ingest over the banks of that quarter. The method is stated on `/methodology`. The mapping from each source field to `MetricKey` is added to this ADR in step 6, from the source's own dictionary.
 
+## Source fields
+
+### FDIC institutions (2026-11-09)
+
+Read from [`institution_properties.yaml`](https://api.fdic.gov/banks/docs/institution_properties.yaml) and [`swagger.yaml`](https://api.fdic.gov/banks/docs/swagger.yaml) (`GET /institutions`, server `/banks`). The institutions schedule stays `pending` until the pipeline ports write a domain version. This slice parses and checks the shape. It does not publish.
+
+| FDIC field | FDIC definition | Our field |
+| --- | --- | --- |
+| `CERT` | FDIC certificate number. The YAML types it as a string. A response read the same day returned a JSON integer. | `id` = `fdic:` plus the digits |
+| `NAME` | Legal title | `name` |
+| `STALP` | State abbreviation of the main office | `hqState` |
+| `WEBADDR` | Primary internet address from the Call Report. It often has no scheme, and it is absent when the institution did not report one. | `website`. Empty or unparsable becomes null. A missing scheme is read as `https`. |
+| `ACTIVE` | `1` open and insured, `0` closed or not insured | Rows other than `1` are omitted. The request filter is `ACTIVE:1`. |
+| `BKCLASS` | Charter class. `CU` is a credit union supervised by NCUA. | `CU` → `credit_union`. Every other class (`N`, `NM`, `SM`, `SB`, `SA`, `OI`, and the rest of the description) → `direct_bank`. This feed has no `fintech_partner`. |
+
+`regulator` is `FDIC`. `partnerInstitutionIds` is `[]`. Provenance is `verified`, `by: official_api`, `isMock: false`, and `sourceUrl` is that page's request URL.
+
+The request sorts by `CERT` ascending, asks for `limit` 10000 (the OpenAPI maximum), and follows `offset` until `meta.total`. It stops at 20 pages. A row that is not an `Institution` fails the run, so a partial directory is not published. The previous version stays. A nightly request of one row checks that `meta.total` and `CERT`, `NAME`, `STALP`, `ACTIVE` are still present. The snapshot test does not call the network.
+
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.
 - Publish every parsed row and fix mistakes later: rejected. A wrong rate is the consumer-risk in the plan. Hold is the default.

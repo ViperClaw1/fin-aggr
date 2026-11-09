@@ -76,7 +76,7 @@ export function TermRangeFilter({
         onActive={setActive}
         onDays={setDays}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex items-center gap-2">
         <UnitField
           id={`${id}-min`}
           label="Minimum term"
@@ -87,6 +87,7 @@ export function TermRangeFilter({
             setDays(unitToDays(value, unit), maxDay);
           }}
         />
+        <span className="text-sm text-muted">to</span>
         <UnitField
           id={`${id}-max`}
           label="Maximum term"

@@ -81,7 +81,7 @@ export function columns(options: ColumnOptions): TableColumn[] {
   return [
     {
       id: 'bank',
-      header: 'Bank',
+      header: 'Bank + product',
       cell: (row) => {
         const kind = options.institutions.get(row.product.institutionId)?.kind;
         return (
@@ -192,7 +192,7 @@ function netColumn(options: ColumnOptions): TableColumn {
       return (
         <span className="inline-flex flex-col items-end gap-1" data-assumption>
           <span
-            className="font-mono text-base font-semibold tabular-nums underline decoration-dotted decoration-muted underline-offset-4"
+            className="font-sans text-base font-semibold text-foreground tabular-nums underline decoration-dotted decoration-muted underline-offset-4"
             title="Estimate based on your profile"
           >
             <RollingText text={formatUsd(net.netInterest)} />
@@ -200,11 +200,11 @@ function netColumn(options: ColumnOptions): TableColumn {
           </span>
           <span className="block h-1 w-28 overflow-hidden rounded-sm bg-divider" aria-hidden="true">
             <span
-              className="block h-full rounded-sm bg-accent motion-safe:transition-[width] motion-safe:duration-200"
+              className="block h-full rounded-sm bg-primary motion-safe:transition-[width] motion-safe:duration-200"
               style={{ width: `${String(width)}%` }}
             />
           </span>
-          <span className="text-xs text-muted tabular-nums" title={exact}>
+          <span className="text-xs text-primary tabular-nums" title={exact}>
             {roundPercentText(exact)} net yield
           </span>
         </span>

@@ -205,12 +205,11 @@ function UrlSync({ onChange }: { onChange: (url: Url) => void }) {
 
 function listingSort(sort: ProductSort | null, rows: readonly Row[]) {
   if (sort?.columnId !== 'netYield') {
-    return { ordered: rows, tableSort: sort, emphasizeNet: false };
+    return { ordered: rows, tableSort: sort };
   }
   return {
     ordered: sortByNetInterest(rows, sort.direction),
     tableSort: null,
-    emphasizeNet: true,
   };
 }
 
@@ -267,7 +266,6 @@ function Table(props: Props & UrlState) {
         needs={catalog.needs}
         holdCatalog={holdCatalog(hydrated, profile, ranked)}
         tableSort={listing.tableSort}
-        emphasizeNet={listing.emphasizeNet}
         columns={columns({
           institutions: index,
           nowFor,

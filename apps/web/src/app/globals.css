@@ -12,12 +12,12 @@
   --muted: #525252;
   --border: #8f8f8f;
   --divider: #e5e5e5;
-  --focus: #136b31;
+  --focus: #1d4ed8;
   --accent: #1d4ed8;
   --accent-foreground: #ffffff;
-  /* filled buttons and chips: white text on it is 4.5:1 or more in both themes */
-  --primary: #136b31;
-  --primary-hover: #0e5426;
+  /* filled buttons and chips: white text on #1d4ed8 is 4.5:1 or more */
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
   --primary-foreground: #ffffff;
   --ok: #14532d;
   --ok-bg: #dcfce7;
@@ -25,6 +25,8 @@
   --warn-bg: #fef3c7;
   --danger: #7f1d1d;
   --danger-bg: #fee2e2;
+  --net-header: #edf1fc;
+  --net-cell: #f4f6fd;
 
   /* Stacking order, lowest first: the sticky first column, the header cell where it meets the sticky
      header row, popovers above both. A modal <dialog> is in the top layer and needs no z-index. */
@@ -41,19 +43,21 @@
   --muted: #a3a3a3;
   --border: #6b6b6b;
   --divider: #262626;
-  --focus: #238636;
+  --focus: #93c5fd;
   --accent: #93c5fd;
   --accent-foreground: #0a0a0a;
-  /* filled buttons and chips: white text on it is 4.5:1 or more in both themes */
-  --primary: #238636;
-  --primary-hover: #1b6b2b;
-  --primary-foreground: #ffffff;
+  /* filled buttons and chips: dark text on #93c5fd is 4.5:1 or more */
+  --primary: #93c5fd;
+  --primary-hover: #bfdbfe;
+  --primary-foreground: #0a0a0a;
   --ok: #bbf7d0;
   --ok-bg: #052e16;
   --warn: #fde68a;
   --warn-bg: #451a03;
   --danger: #fecaca;
   --danger-bg: #450a0a;
+  --net-header: #161d27;
+  --net-cell: #111316;
 }
 
 @theme inline {
@@ -191,7 +195,7 @@ html:has(dialog:modal) {
     @apply h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-base text-foreground placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger sm:text-sm;
   }
   .btn {
-    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0;
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 font-sans text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0;
   }
   .btn-primary {
     @apply border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover;
@@ -347,9 +351,9 @@ tr.cv-below {
   height: 1rem;
   margin-top: -0.4rem;
   appearance: none;
-  border: 2px solid var(--background);
+  border: 2px solid var(--primary);
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--background);
   cursor: pointer;
 }
 
@@ -363,9 +367,9 @@ tr.cv-below {
   pointer-events: auto;
   width: 1rem;
   height: 1rem;
-  border: 2px solid var(--background);
+  border: 2px solid var(--primary);
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--background);
   cursor: pointer;
 }
 

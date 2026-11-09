@@ -134,8 +134,8 @@ function DataCell<T>(props: {
   onToggle: () => void;
 }) {
   const wrap = props.first ? 'w-40 min-w-40 sm:w-auto sm:whitespace-nowrap' : 'whitespace-nowrap';
-  const tint = props.emphasis ? 'bg-[color-mix(in_srgb,var(--accent)_8%,var(--background))]' : '';
-  const cls = `px-3 py-2 ${wrap} ${tint} group-hover:bg-surface ${alignClass(props.column.align)}`;
+  const tint = props.emphasis ? 'bg-(--net-cell)' : 'group-hover:bg-surface';
+  const cls = `px-3 py-2 ${wrap} ${tint} ${alignClass(props.column.align)}`;
   if (!props.first) {
     return <td className={cls}>{props.column.cell(props.row)}</td>;
   }

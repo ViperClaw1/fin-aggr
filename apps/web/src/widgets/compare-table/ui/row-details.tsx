@@ -143,7 +143,7 @@ function Calculation({
               <p>
                 {step.label}: <strong className="tabular-nums">{step.result}</strong>
               </p>
-              <p className="font-mono text-xs text-muted">{step.formula}</p>
+              <p className="font-sans text-xs text-muted">{step.formula}</p>
             </li>
           ))}
         </ol>
@@ -221,8 +221,8 @@ function Waterfall({ net }: { net: NonNullable<Row['ranked']>['netYield'] }) {
             <span
               className={
                 step.key === 'keep'
-                  ? 'font-mono text-sm font-semibold text-accent tabular-nums'
-                  : 'font-mono text-sm font-semibold tabular-nums'
+                  ? 'font-sans text-sm font-semibold text-accent tabular-nums'
+                  : 'font-sans text-sm font-semibold tabular-nums'
               }
             >
               {step.text}

@@ -180,7 +180,7 @@
 
 | № | Источник | Доступ | Куда | Обновление |
 | --- | --- | --- | --- | --- |
-| 6.1 | FDIC BankFind `institutions` | REST, без ключа | `institutions` | раз в сутки |
+| 6.1 | FDIC BankFind `institutions` | REST, без ключа | `institutions` | раз в сутки. Разбор и снимок ответа сделаны 2026-11-09 (ADR-020). Джоба расписания остаётся `pending`, пока конвейер не пишет версию в Postgres |
 | 6.2 | FDIC BankFind `financials` | так же | `bank_metrics` | раз в квартал, проверка раз в неделю |
 | 6.3 | NCUA 5300 Call Report | ZIP за квартал | `institutions`, `bank_metrics` | раз в квартал |
 | 6.4 | FDIC National Rates через FRED | ключ по email | рынок для сравнения | раз в месяц |

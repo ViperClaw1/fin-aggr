@@ -84,7 +84,7 @@ function Questions() {
         </h2>
       </div>
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-        <article className="flex min-h-64 flex-col rounded-lg border border-[#238636] bg-[color-mix(in_srgb,#238636_12%,var(--background))] p-6">
+        <article className="flex min-h-64 flex-col rounded-lg border border-primary bg-[color-mix(in_srgb,var(--primary)_12%,var(--background))] p-6">
           <p className="font-mono text-xs font-semibold tracking-wide text-muted uppercase">
             01 · Compare
           </p>
@@ -105,7 +105,7 @@ function Questions() {
           <p className="mt-3 text-muted">
             Review capital, asset quality and recent filings with every metric linked to its source.
           </p>
-          <Link href="/banks" prefetch={false} className="mt-auto font-semibold text-[#238636]">
+          <Link href="/banks" prefetch={false} className="mt-auto font-semibold text-primary">
             Check a bank <span aria-hidden="true">→</span>
           </Link>
         </article>
@@ -120,7 +120,7 @@ function Questions() {
           <Link
             href="/tools/fdic-coverage"
             prefetch={false}
-            className="mt-auto font-semibold text-[#238636]"
+            className="mt-auto font-semibold text-primary"
           >
             Plan coverage <span aria-hidden="true">→</span>
           </Link>
@@ -138,7 +138,7 @@ function CompareLink({ href, children }: { href: string; children: string }) {
       className="flex justify-between border-t border-border py-3 font-semibold no-underline"
     >
       {children}
-      <span className="text-[#238636]" aria-hidden="true">
+      <span className="text-primary" aria-hidden="true">
         →
       </span>
     </Link>
@@ -166,7 +166,7 @@ function HowItWorks() {
         {STEPS.map(([title, text], index) => (
           <li key={title} className="grid grid-cols-[2.5rem_1fr] gap-3.5">
             <span
-              className="grid size-9 place-items-center bg-[#238636] font-bold text-white"
+              className="grid size-9 place-items-center bg-primary font-bold text-primary-foreground"
               style={{ borderRadius: '999px' }}
             >
               {index + 1}
