@@ -387,15 +387,23 @@ tr.cv-below {
 .pdf-text-layer {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  /* clip, not hidden: hidden is a scroll container, and Firefox's checkVisibility is false for a
+     span that sticks out of it. A long quote at the inherited font size does that; the rules
+     below scale it to the PDF line, the way pdf.js 6 sizes the layer and each span. */
+  overflow: clip;
   line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  -moz-text-size-adjust: none;
   transform-origin: 0 0;
-  /* pdf.js writes width as round(var(--total-scale-factor) * page). Without these the value is
-     invalid, the layer collapses, and Firefox's checkVisibility treats the quote as hidden. */
   --user-unit: 1;
   --scale-round-x: 1px;
   --scale-round-y: 1px;
-  --total-scale-factor: var(--scale-factor, 1);
+  --total-scale-factor: calc(var(--scale-factor, 1) * var(--user-unit));
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
 .pdf-text-layer span {
@@ -404,6 +412,11 @@ tr.cv-below {
   white-space: pre;
   cursor: text;
   transform-origin: 0 0;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 
 .pdf-text-layer span[data-quote-highlight] {

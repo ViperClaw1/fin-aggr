@@ -70,20 +70,32 @@ async function paintPage(args: PaintArgs): Promise<'highlighted' | 'missing'> {
   return hits.size > 0 ? 'highlighted' : 'missing';
 }
 
-/** Firefox does not scroll an absolute span inside overflow:hidden via scrollIntoView, and
- *  checkVisibility is false until the span meets the dialog's scrollport. */
+/** Firefox does not scroll an absolute span inside a clipped layer via scrollIntoView, and
+ *  checkVisibility is false until the span meets the dialog's scrollport. A wide line can make
+ *  the page frame scrollable; scrolling only that frame leaves the quote below the dialog fold. */
 function revealQuote(quote: HTMLElement): void {
   let node: HTMLElement | null = quote.parentElement;
   while (node !== null) {
-    const overflow = getComputedStyle(node).overflowY;
-    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) {
-      const quoteBox = quote.getBoundingClientRect();
-      const box = node.getBoundingClientRect();
-      node.scrollTop += quoteBox.top - box.top - (node.clientHeight - quoteBox.height) / 2;
-      return;
-    }
+    scrollAxis(node, quote, 'y');
+    scrollAxis(node, quote, 'x');
     node = node.parentElement;
   }
+}
+
+function scrollAxis(node: HTMLElement, quote: HTMLElement, axis: 'x' | 'y'): void {
+  const style = getComputedStyle(node);
+  const overflow = axis === 'y' ? style.overflowY : style.overflowX;
+  const scrollSize = axis === 'y' ? node.scrollHeight : node.scrollWidth;
+  const clientSize = axis === 'y' ? node.clientHeight : node.clientWidth;
+  if ((overflow !== 'auto' && overflow !== 'scroll') || scrollSize <= clientSize) return;
+  const quoteBox = quote.getBoundingClientRect();
+  const box = node.getBoundingClientRect();
+  const quoteStart = axis === 'y' ? quoteBox.top : quoteBox.left;
+  const boxStart = axis === 'y' ? box.top : box.left;
+  const quoteSize = axis === 'y' ? quoteBox.height : quoteBox.width;
+  const delta = quoteStart - boxStart - (clientSize - quoteSize) / 2;
+  if (axis === 'y') node.scrollTop += delta;
+  else node.scrollLeft += delta;
 }
 
 function useFrameWidth(frame: RefObject<HTMLDivElement | null>): number {
