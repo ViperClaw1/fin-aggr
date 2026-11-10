@@ -28,10 +28,12 @@
     "db:seed:sql": "node supabase/scripts/generate-seed.mjs",
     "db:seed": "node supabase/scripts/db-seed.mjs",
     "db:rollback": "node supabase/scripts/db-rollback.mjs",
-    "ingest:review": "node --experimental-strip-types packages/ingest/src/cli.ts review",
-    "ingest:approve": "node --experimental-strip-types packages/ingest/src/cli.ts approve",
-    "ingest:reject": "node --experimental-strip-types packages/ingest/src/cli.ts reject",
-    "ingest:run": "node --experimental-strip-types packages/ingest/src/run.ts"
+    "ingest:run": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/run.ts",
+    "ingest:review": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts review",
+    "ingest:approve": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts approve",
+    "ingest:reject": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reject",
+    "ingest:overdue": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/overdue.ts",
+    "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/fdic/live.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

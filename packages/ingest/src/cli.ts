@@ -41,9 +41,8 @@ export function formatReviewRow(row: OpenReview): string {
 
 async function signedUrl(path: string, env: NodeJS.ProcessEnv): Promise<string> {
   const url = env['SUPABASE_URL']?.trim() ?? '';
-  const key = env['SUPABASE_SERVICE_ROLE_KEY']?.trim() ?? '';
-  if (url === '' || key === '')
-    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing');
+  const key = env['SUPABASE_SECRET_KEY']?.trim() ?? '';
+  if (url === '' || key === '') throw new Error('SUPABASE_URL or SUPABASE_SECRET_KEY is missing');
   const client = createClient(url, key, { auth: { persistSession: false } });
   const signed = await client.storage.from('raw').createSignedUrl(path, SIGNED_URL_SECONDS);
   if (signed.error !== null) throw new Error('signed url failed');

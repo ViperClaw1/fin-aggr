@@ -32,11 +32,23 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: node --experimental-strip-types packages/ingest/src/run.ts ${{ inputs.source }}
+      # Ids passed to registerJob. Pending sources skip this; an empty list keeps the job green.
+      - name: Check secrets
+        if: contains(fromJSON('[]'), inputs.source)
+        run: |
+          missing=""
+          for n in SUPABASE_DB_URL REVIEW_REPO_TOKEN; do
+            [ -n "${!n}" ] || missing="$missing $n"
+          done
+          if [ -n "$missing" ]; then echo "::error::Actions secrets not set:$missing"; exit 1; fi
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          REVIEW_REPO_TOKEN: ${{ secrets.REVIEW_REPO_TOKEN }}
+      - run: pnpm ingest:run ${{ inputs.source }}
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           REVIEW_REPO_TOKEN: ${{ secrets.REVIEW_REPO_TOKEN }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

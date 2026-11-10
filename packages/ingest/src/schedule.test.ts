@@ -245,9 +245,9 @@ describe('schedule workflows', () => {
     expect(text).toContain('group: ingest-${{ inputs.source }}');
     expect(text).toContain('cancel-in-progress: false');
     expect(text).toContain('timeout-minutes: ${{ inputs.timeout-minutes }}');
-    expect(text).toContain('packages/ingest/src/run.ts ${{ inputs.source }}');
+    expect(text).toContain('pnpm ingest:run ${{ inputs.source }}');
     expect(text).toContain('SUPABASE_DB_URL');
-    expect(text).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(text).toContain('SUPABASE_SECRET_KEY');
     expect(text).toContain('REVALIDATE_SECRET');
     expect(text).toContain('REVIEW_REPO_TOKEN');
     expect(text).toContain('FRED_API_KEY');

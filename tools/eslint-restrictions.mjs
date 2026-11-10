@@ -137,8 +137,9 @@ export const WEB_PROPS = [
 ];
 // ADR-019: the service role and the database URL belong to ingest and scripts, never to the web app.
 export const NO_SUPABASE_SECRET = {
-  selector: 'Literal[value=/^SUPABASE_(SERVICE_ROLE_KEY|DB_URL)$/]',
-  message: 'SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL are not allowed in apps/web (ADR-019).',
+  selector: 'Literal[value=/^SUPABASE_(SERVICE_ROLE_KEY|SECRET_KEY|DB_URL)$/]',
+  message:
+    'SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEY, and SUPABASE_DB_URL are not allowed in apps/web (ADR-019).',
 };
 export const WEB_SYNTAX = [
   ...SYNTAX_COMMON,
