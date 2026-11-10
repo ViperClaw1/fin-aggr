@@ -33,7 +33,7 @@
     "ingest:approve": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts approve",
     "ingest:reject": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reject",
     "ingest:overdue": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/overdue.ts",
-    "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/fdic/live.ts"
+    "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/live.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

@@ -1,5 +1,7 @@
-# One FDIC institutions row, nightly, to check the response shape (plan step 6).
-# Stdout is "fdic institutions shape ok" or a fixed problem list. No artifacts.
+# Nightly shape check (plan steps 6 and 7): one FDIC institutions row,
+# eCFR title 12 part 330, and one Federal Register document.
+# An eCFR amendment change prints "ecfr 330 changed" and still exits 0.
+# A broken response shape exits 1. No artifacts.
 name: Ingest live shape
 
 on:

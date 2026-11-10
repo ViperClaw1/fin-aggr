@@ -95,6 +95,42 @@ Read from [`institution_properties.yaml`](https://api.fdic.gov/banks/docs/instit
 
 The request sorts by `CERT` ascending, asks for `limit` 10000 (the OpenAPI maximum), and follows `offset` until `meta.total`. It stops at 20 pages. A row that is not an `Institution` fails the run, so a partial directory is not published. The previous version stays. A nightly request of one row checks that `meta.total` and `CERT`, `NAME`, `STALP`, `ACTIVE` are still present. The snapshot test does not call the network.
 
+### eCFR title 12 parts 330, 745, and 328 (2026-11-10)
+
+Read from the [versioner v1 documentation](https://www.ecfr.gov/developers/documentation/api/v1). Base `https://www.ecfr.gov/api/versioner/v1`. No API key. The full part XML is not stored. The 05:00 jobs stay `pending` until a review row can be written. The 06:30 shape check requests versions for part 330 only.
+
+| Response field | Meaning | What we keep |
+| --- | --- | --- |
+| `meta.part` | CFR part requested with `?part=` | `part` |
+| `meta.latest_amendment_date` | Newest `amendment_date` in the part. `result_count` is a string. | `amendmentDate`. This is the watch key, not `latest_issue_date`. |
+| `meta.latest_issue_date` | Newest issue date. For part 328 on the saved response it is later than the amendment date. | Not a watch key. |
+| `content_versions[].identifier` | Section, appendix, or supplement id | The identifiers whose `amendment_date` equals `latest_amendment_date`, sorted and joined |
+| `content_versions[].amendment_date` | Amendment date of that section version | Used only to select the identifiers above |
+| structure node `identifier`, `type`, `label_description` | Part node from `GET /structure/{date}/title-12.json?part=` | `identifier` must equal `meta.part`. `label_description` is the part title. The saved structure file is that node, not the section tree. |
+
+A different amendment date or identifier set prints `ecfr 330 changed`. The same stamp prints `ecfr 330 unchanged`. Neither line includes the new date or title. A missing field prints `ecfr 330 shape …` and fails the job.
+
+### Federal Register documents (2026-11-10)
+
+Read from the [API v1 documentation](https://www.federalregister.gov/developers/documentation/api/v1) and the agency list `GET /api/v1/agencies.json`. No API key. `GET /api/v1/documents.json` with `conditions[agencies][]` set to one of `federal-deposit-insurance-corporation`, `national-credit-union-administration`, `consumer-financial-protection-bureau`, `internal-revenue-service`, `order=newest`.
+
+| Response field | What we keep |
+| --- | --- |
+| `results[].document_number` | `documentNumber` |
+| `results[].publication_date` | `publicationDate` |
+| `results[].title` | `title` |
+| `results[].html_url` | `url`, only `https://www.federalregister.gov` |
+
+`abstract`, `excerpts`, and the document body are not stored. An empty `results` array is a normal day. The schedule job stays `pending`. The nightly check requests one FDIC document and checks those four fields.
+
+### Deposit insurance limit quote (2026-11-10)
+
+The fixture limit stays `$250,000`, `unverified`, `isMock: false`. The ingest quote is the definition sentence of 12 CFR 330.1(o) (SMDIA) and 12 CFR 745.1(e) (SMSIA), taken from saved renderer HTML, not typed from memory. eCFR has no print page, so the quote does not invent `provenance.document.page`. 12 CFR 328 is watched with the other parts and has no new constant. `verified` / `by: human` waits for an explicit confirmation.
+
+### Federal income brackets draft (2026-11-10)
+
+Rev. Proc. 2025-32, Internal Revenue Bulletin 2025-45, page 695 (`https://www.irs.gov/irb/2025-45_IRB`), section 4.01 tables 1–4 for taxable years beginning in 2026. Thresholds are the "not over" dollar figures, converted with `centsFromInteger` by appending two zeros to the digit string. Rates use `rateFromPercent`. Each bracket keeps the table-row quote. Table 5 (estates and trusts) is not a filing status. The draft is `unverified`, `isMock: false`, and is not imported by fixtures or `TAX_YEAR`. State rates are not in this slice.
+
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.
 - Publish every parsed row and fix mistakes later: rejected. A wrong rate is the consumer-risk in the plan. Hold is the default.
