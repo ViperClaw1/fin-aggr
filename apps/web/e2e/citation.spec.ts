@@ -116,7 +116,10 @@ test('every fixture quote opens on its page', async ({ page }) => {
     ).toBeVisible({ timeout: 20_000 });
     // The span is in the DOM. Firefox's checkVisibility is false when a long quote sticks out
     // of the clipped text layer, so visibility is not the signal. The live text is.
-    await expect(dialog.locator('p.sr-only')).toContainText('quote highlighted', {
+    await expect(
+      dialog.locator('p.sr-only'),
+      `${fact.documentId} page ${String(fact.page)} ${fact.id}`,
+    ).toContainText('quote highlighted', {
       timeout: 20_000,
     });
   }

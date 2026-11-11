@@ -34,12 +34,16 @@ interface PaintArgs {
   context: CanvasRenderingContext2D;
   pageNumber: number;
   quote: string | null;
-  render: { cancel: () => void };
+  isCancelled(): boolean;
 }
 
-async function paintPage(args: PaintArgs): Promise<'highlighted' | 'missing'> {
+type PaintResult = 'highlighted' | 'missing' | 'cancelled';
+
+async function paintPage(args: PaintArgs): Promise<PaintResult> {
   const { pdf, frame, canvas, textLayer, context, pageNumber, quote } = args;
   const page = await pdf.getPage(pageNumber);
+  // A newer paint is already queued. Skip this render so two tasks never share the canvas.
+  if (args.isCancelled()) return 'cancelled';
   const width = frame.clientWidth;
   const css = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
   const ratio = window.devicePixelRatio || 1;
@@ -53,9 +57,6 @@ async function paintPage(args: PaintArgs): Promise<'highlighted' | 'missing'> {
   textLayer.style.setProperty('--scale-factor', String(css.scale));
   textLayer.replaceChildren();
   const task = page.render({ canvas, canvasContext: context, viewport: output });
-  args.render.cancel = () => {
-    task.cancel();
-  };
   await task.promise;
   const content = await page.getTextContent();
   const layer = new TextLayer({ textContentSource: content, container: textLayer, viewport: css });
@@ -127,43 +128,43 @@ function liveText(status: Status, pageNumber: number, pageCount: number): string
   return `Page ${String(pageNumber)} of ${String(pageCount)}, ${found}`;
 }
 
-function usePdfSession(fileUrl: string, pageNumber: number, quote: string | null, width: number) {
-  const pdfRef = useRef<PDFDocumentProxy | null>(null);
-  const [status, setStatus] = useState<Status>('loading');
-  const [failure, setFailure] = useState<GatewayError | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const [ready, setReady] = useState(0);
-  const frame = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
+/** Paints share one canvas. Overlapping `page.render` throws, and cancelling a render aborts the
+ * operator-list stream the next paint is still waiting on. Run them in order and let each finish. */
+function enqueuePaint(
+  chain: RefObject<Promise<void>>,
+  args: PaintArgs,
+  done: (status: 'highlighted' | 'missing') => void,
+  fail: (error: unknown) => void,
+): void {
+  const job = chain.current.then(async () => {
+    if (args.isCancelled()) return;
+    try {
+      const next = await paintPage(args);
+      // A resize queues another paint, but this one already found the quote. Publish it.
+      // A page change must not: `done` checks the page still on screen.
+      if (next !== 'cancelled') done(next);
+    } catch (error: unknown) {
+      if (args.isCancelled() || isCancelled(error)) return;
+      fail(error);
+    }
+  });
+  chain.current = job.then(
+    () => undefined,
+    () => undefined,
+  );
+}
 
-  useEffect(() => {
-    const frameEl = frame.current;
-    const canvas = canvasRef.current;
-    const textLayer = textRef.current;
-    const pdf = pdfRef.current;
-    if (frameEl === null || canvas === null || textLayer === null || pdf === null || width === 0)
-      return undefined;
-    const context = canvas.getContext('2d');
-    if (context === null) return undefined;
-    let cancelled = false;
-    const render = { cancel: () => undefined };
-    setStatus('loading');
-    void paintPage({ pdf, frame: frameEl, canvas, textLayer, context, pageNumber, quote, render })
-      .then((next) => {
-        if (!cancelled) setStatus(next);
-      })
-      .catch((error: unknown) => {
-        if (cancelled || isCancelled(error)) return;
-        setFailure(loadError(error));
-        setStatus('error');
-      });
-    return () => {
-      cancelled = true;
-      render.cancel();
-    };
-  }, [ready, pageNumber, quote, width]);
-
+function usePdfDocument(
+  fileUrl: string,
+  attempt: number,
+  pdfRef: RefObject<PDFDocumentProxy | null>,
+  report: {
+    setFailure: (error: GatewayError | null) => void;
+    setStatus: (status: Status) => void;
+    setReady: (update: (ready: number) => number) => void;
+  },
+): void {
+  const { setFailure, setStatus, setReady } = report;
   useEffect(() => {
     let cancelled = false;
     const task = getDocument({
@@ -190,7 +191,66 @@ function usePdfSession(fileUrl: string, pageNumber: number, quote: string | null
       pdfRef.current = null;
       void task.destroy();
     };
-  }, [fileUrl, attempt]);
+  }, [fileUrl, attempt, pdfRef, setFailure, setStatus, setReady]);
+}
+
+function usePdfSession(fileUrl: string, pageNumber: number, quote: string | null, width: number) {
+  const chain = useRef(Promise.resolve());
+  const pdfRef = useRef<PDFDocumentProxy | null>(null);
+  const [status, setStatus] = useState<Status>('loading');
+  const [failure, setFailure] = useState<GatewayError | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [ready, setReady] = useState(0);
+  const frame = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const shown = useRef({ pageNumber, quote });
+  const viewKey = useRef('');
+  shown.current = { pageNumber, quote };
+  usePdfDocument(fileUrl, attempt, pdfRef, { setFailure, setStatus, setReady });
+
+  useEffect(() => {
+    const frameEl = frame.current;
+    const canvas = canvasRef.current;
+    const textLayer = textRef.current;
+    const pdf = pdfRef.current;
+    if (frameEl === null || canvas === null || textLayer === null || pdf === null || width === 0) {
+      return undefined;
+    }
+    const context = canvas.getContext('2d');
+    if (context === null) return undefined;
+    let cancelled = false;
+    const view = `${String(ready)}:${String(pageNumber)}:${quote ?? ''}`;
+    if (viewKey.current !== view) {
+      viewKey.current = view;
+      setStatus('loading');
+    }
+    enqueuePaint(
+      chain,
+      {
+        pdf,
+        frame: frameEl,
+        canvas,
+        textLayer,
+        context,
+        pageNumber,
+        quote,
+        isCancelled: () => cancelled,
+      },
+      (next) => {
+        if (shown.current.pageNumber !== pageNumber || shown.current.quote !== quote) return;
+        setStatus(next);
+      },
+      (error: unknown) => {
+        if (shown.current.pageNumber !== pageNumber || shown.current.quote !== quote) return;
+        setFailure(loadError(error));
+        setStatus('error');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, pageNumber, quote, width]);
 
   const retry = () => {
     setStatus('loading');
