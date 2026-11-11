@@ -80,7 +80,7 @@ Connectors land in the plan's order: FDIC institutions, FDIC financials, NCUA 53
 
 ### FDIC institutions (2026-11-09)
 
-Read from [`institution_properties.yaml`](https://api.fdic.gov/banks/docs/institution_properties.yaml) and [`swagger.yaml`](https://api.fdic.gov/banks/docs/swagger.yaml) (`GET /institutions`, server `/banks`). The institutions schedule stays `pending` until the pipeline ports write a domain version. This slice parses and checks the shape. It does not publish.
+Read from [`institution_properties.yaml`](https://api.fdic.gov/banks/docs/institution_properties.yaml) and [`swagger.yaml`](https://api.fdic.gov/banks/docs/swagger.yaml) (`GET /institutions`, server `/banks`). The 07:00 job is registered (`ready: true`) and publishes an `institutions` version through the pipeline ports. A ready source with no job fails the run. Sources without `ready` still log `pending`. The stdout line is `source fdic-institutions <status> rows=<n> queued=<n> version=<id>`.
 
 | FDIC field | FDIC definition | Our field |
 | --- | --- | --- |

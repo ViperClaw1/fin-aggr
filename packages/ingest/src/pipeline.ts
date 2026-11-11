@@ -50,7 +50,8 @@ interface QueueInput {
 export interface PipelinePorts<Parsed> {
   now(): string;
   latestHash(sourceId: string): Promise<string | null>;
-  saveSnapshot(input: { sourceId: string; sha256: string; bytes: number }): Promise<{
+  /** `bytes` is the raw body. The port stores it in the private `raw` bucket. */
+  saveSnapshot(input: { sourceId: string; sha256: string; bytes: Uint8Array }): Promise<{
     snapshotId: number;
   }>;
   previousRows(sourceId: string): Promise<Parsed[]>;
@@ -58,7 +59,7 @@ export interface PipelinePorts<Parsed> {
   commit(input: {
     publish: readonly Parsed[] | null;
     queue: QueueInput | null;
-  }): Promise<{ queueId: number | null }>;
+  }): Promise<{ queueId: number | null; versionId: number | null }>;
   sign(snapshotId: number): Promise<string>;
   openIssue(input: { title: string; body: string }): Promise<{ number: number; url: string }>;
   attachIssue(queueId: number, issueUrl: string): Promise<void>;
@@ -72,6 +73,8 @@ export interface RunSummary {
   published: number;
   queued: number;
   issueNumber: number | null;
+  /** Current version written by this run. Null when nothing was published. */
+  versionId: number | null;
 }
 
 const HASH = /^[0-9a-f]{64}$/;
@@ -122,7 +125,13 @@ export async function runSource<Raw, Parsed>(
     });
     const issue = await ports.notifyFailure(message);
     if (issue !== null) log(formatIssueCreated(issue.number));
-    return { status: 'failed', published: 0, queued: 0, issueNumber: issue?.number ?? null };
+    return {
+      status: 'failed',
+      published: 0,
+      queued: 0,
+      issueNumber: issue?.number ?? null,
+      versionId: null,
+    };
   }
 }
 
@@ -149,7 +158,7 @@ async function runBody<Raw, Parsed>(
         requestCount: 0,
       }),
     );
-    return { status: 'held', published: 0, queued: 0, issueNumber: null };
+    return { status: 'held', published: 0, queued: 0, issueNumber: null, versionId: null };
   }
   return publishOrHold({ source, ports, log, startedAt }, snapshot);
 }
@@ -167,7 +176,7 @@ async function publishOrHold<Raw, Parsed>(
   const saved = await ports.saveSnapshot({
     sourceId: source.id,
     sha256: snapshot.sha256,
-    bytes: snapshot.bytes.byteLength,
+    bytes: snapshot.bytes,
   });
   const parsed = source.parse(snapshot.body);
   const previous = await ports.previousRows(source.id);
@@ -215,6 +224,7 @@ async function publishOrHold<Raw, Parsed>(
     published: decision.publish?.length ?? 0,
     queued: committed.queueId === null ? 0 : 1,
     issueNumber,
+    versionId: committed.versionId,
   };
 }
 

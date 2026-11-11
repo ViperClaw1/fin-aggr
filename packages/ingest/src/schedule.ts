@@ -10,6 +10,8 @@ export interface ScheduleEntry {
   cron: string | null;
   workflow: string;
   timeoutMinutes: number;
+  /** A ready source must have a job. Pending sources log a line and exit 0. */
+  ready?: boolean;
 }
 
 /**
@@ -24,6 +26,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'treasury-fiscal-data',
@@ -153,14 +156,15 @@ export function scheduleById(id: string): ScheduleEntry | undefined {
 
 /**
  * Runs one scheduled source.
- * No connector yet: log a fixed line and return. The workflow stays green until step 6.
+ * A source that is not ready logs `pending` and returns. A ready source with no job fails.
  */
 export async function runScheduled(
   id: string,
   env: NodeJS.ProcessEnv,
   log: (line: string) => void,
 ): Promise<void> {
-  if (scheduleById(id) === undefined) throw new Error(`unknown source ${id}`);
+  const entry = scheduleById(id);
+  if (entry === undefined) throw new Error(`unknown source ${id}`);
   if (id === 'bank-rates') {
     if (banks.size === 0) {
       log('source bank-rates pending');
@@ -171,6 +175,7 @@ export async function runScheduled(
   }
   const job = jobs.get(id);
   if (job === undefined) {
+    if (entry.ready === true) throw new Error(`source ${id} is ready but has no job`);
     log(`source ${id} pending`);
     return;
   }

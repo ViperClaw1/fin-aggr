@@ -32,9 +32,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Ids passed to registerJob. Pending sources skip this; an empty list keeps the job green.
+      # Ids passed to registerJob. A source that is not ready skips this and stays green.
       - name: Check secrets
-        if: contains(fromJSON('[]'), inputs.source)
+        if: contains(fromJSON('["fdic-institutions"]'), inputs.source)
         run: |
           missing=""
           for n in SUPABASE_DB_URL REVIEW_REPO_TOKEN; do

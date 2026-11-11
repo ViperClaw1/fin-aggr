@@ -90,6 +90,9 @@ describe('schedule catalog', () => {
       'tax-tables',
     ]);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(SCHEDULE.filter((row) => row.ready === true).map((row) => row.id)).toEqual([
+      'fdic-institutions',
+    ]);
   });
 
   it('keeps tax tables off the clock', () => {
@@ -105,8 +108,14 @@ describe('scheduled run', () => {
 
   it('logs a fixed line when the connector is not registered', async () => {
     const lines: string[] = [];
-    await runScheduled('fdic-institutions', {}, (line) => lines.push(line));
-    expect(lines).toEqual(['source fdic-institutions pending']);
+    await runScheduled('treasury-fiscal-data', {}, (line) => lines.push(line));
+    expect(lines).toEqual(['source treasury-fiscal-data pending']);
+  });
+
+  it('fails a ready source that has no job', async () => {
+    await expect(runScheduled('fdic-institutions', {}, () => undefined)).rejects.toThrow(
+      'source fdic-institutions is ready but has no job',
+    );
   });
 
   it('refuses an unknown source', async () => {
@@ -251,6 +260,7 @@ describe('schedule workflows', () => {
     expect(text).toContain('REVALIDATE_SECRET');
     expect(text).toContain('REVIEW_REPO_TOKEN');
     expect(text).toContain('FRED_API_KEY');
+    expect(text).toContain(`fromJSON('["fdic-institutions"]')`);
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');
   });

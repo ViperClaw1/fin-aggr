@@ -4,7 +4,7 @@ export interface Sql {
   query(text: string, values?: readonly unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
-async function withTransaction<T>(sql: Sql, run: (sql: Sql) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(sql: Sql, run: (sql: Sql) => Promise<T>): Promise<T> {
   await sql.query('begin');
   try {
     const value = await run(sql);

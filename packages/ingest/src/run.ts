@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { loadLocalEnv } from './env';
+import { registerConnectors } from './jobs';
 import { runScheduled } from './schedule';
 
 export async function main(
@@ -9,6 +10,7 @@ export async function main(
 ): Promise<void> {
   const id = argv[0];
   if (id === undefined || argv.length !== 1) throw new Error('usage: ingest:run <source-id>');
+  registerConnectors();
   await runScheduled(id, env, log);
 }
 

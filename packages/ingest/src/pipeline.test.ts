@@ -28,7 +28,7 @@ function ports(): PipelinePorts<{ id: string }> & {
     latestHash: () => Promise.resolve(null),
     saveSnapshot: () => Promise.resolve({ snapshotId: 4 }),
     previousRows: () => Promise.resolve([]),
-    commit: vi.fn(() => Promise.resolve({ queueId: null })),
+    commit: vi.fn(() => Promise.resolve({ queueId: null, versionId: 9 })),
     sign: () => Promise.resolve('https://signed.example/raw'),
     openIssue: vi.fn(() => Promise.resolve({ number: 7, url: 'https://github.com/x/y/issues/7' })),
     attachIssue: () => Promise.resolve(),
@@ -57,7 +57,12 @@ describe('publish or hold', () => {
     const summary = await runSource(source('official_api', [{ id: 'a' }]), gate, (line) =>
       lines.push(line),
     );
-    expect(summary).toMatchObject({ status: 'published', published: 1, queued: 0 });
+    expect(summary).toMatchObject({
+      status: 'published',
+      published: 1,
+      queued: 0,
+      versionId: 9,
+    });
     expect(gate.commit.mock.calls).toEqual([[{ publish: [{ id: 'a' }], queue: null }]]);
     expect(gate.revalidate.mock.calls).toHaveLength(1);
     expect(lines).toEqual([]);
@@ -65,7 +70,7 @@ describe('publish or hold', () => {
 
   it('holds a suspicious official batch and logs only the issue number', async () => {
     const gate = ports();
-    gate.commit = vi.fn(() => Promise.resolve({ queueId: 12 }));
+    gate.commit = vi.fn(() => Promise.resolve({ queueId: 12, versionId: null }));
     const rows = source('official_api', [{ id: 'a' }]);
     rows.validate = () => ({
       clean: [],
@@ -85,7 +90,7 @@ describe('publish or hold', () => {
 
   it('publishes clean scraped rows and queues the suspicious ones', async () => {
     const gate = ports();
-    gate.commit = vi.fn(() => Promise.resolve({ queueId: 3 }));
+    gate.commit = vi.fn(() => Promise.resolve({ queueId: 3, versionId: 9 }));
     const rows = source('scrape', [{ id: 'ok' }, { id: 'bad' }]);
     rows.validate = (parsed) => ({
       clean: parsed.filter((row) => row.id === 'ok'),
