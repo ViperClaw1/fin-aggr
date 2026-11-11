@@ -32,3 +32,18 @@ describe('review decisions', () => {
     expect(decisions).toContain("decided_by ~ '^[A-Za-z0-9-]{1,39}$'");
   });
 });
+
+describe('bank opt-out', () => {
+  const optOut = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261111180000_source_opt_out.sql'),
+    'utf8',
+  );
+
+  it('stores the request, the application, and the login on the source flag', () => {
+    expect(optOut).toContain('opt_out_requested_at timestamptz');
+    expect(optOut).toContain('opt_out_applied_at timestamptz');
+    expect(optOut).toContain('opt_out_by text');
+    expect(optOut).toContain('excluded = true');
+    expect(optOut).toContain("opt_out_by ~ '^[A-Za-z0-9-]{1,39}$'");
+  });
+});

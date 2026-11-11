@@ -14,6 +14,7 @@ import {
 } from './decisions';
 import { loadLocalEnv } from './env';
 import { requireReviewer, SIGNED_URL_SECONDS } from './policy';
+import { RAW_BUCKET } from './scrape/rules';
 
 const execFileAsync = promisify(execFile);
 
@@ -44,7 +45,7 @@ async function signedUrl(path: string, env: NodeJS.ProcessEnv): Promise<string> 
   const key = env['SUPABASE_SECRET_KEY']?.trim() ?? '';
   if (url === '' || key === '') throw new Error('SUPABASE_URL or SUPABASE_SECRET_KEY is missing');
   const client = createClient(url, key, { auth: { persistSession: false } });
-  const signed = await client.storage.from('raw').createSignedUrl(path, SIGNED_URL_SECONDS);
+  const signed = await client.storage.from(RAW_BUCKET).createSignedUrl(path, SIGNED_URL_SECONDS);
   if (signed.error !== null) throw new Error('signed url failed');
   return signed.data.signedUrl;
 }

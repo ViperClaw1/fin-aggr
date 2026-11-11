@@ -1,4 +1,7 @@
 import { onceOnNetworkError } from './network';
+import { markSourceManualFromEnv } from './postgres/sources';
+import { isBankSourceId } from './scrape/rules';
+import { createScrapeSession, type ScrapeClient } from './scrape/session';
 
 type Cadence =
   'daily-0700' | 'daily-2330' | 'bank-rates' | 'daily-rules' | 'weekly-monday' | 'manual-yearly';
@@ -123,11 +126,11 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
 
 export type ScheduledJob = (env: NodeJS.ProcessEnv) => Promise<void>;
 
-/** Same shape as `sources.id` (ADR-019). */
-const SOURCE_ID = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/;
+/** A bank receives the shared scrape session. It does not call `fetch` itself. */
+export type BankJob = (env: NodeJS.ProcessEnv, scrape: ScrapeClient) => Promise<void>;
 
 const jobs = new Map<string, ScheduledJob>();
-const banks = new Map<string, ScheduledJob>();
+const banks = new Map<string, BankJob>();
 
 /** Step 6 registers a connector here. A second registration is a mistake. */
 export function registerJob(id: string, job: ScheduledJob): void {
@@ -138,8 +141,8 @@ export function registerJob(id: string, job: ScheduledJob): void {
 }
 
 /** Step 8 registers one bank. `runScheduled('bank-rates')` runs them in registration order. */
-export function registerBank(id: string, job: ScheduledJob): void {
-  if (!id.startsWith('bank:') || !SOURCE_ID.test(id)) throw new Error(`unknown source ${id}`);
+export function registerBank(id: string, job: BankJob): void {
+  if (!isBankSourceId(id)) throw new Error(`unknown source ${id}`);
   if (banks.has(id)) throw new Error(`source ${id} is already registered`);
   banks.set(id, job);
 }
@@ -170,7 +173,18 @@ export async function runScheduled(
       log('source bank-rates pending');
       return;
     }
-    await runOneAtATime([...banks.values()].map((job) => () => job(env)));
+    const session = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
+      fetch,
+      now: () => new Date().toISOString(),
+      sleep: delay,
+      log,
+      onManual: (sourceId) => markSourceManualFromEnv(env, sourceId),
+    });
+    try {
+      await runOneAtATime([...banks.values()].map((job) => () => job(env, session)));
+    } finally {
+      session.flushLoad();
+    }
     return;
   }
   const job = jobs.get(id);
@@ -200,4 +214,10 @@ export async function runOneAtATime(runs: readonly (() => Promise<void>)[]): Pro
   if (failures === 0) return;
   const message = first instanceof Error ? first.message : 'ingest failed';
   throw new Error(`bank-rates failed ${String(failures)}: ${message}`);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

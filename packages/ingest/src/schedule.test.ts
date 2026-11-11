@@ -165,7 +165,11 @@ describe('scheduled run', () => {
       started += 1;
       return Promise.resolve();
     });
-    const running = runScheduled('bank-rates', {}, () => undefined);
+    const running = runScheduled(
+      'bank-rates',
+      { FA_SCRAPE_MAILBOX: 'ops@fin-aggr.example' },
+      () => undefined,
+    );
     expect(started).toBe(1);
     gate.resolve();
     await running;
@@ -176,6 +180,13 @@ describe('scheduled run', () => {
     expect(() => {
       registerBank('ally', () => Promise.resolve());
     }).toThrow('unknown source ally');
+  });
+
+  it('refuses registered banks when the project mailbox is missing', async () => {
+    registerBank('bank:a', () => Promise.resolve());
+    await expect(runScheduled('bank-rates', {}, () => undefined)).rejects.toThrow(
+      /FA_SCRAPE_MAILBOX/,
+    );
   });
 
   it('runs banks one at a time and continues after a failure', async () => {
@@ -260,6 +271,7 @@ describe('schedule workflows', () => {
     expect(text).toContain('REVALIDATE_SECRET');
     expect(text).toContain('REVIEW_REPO_TOKEN');
     expect(text).toContain('FRED_API_KEY');
+    expect(text).toContain('FA_SCRAPE_MAILBOX');
     expect(text).toContain(`fromJSON('["fdic-institutions"]')`);
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');

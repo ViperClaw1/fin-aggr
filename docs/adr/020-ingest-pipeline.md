@@ -53,22 +53,22 @@ Review data never appears in public Actions logs or artifacts. The bot's stdout 
 
 An admin UI is revisited only when the queue exceeds 20 items in a week, or more than 2 items in a month waited past 3 days, or a reviewer has no terminal. That UI is a separate `apps/admin`, not `apps/web`.
 
-Raw snapshots in `raw`: a snapshot that a version still in the 30-day window points at is kept while that version is kept. Other snapshots are kept 90 days. This is the working rule (2026-11-04) and is confirmed before step 8. It is both a storage cost and a question of keeping someone else's text; the lawyer sees it at step 9, and the rule still has to be chosen before the first scrape.
+Raw snapshots in `raw`: a snapshot that a version still in the 30-day window points at is kept while that version is kept. Other snapshots are kept 90 days. This is still the working rule at step 8.1. It is both a storage cost and a question of keeping someone else's text; the lawyer sees it at step 9, before a scraped page is published.
 
-GitHub-hosted runner addresses are often blocked as bots. A block sends that institution to manual mode under the rule above. Proxy rotation is rejected: it bypasses that protection. Before step 8, either accept the manual-mode outcome or run the scrape from a worker with a static IP. The choice is open.
+GitHub-hosted runner addresses are often blocked as bots. Accepted at step 8.1: a block switches that institution to manual mode. Proxy rotation stays rejected. A worker with a static IP is not added.
 
-Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency` per source, `timeout-minutes`, one retry on a network error. The cadence table is in `docs/plan-stage-2.md` (step 5). A worker with a static IP is the open choice in the runner-address paragraph, not a later optimization. A move off Actions for lack of minutes stays a later decision. Tax tables are a manual yearly job. A new tax year is loaded as `unverified` and is not published until two people have checked it. `TAX_YEAR` changes in one commit after that.
+Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency` per source, `timeout-minutes`, one retry on a network error. The cadence table is in `docs/plan-stage-2.md` (step 5). The scrape stays on those runners: a block is manual mode, not a move to a static-IP worker. A move off Actions for lack of minutes stays a later decision. Tax tables are a manual yearly job. A new tax year is loaded as `unverified` and is not published until two people have checked it. `TAX_YEAR` changes in one commit after that.
 
-Scraping rules, enforced by the runner (step 8.1), not only by this text:
+Scraping rules, enforced by `createScrapeSession` (step 8.1), not only by this text:
 
-- Public pages only. No login, no account, no acceptance of terms.
-- `robots.txt` is read before each registrable domain (`robots-parser`). A disallowed path puts that institution into manual mode.
-- At most one request per 5–10 seconds per domain, one session, in the overnight window of the bank's time zone. Send `If-Modified-Since` and `ETag`.
-- The User-Agent names the project, its URL, and the project mailbox. That mailbox is not a personal address. The mailbox and the person who applies a bank opt-out within 24 hours are named before step 8. Neither is named on 2026-11-04.
-- A captcha or a block stops the adapter, notifies, and switches the institution to manual mode. The protection is not bypassed.
-- `job_runs` records requests and bytes per domain per day.
-- A bank's opt-out is a flag on `sources`, applied within 24 hours, and written to the log.
-- Keep facts and short quotes. Page and PDF snapshots stay in private storage.
+- Public pages only. `https`, no userinfo, no non-default port, no login or account path. No cookies and no acceptance of terms.
+- `robots.txt` of the page origin is read once per host before a path on that host (`robots-parser`). A disallowed path, or a robots response that is itself a block, puts that institution into manual mode. The rate-limit key is the registrable domain, not the host: `www.bank.com` and `bank.com` share one gap. Crawl-delay is not that gap.
+- At most one request per 10 seconds per registrable domain (the long end of the 5–10 second range, fixed). One session for the whole `bank-rates` run, and only while the local hour in the bank's time zone is 22, 23, or 0–5. Send `If-None-Match` and `If-Modified-Since` when the previous response stored them.
+- The User-Agent is `FA (+https://fin-aggr.vercel.app; <mailbox>)`. The mailbox is `FA_SCRAPE_MAILBOX`, a project address, not a personal one. A bank run with no mailbox fails before the first request. The address itself is still chosen by the owner.
+- A captcha, or HTTP 401, 403, or 429, stops the adapter, logs `source <id> manual <reason>`, and sets `sources.status` to `manual` when `SUPABASE_DB_URL` is set. The protection is not bypassed and the request is not retried with a different address.
+- Each contacted registrable domain logs `load <domain> requests=N bytes=N`. `job_runs.bytes` and `job_runs.request_count` remain the per-run totals the adapter passes through when it publishes.
+- A bank's opt-out is `sources.excluded`, applied with `pnpm ingest:exclude <bank-id> --requested <iso>`. The login is `FA_REVIEWER` (the responsible person is `ViperClaw1`, the same owner as the review queue). The row stores the request time, the application time, and that login. Later than 24 hours still excludes the bank and logs `source <id> excluded late`.
+- Keep facts and short quotes. `quote` clips to the 400-character fact limit. Page and PDF snapshots stay in the private `raw` bucket.
 
 Adapters, cheapest first: JSON already on the page (`application/ld+json`, framework data, or the page's own public JSON), then HTML selectors from a config, then Playwright only when the rates are absent without JavaScript. If the institution has a public rates API or a developer page that accepts an email registration, use that instead of scraping. Each adapter normalizes to `Product`. Eligibility (residency, state, minimum) is entered by a person the first time; after that the adapter watches for changes. A broken adapter (empty, half the products, unknown structure) publishes nothing. The previous rows stay, with their freshness.
 
@@ -143,4 +143,4 @@ Rev. Proc. 2025-32, Internal Revenue Bulletin 2025-45, page 695 (`https://www.ir
 - Step 1 lands the dependency rules and the package skeleton. Connectors start at step 6, after the pipeline (step 4) and the schedule (step 5).
 - A nightly live request checks that a source's shape still matches the recorded snapshot. The snapshot test does not hit the network.
 - A lawyer is engaged at step 9, before the public launch. Steps 1–8 do not wait. `DEMO_PASSWORD` stays until that launch.
-- The mailbox and the 24-hour opt-out owner are still unnamed; both are named before step 8. The queue owner is `ViperClaw1`, and the review repository is `ViperClaw1/fin-aggr-review`. `REVIEW_REPO_TOKEN` is an Actions secret. This ADR does not create accounts. Field codes of each source are appended in step 6 from that source's dictionary.
+- The scrape mailbox is the env var `FA_SCRAPE_MAILBOX`. The owner still chooses the address; a bank run refuses to start without one. The person who applies a bank opt-out within 24 hours is `ViperClaw1`, the same login as the review queue. The queue owner is `ViperClaw1`, and the review repository is `ViperClaw1/fin-aggr-review`. `REVIEW_REPO_TOKEN` is an Actions secret. This ADR does not create accounts. Field codes of each source are appended in step 6 from that source's dictionary.

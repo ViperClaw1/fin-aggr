@@ -6,6 +6,7 @@ import type { Sql } from '../decisions';
 import { createReviewIssue } from '../github';
 import type { PipelinePorts } from '../pipeline';
 import { SIGNED_URL_SECONDS } from '../policy';
+import { RAW_BUCKET } from '../scrape/rules';
 import {
   commitInstitutions,
   ensureFdicSource,
@@ -27,14 +28,14 @@ function storageClient(env: NodeJS.ProcessEnv) {
 
 async function uploadRaw(env: NodeJS.ProcessEnv, path: string, bytes: Uint8Array): Promise<void> {
   const uploaded = await storageClient(env)
-    .storage.from('raw')
+    .storage.from(RAW_BUCKET)
     .upload(path, Buffer.from(bytes), { contentType: 'application/json', upsert: true });
   if (uploaded.error !== null) throw new Error('raw snapshot upload failed');
 }
 
 async function signedRawUrl(env: NodeJS.ProcessEnv, path: string): Promise<string> {
   const signed = await storageClient(env)
-    .storage.from('raw')
+    .storage.from(RAW_BUCKET)
     .createSignedUrl(path, SIGNED_URL_SECONDS);
   if (signed.error !== null) throw new Error('signed url failed');
   return signed.data.signedUrl;

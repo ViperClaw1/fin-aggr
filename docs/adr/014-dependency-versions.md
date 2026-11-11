@@ -52,7 +52,7 @@ Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06
 
 Accepted with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04, and again on 2026-11-05 before install. A release newer than two weeks is not pinned. On 2026-11-05 the pins below were unchanged: `@supabase/supabase-js` 2.119.0 (2026-11-04), `supabase` 2.122.0 (2026-10-23) and 3.0.0 (2026-11-02) are still inside two weeks. `pg` 8.23.1, `@types/pg` 8.23.1, `robots-parser` 3.0.1 and `cheerio` 1.2.0 are still the current releases that clear the rule.
 
-Installed on 2026-11-05: `@supabase/supabase-js` in `@fa/ingest`, `supabase` CLI as a root devDependency. `robots-parser` and `cheerio` wait for step 8, when something imports them.
+Installed on 2026-11-05: `@supabase/supabase-js` in `@fa/ingest`, `supabase` CLI as a root devDependency. `robots-parser` 3.0.1 installed 2026-11-11 for step 8.1. `cheerio` still waits until static HTML is the adapter path.
 
 Installed on 2026-11-06 with step 2: `pg` 8.23.1 and `@types/pg` 8.23.1 as root dependencies. The seed and rollback scripts are the only importers.
 

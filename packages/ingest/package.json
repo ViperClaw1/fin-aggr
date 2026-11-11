@@ -13,7 +13,8 @@
     "@fa/contracts": "workspace:*",
     "@supabase/supabase-js": "2.118.0",
     "decimal.js": "10.6.0",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "robots-parser": "3.0.1"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
