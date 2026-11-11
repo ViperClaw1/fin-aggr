@@ -22,6 +22,8 @@ function ports(): PipelinePorts<{ id: string }> & {
   commit: ReturnType<typeof vi.fn>;
   revalidate: ReturnType<typeof vi.fn>;
   openIssue: ReturnType<typeof vi.fn>;
+  finishJob: ReturnType<typeof vi.fn>;
+  notifyFailure: ReturnType<typeof vi.fn>;
 } {
   return {
     now: () => '2026-11-06T00:00:00.000Z',
@@ -32,9 +34,9 @@ function ports(): PipelinePorts<{ id: string }> & {
     sign: () => Promise.resolve('https://signed.example/raw'),
     openIssue: vi.fn(() => Promise.resolve({ number: 7, url: 'https://github.com/x/y/issues/7' })),
     attachIssue: () => Promise.resolve(),
-    finishJob: () => Promise.resolve(),
+    finishJob: vi.fn(() => Promise.resolve()),
     revalidate: vi.fn(() => Promise.resolve()),
-    notifyFailure: () => Promise.resolve({ number: 8 }),
+    notifyFailure: vi.fn(() => Promise.resolve({ number: 8 })),
   };
 }
 
@@ -130,5 +132,25 @@ describe('publish or hold', () => {
     expect(gate.commit.mock.calls).toHaveLength(0);
     expect(lines).toEqual(['issue #8 created']);
     expect(lines.join('\n')).not.toContain('token');
+  });
+
+  it('keeps a published version when revalidate returns 500', async () => {
+    const gate = ports();
+    gate.revalidate = vi.fn(() => Promise.reject(new Error('revalidate failed: 500')));
+    gate.notifyFailure = vi.fn(() => Promise.resolve({ number: 1 }));
+    gate.finishJob = vi.fn(() => Promise.resolve());
+    const lines: string[] = [];
+    const summary = await runSource(source('official_api', [{ id: 'a' }]), gate, (line) =>
+      lines.push(line),
+    );
+    expect(summary).toMatchObject({ status: 'published', versionId: 9, revalidateStatus: 500 });
+    expect(gate.finishJob.mock.calls[0]?.[0]).toMatchObject({
+      status: 'published',
+      errors: [{ stage: 'revalidate', status: 500 }],
+    });
+    expect(gate.notifyFailure.mock.calls).toEqual([
+      ['revalidate failed: 500', 'Revalidate failed after publish'],
+    ]);
+    expect(lines).toEqual(['issue #1 created']);
   });
 });

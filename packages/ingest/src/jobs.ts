@@ -21,9 +21,15 @@ async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {
     rows: summary.published,
     queued: summary.queued,
     version,
+    ...(summary.revalidateStatus === null ? {} : { revalidate: 'failed' as const }),
   });
   writeStdout(line);
   writeStepSummary(line, env);
+  if (summary.revalidateStatus !== null) {
+    const status = String(summary.revalidateStatus);
+    writeStdout(`source ${source.id} failed stage=revalidate status=${status}`);
+    throw new Error(`source ${source.id} revalidate failed`);
+  }
   if (summary.status === 'published' && summary.versionId === null) {
     throw new Error(`source ${source.id} published without a version`);
   }

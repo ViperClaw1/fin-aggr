@@ -63,7 +63,7 @@ export function institutionPorts(
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
     revalidate: () => revalidateDomain(env, 'institutions'),
-    notifyFailure: (message) => notifyFailure(env, message),
+    notifyFailure: (message, title) => notifyFailure(env, message, title),
   };
 }
 
@@ -134,13 +134,10 @@ async function finishJob(
 async function notifyFailure(
   env: NodeJS.ProcessEnv,
   message: string,
+  title = 'Ingest fdic-institutions failed',
 ): Promise<{ number: number } | null> {
   const token = reviewToken(env);
   if (token === '') return null;
-  const issue = await createReviewIssue(fetch, {
-    token,
-    title: 'Ingest fdic-institutions failed',
-    body: message,
-  });
+  const issue = await createReviewIssue(fetch, { token, title, body: message });
   return { number: issue.number };
 }

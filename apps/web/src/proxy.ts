@@ -75,9 +75,16 @@ export async function demoGate(
 
   const token = await demoGateToken(secret);
   if (request.cookies.get(COOKIE)?.value === token) return NextResponse.next();
+  // The route checks Authorization itself. A JSON body is not a password form.
+  if (request.nextUrl.pathname === '/api/revalidate') return NextResponse.next();
 
-  if (request.method === 'POST') {
-    const field = (await request.formData()).get('password');
+  if (request.method === 'POST' && isPasswordForm(request)) {
+    let field: FormDataEntryValue | null = null;
+    try {
+      field = (await request.formData()).get('password');
+    } catch {
+      return gatePage(false);
+    }
     const given = typeof field === 'string' ? field : '';
     if (sameSecret(given, secret)) {
       const response = NextResponse.redirect(request.url, 303);
@@ -96,12 +103,17 @@ export async function demoGate(
   return gatePage(false);
 }
 
+function isPasswordForm(request: NextRequest): boolean {
+  const type = request.headers.get('content-type') ?? '';
+  return type.includes('application/x-www-form-urlencoded') || type.includes('multipart/form-data');
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   return demoGate(request, process.env['DEMO_PASSWORD']);
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!api/revalidate|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

@@ -7,10 +7,12 @@ export function formatRunLine(input: {
   rows: number;
   queued: number;
   version: string;
+  revalidate?: 'failed';
 }): string {
   const rows = String(input.rows);
   const queued = String(input.queued);
-  return `source ${input.id} ${input.status} rows=${rows} queued=${queued} version=${input.version}`;
+  const cache = input.revalidate === 'failed' ? ' revalidate=failed' : '';
+  return `source ${input.id} ${input.status} rows=${rows} queued=${queued} version=${input.version}${cache}`;
 }
 
 export function writeStdout(line: string): void {

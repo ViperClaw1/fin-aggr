@@ -17,6 +17,19 @@ describe('run line', () => {
     ).toBe('source fdic-institutions published rows=4123 queued=0 version=17');
   });
 
+  it('marks a published run whose cache clear failed', () => {
+    expect(
+      formatRunLine({
+        id: 'fdic-institutions',
+        status: 'published',
+        rows: 4123,
+        queued: 0,
+        version: '17',
+        revalidate: 'failed',
+      }),
+    ).toBe('source fdic-institutions published rows=4123 queued=0 version=17 revalidate=failed');
+  });
+
   it('appends the same line to the actions summary', () => {
     const path = join(mkdtempSync(join(tmpdir(), 'fa-ingest-')), 'summary.md');
     const line = formatRunLine({

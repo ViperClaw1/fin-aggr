@@ -2,9 +2,8 @@ import { createHash } from 'node:crypto';
 import { reviewIssueBody } from './github';
 import type { DatasetDomain } from './index';
 import { formatIssueCreated } from './policy';
+import { reportRevalidate, revalidateOrStatus } from './revalidate';
 import { countGate, type ValidationReport } from './validate';
-
-export type { ValidationReport } from './validate';
 
 export type SourceKind = 'official_api' | 'scrape' | 'manual';
 
@@ -35,7 +34,7 @@ interface JobRecord {
   endedAt: string;
   status: 'published' | 'held' | 'failed';
   rowCount: number;
-  errors: readonly { code: string }[];
+  errors: readonly ({ code: string } | { stage: 'revalidate'; status: number })[];
   bytes: number;
   requestCount: number;
 }
@@ -65,7 +64,7 @@ export interface PipelinePorts<Parsed> {
   attachIssue(queueId: number, issueUrl: string): Promise<void>;
   finishJob(job: JobRecord): Promise<void>;
   revalidate(): Promise<void>;
-  notifyFailure(message: string): Promise<{ number: number } | null>;
+  notifyFailure(message: string, title?: string): Promise<{ number: number } | null>;
 }
 
 export interface RunSummary {
@@ -75,6 +74,7 @@ export interface RunSummary {
   issueNumber: number | null;
   /** Current version written by this run. Null when nothing was published. */
   versionId: number | null;
+  revalidateStatus: number | null;
 }
 
 const HASH = /^[0-9a-f]{64}$/;
@@ -131,6 +131,7 @@ export async function runSource<Raw, Parsed>(
       queued: 0,
       issueNumber: issue?.number ?? null,
       versionId: null,
+      revalidateStatus: null,
     };
   }
 }
@@ -158,7 +159,14 @@ async function runBody<Raw, Parsed>(
         requestCount: 0,
       }),
     );
-    return { status: 'held', published: 0, queued: 0, issueNumber: null, versionId: null };
+    return {
+      status: 'held',
+      published: 0,
+      queued: 0,
+      issueNumber: null,
+      versionId: null,
+      revalidateStatus: null,
+    };
   }
   return publishOrHold({ source, ports, log, startedAt }, snapshot);
 }
@@ -199,35 +207,68 @@ async function publishOrHold<Raw, Parsed>(
             reason: decision.reason,
           },
   });
-  if (decision.publish !== null) await ports.revalidate();
-  const issueNumber = await openBatchIssue(source, ports, log, {
+  return finishRun({
+    source,
+    ports,
+    log,
+    startedAt,
+    snapshot,
+    decision,
+    committed,
     snapshotId: saved.snapshotId,
+    revalidateStatus:
+      decision.publish === null ? null : await revalidateOrStatus(() => ports.revalidate()),
+  });
+}
+
+async function finishRun<Raw, Parsed>(input: {
+  source: Source<Raw, Parsed>;
+  ports: PipelinePorts<Parsed>;
+  log: (line: string) => void;
+  startedAt: string;
+  snapshot: RawSnapshot<Raw>;
+  decision: { publish: readonly Parsed[] | null; reason: string | null };
+  committed: { queueId: number | null; versionId: number | null };
+  snapshotId: number;
+  revalidateStatus: number | null;
+}): Promise<RunSummary> {
+  const { source, ports, log, startedAt, snapshot, decision, committed, revalidateStatus } = input;
+  const issueNumber = await openBatchIssue(source, ports, log, {
+    snapshotId: input.snapshotId,
     queueId: committed.queueId,
     reason: decision.reason,
   });
   const status = decision.publish === null ? 'held' : 'published';
-  const errors = issueNumber === null && decision.reason !== null ? ['issue_failed'] : [];
-  await ports.finishJob(
-    jobRecord({
-      source,
-      startedAt,
-      endedAt: ports.now(),
-      status,
-      rowCount: decision.publish?.length ?? 0,
-      errors,
-      bytes: snapshot.bytes.byteLength,
-      requestCount: snapshot.requestCount,
-    }),
-  );
+  const record = jobRecord({
+    source,
+    startedAt,
+    endedAt: ports.now(),
+    status,
+    rowCount: decision.publish?.length ?? 0,
+    errors: issueNumber === null && decision.reason !== null ? ['issue_failed'] : [],
+    bytes: snapshot.bytes.byteLength,
+    requestCount: snapshot.requestCount,
+  });
+  const failureIssue =
+    revalidateStatus === null
+      ? issueNumber
+      : await reportRevalidate(
+          (message, title) => ports.notifyFailure(message, title),
+          log,
+          revalidateStatus,
+        );
+  if (revalidateStatus !== null)
+    record.errors = [{ stage: 'revalidate', status: revalidateStatus }];
+  await ports.finishJob(record);
   return {
     status,
     published: decision.publish?.length ?? 0,
     queued: committed.queueId === null ? 0 : 1,
-    issueNumber,
+    issueNumber: failureIssue,
     versionId: committed.versionId,
+    revalidateStatus,
   };
 }
-
 async function openBatchIssue<Parsed>(
   source: Source<unknown, Parsed>,
   ports: PipelinePorts<Parsed>,

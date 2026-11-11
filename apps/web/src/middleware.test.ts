@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
-import { demoGate, demoGateToken } from './proxy';
+import { config, demoGate, demoGateToken } from './proxy';
 
 const PASSWORD = 'stage1-demo';
 
@@ -49,5 +49,33 @@ describe('demoGate', () => {
   it('lets a matching cookie through', async () => {
     const response = await demoGate(request('GET', await demoGateToken(PASSWORD)), PASSWORD);
     expect(response.status).toBe(200);
+  });
+
+  it('lets a JSON revalidate call through while the password is set', async () => {
+    const headers = new Headers({ 'content-type': 'application/json' });
+    const response = await demoGate(
+      new NextRequest('http://127.0.0.1:3000/api/revalidate', {
+        method: 'POST',
+        headers,
+        body: '{"domain":"institutions"}',
+      }),
+      PASSWORD,
+    );
+    expect(response.status).toBe(200);
+    expect(config.matcher[0]).toContain('api/revalidate');
+  });
+
+  it('answers 401 for a JSON post that is not the password form', async () => {
+    const headers = new Headers({ 'content-type': 'application/json' });
+    const response = await demoGate(
+      new NextRequest('http://127.0.0.1:3000/', {
+        method: 'POST',
+        headers,
+        body: '{"domain":"institutions"}',
+      }),
+      PASSWORD,
+    );
+    expect(response.status).toBe(401);
+    expect(await response.text()).not.toContain('Wrong password.');
   });
 });
