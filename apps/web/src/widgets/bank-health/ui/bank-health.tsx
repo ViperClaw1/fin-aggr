@@ -29,13 +29,6 @@ const METRIC_LABEL: Record<(typeof METRIC_KEYS)[number], string> = {
 };
 
 export function BankHealth({ institution, metrics, products, dataset }: BankDetail) {
-  const metricsNow =
-    metrics === null
-      ? freshnessNow(dataset)
-      : freshnessNow(dataset, undefined, {
-          isMock: metrics.provenance.isMock,
-          domain: 'bank_metrics',
-        });
   const [onOpen, setOnOpen] = useState<((ref: OpenCitation) => void) | null>(null);
   const open = onOpen === null ? {} : { onOpenCitation: onOpen };
   return (
@@ -43,7 +36,21 @@ export function BankHealth({ institution, metrics, products, dataset }: BankDeta
       <Suspense fallback={null}>
         <OpenSync onChange={setOnOpen} />
       </Suspense>
-      <CallReport metrics={metrics} now={metricsNow} open={open} />
+      {metrics !== null && !metrics.provenance.isMock ? (
+        <Suspense fallback={<p className="text-sm text-muted">Loading call report…</p>}>
+          <LiveCallReport metrics={metrics} dataset={dataset} open={open} />
+        </Suspense>
+      ) : (
+        <CallReport
+          metrics={metrics}
+          now={
+            metrics === null
+              ? null
+              : freshnessNow(dataset, undefined, { isMock: true, domain: 'bank_metrics' })
+          }
+          open={open}
+        />
+      )}
       <Products
         institutionName={institution.name}
         products={products}
@@ -57,6 +64,20 @@ export function BankHealth({ institution, metrics, products, dataset }: BankDeta
       />
     </div>
   );
+}
+
+function LiveCallReport({
+  metrics,
+  dataset,
+  open,
+}: {
+  metrics: NonNullable<BankDetail['metrics']>;
+  dataset: BankDetail['dataset'];
+  open: { onOpenCitation?: (ref: OpenCitation) => void };
+}) {
+  // A real fact counts from the clock. Suspense keeps that off the static shell (ADR-016).
+  const now = freshnessNow(dataset, undefined, { isMock: false, domain: 'bank_metrics' });
+  return <CallReport metrics={metrics} now={now} open={open} />;
 }
 
 function OpenSync({ onChange }: { onChange: (open: (ref: OpenCitation) => void) => void }) {
@@ -80,7 +101,7 @@ function CallReport({
   open,
 }: {
   metrics: BankDetail['metrics'];
-  now: Date;
+  now: Date | null;
   open: { onOpenCitation?: (ref: OpenCitation) => void };
 }) {
   return (
@@ -93,7 +114,7 @@ function CallReport({
           <p>
             <FactValue
               fact={{ value: metrics.totalAssetsUsdThousands, provenance: metrics.provenance }}
-              now={now}
+              {...(now === null ? {} : { now })}
               {...open}
               render={(thousands) => <>Total assets {formatUsdFromThousands(thousands)}</>}
             />
@@ -115,7 +136,7 @@ function CallReport({
                 <div className="space-y-2">
                   <FactValue
                     fact={fact}
-                    now={now}
+                    {...(now === null ? {} : { now })}
                     {...open}
                     render={(value) =>
                       `${formatPercentPoints(value.value)}, median ${formatPercentPoints(value.marketMedian)}, mean ${formatPercentPoints(value.marketMean)}, percentile ${String(value.percentile)}`
@@ -133,7 +154,7 @@ function CallReport({
           <h3 className="font-medium">Balance sheet</h3>
           <FactValue
             fact={{ value: metrics.balanceSheetMix, provenance: metrics.provenance }}
-            now={now}
+            {...(now === null ? {} : { now })}
             {...open}
             render={(mix) =>
               mix.map((part) => `${part.label} ${formatShare(part.share)}`).join(', ')
