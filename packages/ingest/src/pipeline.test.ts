@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { CodedError } from './fetch-budget';
 import { decidePublish, runSource, sha256Hex, type PipelinePorts, type Source } from './pipeline';
 
 const bytes = new TextEncoder().encode('snapshot');
@@ -137,6 +138,23 @@ describe('publish or hold', () => {
     expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('fetch failed');
     expect(lines).toEqual(['issue #8 created']);
     expect(JSON.stringify(gate.finishJob.mock.calls)).not.toContain('token');
+  });
+
+  it('keeps the real code when previous rows fail', async () => {
+    const gate = ports();
+    gate.previousRows = () => Promise.reject(new CodedError('stored_row_invalid'));
+    const summary = await runSource(source('official_api', [{ id: 'a' }]), gate, () => undefined);
+    expect(summary.failure).toEqual({ stage: 'previous', code: 'stored_row_invalid' });
+    const pg = new Error('null value');
+    Object.assign(pg, { code: '23502' });
+    gate.previousRows = () => Promise.reject(pg);
+    const sqlState = await runSource(source('official_api', [{ id: 'a' }]), gate, () => undefined);
+    expect(sqlState.failure).toEqual({ stage: 'previous', code: '23502' });
+    const timeout = new Error('timed out');
+    timeout.name = 'TimeoutError';
+    gate.previousRows = () => Promise.reject(timeout);
+    const timed = await runSource(source('official_api', [{ id: 'a' }]), gate, () => undefined);
+    expect(timed.failure).toEqual({ stage: 'previous', code: 'TimeoutError' });
   });
 
   it('keeps a published version when revalidate returns 500', async () => {

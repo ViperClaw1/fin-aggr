@@ -1,6 +1,7 @@
 import { Institution, type Institution as InstitutionRow } from '@fa/contracts';
 import { withTransaction, type Sql } from '../decisions';
 import { integerId } from './id';
+import { previousUnlessMock } from './previous';
 
 const SOURCE_ID = 'fdic-institutions';
 
@@ -49,7 +50,11 @@ function institutionFromDb(row: Record<string, unknown>): InstitutionRow {
   return parsed.data;
 }
 
-export async function previousInstitutions(sql: Sql): Promise<InstitutionRow[]> {
+export function previousInstitutions(sql: Sql): Promise<InstitutionRow[]> {
+  return previousUnlessMock(sql, 'institutions', readInstitutions);
+}
+
+async function readInstitutions(sql: Sql): Promise<InstitutionRow[]> {
   const result = await sql.query(
     `select i.id, i.name, i.regulator, i.kind, i.partner_institution_ids, i.hq_state, i.website, i.provenance
      from institutions i

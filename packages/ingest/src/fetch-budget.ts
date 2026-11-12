@@ -39,7 +39,11 @@ export function stageOf(error: unknown): { stage: string; code: string } {
 function codeOf(error: unknown): string {
   if (error instanceof CodedError) return error.code;
   if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-    return 'timeout';
+    return error.name;
+  }
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = error.code;
+    if (typeof code === 'string' && code !== '') return code;
   }
   return 'failed';
 }

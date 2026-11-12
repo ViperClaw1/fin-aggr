@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Sql } from '../decisions';
-import { commitFinancials } from '../postgres/financials';
+import { commitFinancials, previousFinancials } from '../postgres/financials';
 import { checkFinancialsShape, fetchFdicFinancials } from './financials-fetch';
 import {
   financialFieldProblems,
@@ -146,5 +146,45 @@ describe('financials publish', () => {
     expect(result).toEqual({ queueId: null, versionId: 12 });
     expect(texts.some((text) => text.includes("publish_domain('bank_metrics'"))).toBe(true);
     expect(texts.some((text) => text.includes('deposits_usd_thousands'))).toBe(true);
+  });
+});
+
+describe('previous call reports', () => {
+  it('ignores a seeded mock version', async () => {
+    const texts: string[] = [];
+    const sql: Sql = {
+      query: (text) => {
+        texts.push(text);
+        return Promise.resolve({ rows: [{ is_mock: true }] });
+      },
+    };
+    await expect(previousFinancials(sql)).resolves.toEqual([]);
+    expect(texts.some((text) => text.includes('from bank_metrics'))).toBe(false);
+  });
+
+  it('keeps a null deposit column', async () => {
+    const [row] = parseFdicFinancials(raw(), ids);
+    if (row === undefined) throw new Error('expected a call report');
+    const sql: Sql = {
+      query: (text) => {
+        if (text.includes('select is_mock')) return Promise.resolve({ rows: [{ is_mock: false }] });
+        return Promise.resolve({
+          rows: [
+            {
+              institution_id: row.report.institutionId,
+              as_of: row.report.asOf,
+              total_assets_usd_thousands: String(row.report.totalAssetsUsdThousands),
+              deposits_usd_thousands: null,
+              metrics: row.report.metrics,
+              balance_sheet_mix: row.report.balanceSheetMix,
+              provenance: row.report.provenance,
+            },
+          ],
+        });
+      },
+    };
+    const [loaded] = await previousFinancials(sql);
+    expect(loaded?.depositsUsdThousands).toBeNull();
+    expect(loaded?.report.institutionId).toBe('fdic:3510');
   });
 });

@@ -42,14 +42,13 @@ function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): voi
     throw new Error(`source ${id} published without a version`);
   }
   if (summary.status === 'failed') {
-    const line = formatStageFailure(
+    const stageLine = formatStageFailure(
       id,
       summary.failure?.stage ?? 'failed',
       summary.failure?.code ?? 'failed',
     );
-    writeStdout(line);
-    writeStepSummary(line, env);
-    throw new Error(line);
+    writeStepSummary(stageLine, env);
+    throw new Error(stageLine);
   }
 }
 

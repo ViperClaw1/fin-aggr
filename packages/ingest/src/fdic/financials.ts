@@ -4,6 +4,7 @@ import {
   type BankMetrics as Report,
   type MetricKey,
 } from '@fa/contracts';
+import { CodedError } from '../fetch-budget';
 import { Decimal } from 'decimal.js';
 import { FINANCIAL_BOUNDS } from '../policy';
 import type { ValidationReport } from '../validate';
@@ -29,7 +30,7 @@ export interface FdicFinancialsRaw {
 
 export interface CallReport {
   report: Report;
-  depositsUsdThousands: number;
+  depositsUsdThousands: number | null;
 }
 
 function digitsToInt(digits: string): number {
@@ -143,7 +144,7 @@ function oneReport(
   const compact = quoted(objectText, 'REPDTE');
   const asOf = compact === null ? null : reportDate(compact);
   if (asOf === null) throw new Error('fdic financials date');
-  if (asOf !== quarter) throw new Error('fdic financials mixed quarter');
+  if (asOf !== quarter) throw new CodedError('mixed_quarter');
   const assets = numberLiteral(objectText, 'ASSET');
   const deposits = numberLiteral(objectText, 'DEP');
   if (assets === null || deposits === null) return null;

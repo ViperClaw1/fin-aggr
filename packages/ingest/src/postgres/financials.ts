@@ -1,7 +1,9 @@
 import { BankMetrics } from '@fa/contracts';
+import { CodedError } from '../fetch-budget';
 import { withTransaction, type Sql } from '../decisions';
 import type { CallReport } from '../fdic/financials';
 import { integerId } from './id';
+import { previousUnlessMock } from './previous';
 
 const SOURCE_ID = 'fdic-financials';
 
@@ -32,7 +34,12 @@ function storedInteger(value: unknown): number {
     for (const char of value) parsed = parsed * 10 + (char.charCodeAt(0) - 48);
     return parsed;
   }
-  throw new Error('stored call report is invalid');
+  throw new CodedError('stored_row_invalid');
+}
+
+function storedDeposits(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  return storedInteger(value);
 }
 
 function reportFromDb(row: Record<string, unknown>): CallReport {
@@ -44,14 +51,14 @@ function reportFromDb(row: Record<string, unknown>): CallReport {
     balanceSheetMix: row['balance_sheet_mix'],
     provenance: row['provenance'],
   });
-  if (!parsed.success) throw new Error('stored call report is invalid');
+  if (!parsed.success) throw new CodedError('stored_row_invalid');
   return {
     report: parsed.data,
-    depositsUsdThousands: storedInteger(row['deposits_usd_thousands']),
+    depositsUsdThousands: storedDeposits(row['deposits_usd_thousands']),
   };
 }
 
-export async function previousFinancials(sql: Sql): Promise<CallReport[]> {
+async function readFinancials(sql: Sql): Promise<CallReport[]> {
   const result = await sql.query(
     `select m.institution_id, m.as_of::text as as_of, m.total_assets_usd_thousands,
             m.deposits_usd_thousands, m.metrics, m.balance_sheet_mix, m.provenance
@@ -60,6 +67,10 @@ export async function previousFinancials(sql: Sql): Promise<CallReport[]> {
      where v.domain = 'bank_metrics' and v.is_current`,
   );
   return result.rows.map(reportFromDb);
+}
+
+export async function previousFinancials(sql: Sql): Promise<CallReport[]> {
+  return previousUnlessMock(sql, 'bank_metrics', readFinancials);
 }
 
 async function insertVersion(sql: Sql, asOf: string): Promise<number> {
@@ -77,7 +88,7 @@ async function insertRows(sql: Sql, versionId: number, rows: readonly CallReport
        version_id, institution_id, as_of, total_assets_usd_thousands, deposits_usd_thousands,
        metrics, balance_sheet_mix, provenance
      )
-     select $1, u.institution_id, u.as_of::date, u.assets::bigint, u.deposits::bigint,
+     select $1, u.institution_id, u.as_of::date, u.assets::bigint, nullif(u.deposits, '')::bigint,
             u.metrics::jsonb, u.mix::jsonb, u.provenance::jsonb
      from unnest(
        $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[]
@@ -87,7 +98,9 @@ async function insertRows(sql: Sql, versionId: number, rows: readonly CallReport
       rows.map((row) => row.report.institutionId),
       rows.map((row) => row.report.asOf),
       rows.map((row) => String(row.report.totalAssetsUsdThousands)),
-      rows.map((row) => String(row.depositsUsdThousands)),
+      rows.map((row) =>
+        row.depositsUsdThousands === null ? '' : String(row.depositsUsdThousands),
+      ),
       rows.map((row) => JSON.stringify(row.report.metrics)),
       rows.map((row) => JSON.stringify(row.report.balanceSheetMix)),
       rows.map((row) => JSON.stringify(row.report.provenance)),
@@ -99,7 +112,7 @@ async function publishRows(sql: Sql, rows: readonly CallReport[] | null): Promis
   if (rows === null || rows.length === 0) return null;
   const asOf = rows[0]?.report.asOf;
   if (asOf === undefined || rows.some((row) => row.report.asOf !== asOf)) {
-    throw new Error('fdic financials mixed quarter');
+    throw new CodedError('mixed_quarter');
   }
   const versionId = await insertVersion(sql, asOf);
   await insertRows(sql, versionId, rows);

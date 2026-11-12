@@ -2,6 +2,7 @@ import { isRate } from '@fa/contracts';
 import { withTransaction, type Sql } from '../decisions';
 import { PAR_TENORS, type ParTenor, type ParYieldPoint } from '../treasury/par-yield';
 import { integerId } from './id';
+import { previousUnlessMock } from './previous';
 
 const SOURCE_ID = 'treasury-par-yield';
 
@@ -33,7 +34,11 @@ function pointFromDb(row: Record<string, unknown>): ParYieldPoint {
 }
 
 /** Newest stored curve only, so a new calendar year is not a shrink and an old spike is not a hold. */
-export async function previousParYields(sql: Sql): Promise<ParYieldPoint[]> {
+export function previousParYields(sql: Sql): Promise<ParYieldPoint[]> {
+  return previousUnlessMock(sql, 'reference', readParYields);
+}
+
+async function readParYields(sql: Sql): Promise<ParYieldPoint[]> {
   const result = await sql.query(
     `select curve_date::text as curve_date, tenor, rate::text as rate
      from par_yields

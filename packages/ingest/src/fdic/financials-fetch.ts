@@ -43,12 +43,12 @@ class HttpStatus extends Error {
   }
 }
 
-function coded(error: unknown): CodedError {
+function coded(error: unknown): CodedError | Error {
   if (error instanceof CodedError) return error;
-  if (error instanceof HttpStatus) return new CodedError('http');
   if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-    return new CodedError('timeout');
+    return error;
   }
+  if (error instanceof HttpStatus) return new CodedError('http');
   if (error instanceof Error) throw error;
   return new CodedError('failed');
 }
@@ -68,6 +68,12 @@ async function once(input: FetchInput, url: string): Promise<Response> {
   return response;
 }
 
+function timeoutError(): Error {
+  const error = new Error('timeout');
+  error.name = 'TimeoutError';
+  return error;
+}
+
 /** One extra attempt for a timeout or a 5xx. The budget is not restarted. */
 async function page(input: FetchInput, url: string, attempts: { count: number }): Promise<string> {
   try {
@@ -84,7 +90,7 @@ async function page(input: FetchInput, url: string, attempts: { count: number })
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
-      reject(new CodedError('timeout'));
+      reject(timeoutError());
       return;
     }
     const timer = setTimeout(resolve, ms);
@@ -92,7 +98,7 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
       'abort',
       () => {
         clearTimeout(timer);
-        reject(new CodedError('timeout'));
+        reject(timeoutError());
       },
       { once: true },
     );
