@@ -46,6 +46,18 @@ describe('par yields', () => {
   });
 });
 
+describe('bank deposits', () => {
+  const deposits = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261112160000_bank_deposits.sql'),
+    'utf8',
+  );
+
+  it('adds a nullable thousands column so a missing call report is not stored as zero', () => {
+    expect(deposits).toContain('add column if not exists deposits_usd_thousands bigint');
+    expect(deposits).toContain('deposits_usd_thousands is null or deposits_usd_thousands >= 0');
+  });
+});
+
 describe('bank opt-out', () => {
   const optOut = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261111180000_source_opt_out.sql'),

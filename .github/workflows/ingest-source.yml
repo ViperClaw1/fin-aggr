@@ -34,7 +34,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Ids passed to registerJob. A source that is not ready skips this and stays green.
       - name: Check secrets
-        if: contains(fromJSON('["fdic-institutions","treasury-par-yield"]'), inputs.source)
+        if: contains(fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials"]'), inputs.source)
         run: |
           missing=""
           for n in SUPABASE_DB_URL REVIEW_REPO_TOKEN; do

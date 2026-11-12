@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkEcfrPartShape } from './ecfr/live';
+import { checkFinancialsShape } from './fdic/financials-fetch';
 import { checkInstitutionShape } from './fdic/live';
 import { checkRegisterShape } from './register/live';
 import { checkParYieldShape } from './treasury/live';
@@ -14,6 +15,7 @@ function recorded(name: string): unknown {
 export async function checkLiveShapes(fetchImpl: typeof fetch): Promise<string[]> {
   return [
     await checkInstitutionShape(fetchImpl),
+    await checkFinancialsShape(fetchImpl),
     await checkEcfrPartShape(
       fetchImpl,
       recorded('versions-330.json'),

@@ -16,6 +16,21 @@ export const PRODUCT_BOUNDS = {
   maxRateMove: '0.005',
 } as const;
 
+/**
+ * Call-report ratios are percent points, not rates.
+ * A quarterly move above `maxMove` (50 basis points of a percent) is reviewed.
+ * Read 2026-11-12 from the FDIC financial dictionary; see ADR-020.
+ */
+export const FINANCIAL_BOUNDS = {
+  tier1LeverageRatio: ['0', '100'],
+  totalRiskBasedCapitalRatio: ['0', '100'],
+  allowanceToLoans: ['0', '100'],
+  loansToDeposits: ['0', '300'],
+  noncurrentLoansRatio: ['0', '100'],
+  returnOnAssets: ['-20', '20'],
+  maxMove: '0.5',
+} as const;
+
 const LOGIN = /^[A-Za-z0-9-]{1,39}$/;
 
 export function requireReviewer(login: string | undefined): string {

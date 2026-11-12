@@ -25,6 +25,11 @@ describe('nightly live shape', () => {
   it('prints one line per source and treats an eCFR change as success', async () => {
     const lines = await checkLiveShapes((input) => {
       const url = hrefOf(input);
+      if (url.includes('/banks/financials')) {
+        return Promise.resolve(
+          new Response(read('fdic/financials.snapshot.json'), { status: 200 }),
+        );
+      }
       if (url.includes('api.fdic.gov')) {
         return Promise.resolve(
           new Response(read('fdic/institutions.snapshot.json'), { status: 200 }),
@@ -44,6 +49,7 @@ describe('nightly live shape', () => {
     });
     expect(lines).toEqual([
       'fdic institutions shape ok',
+      'fdic financials shape ok',
       'ecfr 330 unchanged',
       'federal register shape ok',
       'treasury par yield shape ok',

@@ -8,6 +8,7 @@ import type { PipelinePorts } from '../pipeline';
 import { SIGNED_URL_SECONDS } from '../policy';
 import { RAW_BUCKET } from '../scrape/rules';
 import type { ParYieldPoint } from '../treasury/par-yield';
+import type { CallReport } from '../fdic/financials';
 import {
   commitInstitutions,
   ensureFdicSource,
@@ -16,6 +17,12 @@ import {
   previousInstitutions,
 } from './institutions';
 import { commitParYields, ensureParYieldSource, previousParYields } from './par-yield';
+import {
+  commitFinancials,
+  currentInstitutionIds,
+  ensureFinancialsSource,
+  previousFinancials,
+} from './financials';
 
 export async function prepareFdicSource(env: NodeJS.ProcessEnv): Promise<void> {
   await withClient(databaseUrl(env), ensureFdicSource);
@@ -23,6 +30,14 @@ export async function prepareFdicSource(env: NodeJS.ProcessEnv): Promise<void> {
 
 export async function prepareParYieldSource(env: NodeJS.ProcessEnv): Promise<void> {
   await withClient(databaseUrl(env), ensureParYieldSource);
+}
+
+export async function prepareFinancialsSource(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureFinancialsSource);
+}
+
+export async function loadInstitutionIds(env: NodeJS.ProcessEnv): Promise<Set<string>> {
+  return withClient(databaseUrl(env), currentInstitutionIds);
 }
 
 function storageClient(env: NodeJS.ProcessEnv) {
@@ -93,6 +108,29 @@ export function parYieldPorts(
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
     revalidate: () => revalidateDomain(env, 'reference'),
     notifyFailure: (message, title = 'Ingest treasury-par-yield failed') =>
+      notifyFailure(env, message, title),
+  };
+}
+
+/** Ports for the quarterly call reports. The same quarter stays `held` when the hash matches. */
+export function financialPorts(
+  env: NodeJS.ProcessEnv,
+  now: () => string,
+): PipelinePorts<CallReport> {
+  return {
+    now,
+    latestHash: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
+    previousRows: () => withClient(databaseUrl(env), previousFinancials),
+    commit: (input) => withClient(databaseUrl(env), (sql) => commitFinancials(sql, input)),
+    sign: (snapshotId) => signSnapshot(env, snapshotId),
+    openIssue: (input) => openReview(env, input),
+    attachIssue: (queueId, issueUrl) =>
+      withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
+    finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
+    revalidate: () => revalidateDomain(env, 'bank_metrics'),
+    notifyFailure: (message, title = 'Ingest fdic-financials failed') =>
       notifyFailure(env, message, title),
   };
 }

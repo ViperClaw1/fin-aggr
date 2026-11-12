@@ -1,9 +1,13 @@
+import { fdicFinancialsSource } from './fdic/financials-fetch';
 import { fdicInstitutionsSource } from './fdic/institutions';
 import {
   prepareFdicSource,
   institutionPorts,
   parYieldPorts,
   prepareParYieldSource,
+  financialPorts,
+  loadInstitutionIds,
+  prepareFinancialsSource,
 } from './postgres/ports';
 import { runSource, type RunSummary } from './pipeline';
 import { formatRunLine, writeStdout, writeStepSummary } from './run-line';
@@ -13,6 +17,7 @@ import { parYieldSource } from './treasury/par-yield';
 /** Step 6 wires a connector. A second call is a mistake: registerJob refuses a duplicate. */
 export function registerConnectors(): void {
   registerJob('fdic-institutions', (env) => runFdicInstitutions(env));
+  registerJob('fdic-financials', (env) => runFdicFinancials(env));
   registerJob('treasury-par-yield', (env) => runParYield(env));
 }
 
@@ -44,6 +49,13 @@ async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {
   const source = fdicInstitutionsSource(now);
   await prepareFdicSource(env);
   reportRun(source.id, await runSource(source, institutionPorts(env, now), writeStdout), env);
+}
+
+async function runFdicFinancials(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  await prepareFinancialsSource(env);
+  const source = fdicFinancialsSource(now, await loadInstitutionIds(env));
+  reportRun(source.id, await runSource(source, financialPorts(env, now), writeStdout), env);
 }
 
 async function runParYield(env: NodeJS.ProcessEnv): Promise<void> {

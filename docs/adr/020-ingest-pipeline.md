@@ -99,6 +99,26 @@ Read from [`institution_properties.yaml`](https://api.fdic.gov/banks/docs/instit
 
 The request sorts by `CERT` ascending, asks for `limit` 10000 (the OpenAPI maximum), and follows `offset` until `meta.total`. It stops at 20 pages. A row that is not an `Institution` fails the run, so a partial directory is not published. The previous version stays. A nightly request of one row checks that `meta.total` and `CERT`, `NAME`, `STALP`, `ACTIVE` are still present. The snapshot test does not call the network.
 
+### FDIC financials (2026-11-12)
+
+Read from [`risview_properties.yaml`](https://api.fdic.gov/banks/docs/risview_properties.yaml) (the Financial API Definitions file linked from the BankFind docs) and `GET /financials` on server `/banks`. The Monday 11:00 job is `ready`. `as_of` is `REPDTE`, the last day of the reporting period, not the run date. The same quarter hashes the same and stays `held` with `unchanged`. Ratios are percent points. Each JSON number token is read as text, rounded half-up to four decimal places with decimal.js, then converted once with `toNumber()` because `MetricValue` stores a display percent. `ASSET` and `DEP` are already thousands of USD; they are stored as that integer and are not passed through `centsFromInteger`.
+
+| `MetricKey` or column | FDIC field | Units | Formula |
+| --- | --- | --- | --- |
+| `tier1LeverageRatio` | `RBC1AAJ` LEVERAGE RATIO-PCA | percent | `RBCT1` / `AVASSETJ` |
+| `totalRiskBasedCapitalRatio` | `RBCRWAJ` TOTAL RBC RATIO-PCA | percent | `RBC` / `RWAJT` |
+| `allowanceToLoans` | `LNATRESR` LOAN LOSS RESERVE/GROSS LN&LS | percent | `LNATRES` / `LNLSGR` |
+| `loansToDeposits` | `LNLSDEPR` NET LOANS & LEASES/DEPOSITS | percent | `LNLSNET` / `DEP` |
+| `noncurrentLoansRatio` | `NCLNLSR` N/C LNS & LS/GROSS LNS & LS | percent | `NCLNLS` / `LNLSGRJ` |
+| `returnOnAssets` | `ROA` Return on assets | percent | `NETINCA` / `ASSET5`. Net income after taxes and extraordinary items, annualized, as a percent of average total assets. |
+| `liquidAssetsToAssets` | none | — | No title in the dictionary matches this ratio. The key is omitted. The page shows n/a. |
+| `totalAssetsUsdThousands` | `ASSET` Total assets | thousands of USD | Sum of all assets. Off-balance-sheet items are excluded. |
+| `deposits_usd_thousands` | `DEP` Total deposits | thousands of USD | Demand, money market, other savings, time, and foreign-office deposits. Nullable. A later registry step turns the digit string into cents by appending five zeros. |
+
+`balanceSheetMix` is `[]`. The dictionary has no partition that sums to 1. A row with no `ASSET` or no `DEP` is skipped, so the page shows “no call report” rather than zero. A certificate that is not in the current `institutions` version is skipped. The directory is not part of the hashed body. A probe `sort_by=REPDTE&sort_order=DESC&limit=1` reads the newest compact date and is not stored. Pages then use `filters=REPDTE:<YYYYMMDD>`, `sort_by=CERT`, `limit` 10000, until `meta.total`, and stop at 20 pages. `requestCount` includes the probe.
+
+Bounds live in `FINANCIAL_BOUNDS`: leverage, total RBC, allowance, and noncurrent loans 0–100 percent points; loans to deposits 0–300; return on assets −20–20. A quarterly move above 0.5 percentage points is suspicious. `official_api` publishes nothing when any row is suspicious and queues one reason. Fewer than half the previous quarter’s rows is the existing `countGate`. Market median (even count: mean of the two middle values), mean, and percentile (share of values at or below this bank) are half-up over the published banks of that quarter. The method on `/methodology` is a DRAFT.
+
 ### eCFR title 12 parts 330, 745, and 328 (2026-11-10)
 
 Read from the [versioner v1 documentation](https://www.ecfr.gov/developers/documentation/api/v1). Base `https://www.ecfr.gov/api/versioner/v1`. No API key. The full part XML is not stored. The 05:00 jobs stay `pending` until a review row can be written. The 06:30 shape check requests versions for part 330 only.

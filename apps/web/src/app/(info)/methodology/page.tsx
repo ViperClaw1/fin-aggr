@@ -47,6 +47,14 @@ export default function MethodologyPage() {
         products you cannot open. Within each group the order is by net interest. Ads never take
         part in the ranking.
       </p>
+      <h2>Bank health</h2>
+      <p>
+        DRAFT. Ratios on a bank page come from the FDIC call report for the quarter date shown
+        there. The market median and the market mean are the half-up, four-decimal figures for the
+        banks published that quarter. The percentile is the share of those banks at or below this
+        bank, rounded half-up to a whole percent. A ratio the FDIC dictionary does not define is
+        left blank.
+      </p>
       <h2>Sources</h2>
       <p>
         Each rate, penalty and limit links to the document it comes from, with its verification

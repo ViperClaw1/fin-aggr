@@ -94,6 +94,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
+    ready: true,
   },
   {
     id: 'ncua-5300',

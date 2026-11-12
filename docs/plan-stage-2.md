@@ -181,7 +181,7 @@
 | № | Источник | Доступ | Куда | Обновление |
 | --- | --- | --- | --- | --- |
 | 6.1 | FDIC BankFind `institutions` | REST, без ключа | `institutions` | раз в сутки. Разбор и снимок — 2026-11-09 (ADR-020). С 2026-11-11 джоба 07:00 зарегистрирована и публикует версию: лог `source fdic-institutions published rows=… queued=… version=…` |
-| 6.2 | FDIC BankFind `financials` | так же | `bank_metrics` | раз в квартал, проверка раз в неделю |
+| 6.2 | FDIC BankFind `financials` | так же | `bank_metrics` | раз в квартал, проверка раз в неделю. С 2026-11-12 джоба понедельника зарегистрирована (`ready`). Поля — из `risview_properties.yaml`, таблица в ADR-020. `liquidAssetsToAssets` в словаре нет и не публикуется. `ASSET` и `DEP` остаются целыми тысячами USD, не центами. `as_of` = `REPDTE` |
 | 6.3 | NCUA 5300 Call Report | ZIP за квартал | `institutions`, `bank_metrics` | раз в квартал |
 | 6.4 | FDIC National Rates через FRED | ключ по email | рынок для сравнения | раз в месяц |
 | 6.5 | Treasury Fiscal Data, TreasuryDirect, Daily Par Yield Curve | без ключа | Fiscal Data и TreasuryDirect ещё не подключены. Par Yield с 2026-11-12 — бенчмарк в `reference` (`par_yields`), не продукт | раз в сутки |
