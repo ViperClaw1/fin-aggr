@@ -33,6 +33,11 @@ describe('nightly live shape', () => {
       if (url.includes('ecfr.gov')) {
         return Promise.resolve(new Response(read('ecfr/versions-330.json'), { status: 200 }));
       }
+      if (url.includes('daily-treasury-rates.csv')) {
+        return Promise.resolve(
+          new Response(read('treasury/par-yield.snapshot.csv'), { status: 200 }),
+        );
+      }
       return Promise.resolve(
         new Response(read('register/documents.snapshot.json'), { status: 200 }),
       );
@@ -41,6 +46,7 @@ describe('nightly live shape', () => {
       'fdic institutions shape ok',
       'ecfr 330 unchanged',
       'federal register shape ok',
+      'treasury par yield shape ok',
     ]);
   });
 });

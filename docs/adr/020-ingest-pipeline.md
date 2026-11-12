@@ -131,6 +131,35 @@ The fixture limit stays `$250,000`, `unverified`, `isMock: false`. The ingest qu
 
 Rev. Proc. 2025-32, Internal Revenue Bulletin 2025-45, page 695 (`https://www.irs.gov/irb/2025-45_IRB`), section 4.01 tables 1–4 for taxable years beginning in 2026. Thresholds are the "not over" dollar figures, converted with `centsFromInteger` by appending two zeros to the digit string. Rates use `rateFromPercent`. Each bracket keeps the table-row quote. Table 5 (estates and trusts) is not a filing status. The draft is `unverified`, `isMock: false`, and is not imported by fixtures or `TAX_YEAR`. State rates are not in this slice.
 
+### Daily Treasury Par Yield Curve (2026-11-12)
+
+Read from the [interest-rate data center](https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve) and the CSV it links for the current year:
+
+`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/<year>/all?type=daily_treasury_yield_curve&field_tdr_date_value=<year>&page&_format=csv`
+
+The empty `page` parameter is part of that URL. The header read on 2026-11-12 is `Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr","5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"`. These are Constant Maturity Treasury rates from the daily par curve. Bill bank-discount columns, coupon-equivalent columns, and the extrapolation factor are a different file and are not stored. The 23:30 UTC job is `ready`. A weekend or holiday returns the same file, the hash matches, and the run is `held` with `unchanged`. That is a success.
+
+| CSV column | CMT maturity | Stored `tenor` |
+| --- | --- | --- |
+| `1 Mo` | 1 month | `1M` |
+| `1.5 Month` | 1.5 months (series from 2025-02-18) | `1.5M` |
+| `2 Mo` | 2 months | `2M` |
+| `3 Mo` | 3 months | `3M` |
+| `4 Mo` | 4 months (series from 2022-10-19) | `4M` |
+| `6 Mo` | 6 months | `6M` |
+| `1 Yr` | 1 year | `1Y` |
+| `2 Yr` | 2 years | `2Y` |
+| `3 Yr` | 3 years | `3Y` |
+| `5 Yr` | 5 years | `5Y` |
+| `7 Yr` | 7 years | `7Y` |
+| `10 Yr` | 10 years | `10Y` |
+| `20 Yr` | 20 years | `20Y` |
+| `30 Yr` | 30 years | `30Y` |
+
+`Date` is `MM/DD/YYYY` and becomes `curve_date`. Each percent string becomes a `Rate` with `rateFromPercent` (`4.05` → `0.0405`). `N/A` or a blank cell is a missing tenor and holds the batch. A date after the fetch day, or a rate outside 0–20%, holds the batch. A move of more than 50bp is reviewed only for the newest date: against the stored rate for that same date, otherwise against the prior date in the file, otherwise against the newest stored curve. Older days in the year file are not flagged. The comparison set is that newest stored date, not the whole year, so the first file of a new year is not a shrink.
+
+This is a market benchmark, not a `Product`. It is stored in `par_yields` on domain `reference`. `reference` has one current version, and tax and insurance already use it. Calling `publish_domain('reference', …)` would clear `is_current` on that version and hide those rows from `anon`. The curve therefore replaces `par_yields` on the current reference version and does not copy tax or insurance rows. A reference version is created only when none is current. `dataset_versions.as_of` for an existing reference version stays the tax or insurance date; the curve date is `curve_date`. Revalidate tag `reference` also refreshes tax and insurance pages. Treasury bills and notes that are products stay on domain `treasury`.
+
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.
 - Publish every parsed row and fix mistakes later: rejected. A wrong rate is the consumer-risk in the plan. Hold is the default.

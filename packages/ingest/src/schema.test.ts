@@ -33,6 +33,19 @@ describe('review decisions', () => {
   });
 });
 
+describe('par yields', () => {
+  const yields = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261112130000_par_yields.sql'),
+    'utf8',
+  );
+
+  it('stores the curve rate as text for readers and caps it at 20%', () => {
+    expect(yields).toContain('rate rate not null check (rate <= 0.2)');
+    expect(yields).toContain('rate::text');
+    expect(yields).toContain('par_yields_text');
+  });
+});
+
 describe('bank opt-out', () => {
   const optOut = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261111180000_source_opt_out.sql'),

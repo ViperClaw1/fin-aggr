@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { checkEcfrPartShape } from './ecfr/live';
 import { checkInstitutionShape } from './fdic/live';
 import { checkRegisterShape } from './register/live';
+import { checkParYieldShape } from './treasury/live';
 
 function recorded(name: string): unknown {
   return JSON.parse(readFileSync(join(import.meta.dirname, 'ecfr', name), 'utf8')) as unknown;
@@ -19,6 +20,7 @@ export async function checkLiveShapes(fetchImpl: typeof fetch): Promise<string[]
       recorded('structure-330.json'),
     ),
     await checkRegisterShape(fetchImpl),
+    await checkParYieldShape(fetchImpl),
   ];
 }
 

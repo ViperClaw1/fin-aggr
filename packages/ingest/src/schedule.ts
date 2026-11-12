@@ -51,6 +51,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '30 23 * * *',
     workflow: 'ingest-daily-2330.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'bank-rates',

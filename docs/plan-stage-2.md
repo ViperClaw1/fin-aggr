@@ -184,7 +184,7 @@
 | 6.2 | FDIC BankFind `financials` | так же | `bank_metrics` | раз в квартал, проверка раз в неделю |
 | 6.3 | NCUA 5300 Call Report | ZIP за квартал | `institutions`, `bank_metrics` | раз в квартал |
 | 6.4 | FDIC National Rates через FRED | ключ по email | рынок для сравнения | раз в месяц |
-| 6.5 | Treasury Fiscal Data, TreasuryDirect, Daily Par Yield Curve | без ключа | `products` (treasury) | раз в сутки |
+| 6.5 | Treasury Fiscal Data, TreasuryDirect, Daily Par Yield Curve | без ключа | Fiscal Data и TreasuryDirect ещё не подключены. Par Yield с 2026-11-12 — бенчмарк в `reference` (`par_yields`), не продукт | раз в сутки |
 
 - Соответствие полей источника нашим полям — в ADR-020, с кодами из OpenAPI и словарей источников.
 - Значения рынка (медиана, среднее, перцентиль) считаются в `ingest`; метод — на `/methodology`.

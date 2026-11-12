@@ -1,5 +1,5 @@
 # Nightly shape check (plan steps 6 and 7): one FDIC institutions row,
-# eCFR title 12 part 330, and one Federal Register document.
+# eCFR title 12 part 330, one Federal Register document, and the Treasury par-yield header.
 # An eCFR amendment change prints "ecfr 330 changed" and still exits 0.
 # A broken response shape exits 1. No artifacts.
 name: Ingest live shape

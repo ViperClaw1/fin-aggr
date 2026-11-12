@@ -1,22 +1,25 @@
 import { fdicInstitutionsSource } from './fdic/institutions';
-import { prepareFdicSource, institutionPorts } from './postgres/ports';
-import { runSource } from './pipeline';
+import {
+  prepareFdicSource,
+  institutionPorts,
+  parYieldPorts,
+  prepareParYieldSource,
+} from './postgres/ports';
+import { runSource, type RunSummary } from './pipeline';
 import { formatRunLine, writeStdout, writeStepSummary } from './run-line';
 import { registerJob } from './schedule';
+import { parYieldSource } from './treasury/par-yield';
 
 /** Step 6 wires a connector. A second call is a mistake: registerJob refuses a duplicate. */
 export function registerConnectors(): void {
   registerJob('fdic-institutions', (env) => runFdicInstitutions(env));
+  registerJob('treasury-par-yield', (env) => runParYield(env));
 }
 
-async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {
-  const now = (): string => new Date().toISOString();
-  const source = fdicInstitutionsSource(now);
-  await prepareFdicSource(env);
-  const summary = await runSource(source, institutionPorts(env, now), writeStdout);
+function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): void {
   const version = summary.versionId === null ? '-' : String(summary.versionId);
   const line = formatRunLine({
-    id: source.id,
+    id,
     status: summary.status,
     rows: summary.published,
     queued: summary.queued,
@@ -27,11 +30,25 @@ async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {
   writeStepSummary(line, env);
   if (summary.revalidateStatus !== null) {
     const status = String(summary.revalidateStatus);
-    writeStdout(`source ${source.id} failed stage=revalidate status=${status}`);
-    throw new Error(`source ${source.id} revalidate failed`);
+    writeStdout(`source ${id} failed stage=revalidate status=${status}`);
+    throw new Error(`source ${id} revalidate failed`);
   }
   if (summary.status === 'published' && summary.versionId === null) {
-    throw new Error(`source ${source.id} published without a version`);
+    throw new Error(`source ${id} published without a version`);
   }
-  if (summary.status === 'failed') throw new Error(`source ${source.id} failed`);
+  if (summary.status === 'failed') throw new Error(`source ${id} failed`);
+}
+
+async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  const source = fdicInstitutionsSource(now);
+  await prepareFdicSource(env);
+  reportRun(source.id, await runSource(source, institutionPorts(env, now), writeStdout), env);
+}
+
+async function runParYield(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  const source = parYieldSource(now);
+  await prepareParYieldSource(env);
+  reportRun(source.id, await runSource(source, parYieldPorts(env, now), writeStdout), env);
 }

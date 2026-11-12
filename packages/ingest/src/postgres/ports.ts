@@ -7,6 +7,7 @@ import { createReviewIssue } from '../github';
 import type { PipelinePorts } from '../pipeline';
 import { SIGNED_URL_SECONDS } from '../policy';
 import { RAW_BUCKET } from '../scrape/rules';
+import type { ParYieldPoint } from '../treasury/par-yield';
 import {
   commitInstitutions,
   ensureFdicSource,
@@ -14,9 +15,14 @@ import {
   latestSnapshotHash,
   previousInstitutions,
 } from './institutions';
+import { commitParYields, ensureParYieldSource, previousParYields } from './par-yield';
 
 export async function prepareFdicSource(env: NodeJS.ProcessEnv): Promise<void> {
   await withClient(databaseUrl(env), ensureFdicSource);
+}
+
+export async function prepareParYieldSource(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureParYieldSource);
 }
 
 function storageClient(env: NodeJS.ProcessEnv) {
@@ -65,6 +71,29 @@ export function institutionPorts(
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
     revalidate: () => revalidateDomain(env, 'institutions'),
     notifyFailure: (message, title) => notifyFailure(env, message, title),
+  };
+}
+
+/** Ports for the par yield curve. A quiet weekend is `held`, which the runner does not fail. */
+export function parYieldPorts(
+  env: NodeJS.ProcessEnv,
+  now: () => string,
+): PipelinePorts<ParYieldPoint> {
+  return {
+    now,
+    latestHash: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
+    previousRows: () => withClient(databaseUrl(env), previousParYields),
+    commit: (input) => withClient(databaseUrl(env), (sql) => commitParYields(sql, input)),
+    sign: (snapshotId) => signSnapshot(env, snapshotId),
+    openIssue: (input) => openReview(env, input),
+    attachIssue: (queueId, issueUrl) =>
+      withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
+    finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
+    revalidate: () => revalidateDomain(env, 'reference'),
+    notifyFailure: (message, title = 'Ingest treasury-par-yield failed') =>
+      notifyFailure(env, message, title),
   };
 }
 
