@@ -56,7 +56,7 @@ describe('FDIC financials', () => {
         metrics: {
           ...jumping.report.metrics,
           tier1LeverageRatio: {
-            value: { value: 4, marketMedian: 4, marketMean: 4, percentile: 50, outlier: false },
+            value: { value: 4, marketMedian: 4, marketMean: 4, percentile: 50, outlier: null },
             provenance: jumping.report.provenance,
           },
         },
@@ -65,7 +65,7 @@ describe('FDIC financials', () => {
     const reviewed = validateFdicFinancials(both, [previous, stable], '2026-11-12');
     expect(reviewed.blocked).toBeNull();
     expect(reviewed.suspicious).toEqual([]);
-    expect(reviewed.clean[0]?.report.metrics.tier1LeverageRatio?.value.outlier).toBe(true);
+    expect(reviewed.clean[0]?.report.metrics.tier1LeverageRatio?.value.outlier).toBe('jump');
     expect(validateFdicFinancials([], [], '2026-11-12').blocked).toBe('empty');
   });
 
@@ -96,7 +96,8 @@ describe('FDIC financials', () => {
     );
     expect(reviewed.blocked).toBeNull();
     const flagged = reviewed.clean[0]?.report.metrics.totalRiskBasedCapitalRatio?.value;
-    expect(flagged?.outlier).toBe(true);
+    expect(flagged?.outlier).toBe('band');
+    expect(flagged?.percentile).toBeNull();
     expect(flagged?.marketMedian).toBe(peer.report.metrics.totalRiskBasedCapitalRatio?.value.value);
     expect(validateFdicFinancials([specialist, peer], [], '2026-11-12').blocked).toBe(
       'outlier_share',

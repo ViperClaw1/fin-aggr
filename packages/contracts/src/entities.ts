@@ -30,9 +30,19 @@ export const MetricValue = z.strictObject({
   value: z.number(),
   marketMedian: z.number(),
   marketMean: z.number(),
-  percentile: z.number().min(0).max(100),
-  /** Outside the typical band, or a jump past that metric's threshold. Left out of the market. */
-  outlier: z.boolean(),
+  percentile: z.number().min(0).max(100).nullable(),
+  /**
+   * Why this bank is left out of the market. `band` is outside the fixed review band.
+   * `jump` is a quarterly move past that metric's threshold. Null is inside the comparison.
+   * A stored `true` from the first financials publish is read as `band`.
+   */
+  outlier: z
+    .union([z.enum(['band', 'jump']), z.boolean(), z.null()])
+    .transform((value): 'band' | 'jump' | null => {
+      if (value === true) return 'band';
+      if (value === false || value === null) return null;
+      return value;
+    }),
 });
 export type MetricValue = z.infer<typeof MetricValue>;
 

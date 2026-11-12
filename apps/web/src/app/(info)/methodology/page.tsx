@@ -50,10 +50,12 @@ export default function MethodologyPage() {
       <h2>Bank health</h2>
       <p>
         DRAFT. Ratios on a bank page come from the FDIC call report for the quarter date shown
-        there. The market median, mean, and percentile use the banks inside the typical band for
-        that quarter. A bank outside the band is marked as an outlier and is left out of those
-        figures. The figures are half-up, four decimal places. A ratio the FDIC dictionary does not
-        define is left blank.
+        there. The market median, mean, and percentile use only the banks inside a fixed band for
+        that quarter, not a percentile cutoff of the quarter itself. A bank outside that band, or
+        one whose ratio jumped past the threshold for that ratio, is left out of those figures. The
+        page shows the ratio and says it is outside the market comparison. It does not invent a
+        percentile. The figures are half-up, four decimal places. A ratio the FDIC dictionary does
+        not define is left blank.
       </p>
       <h2>Sources</h2>
       <p>

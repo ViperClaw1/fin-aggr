@@ -98,7 +98,9 @@ function OpenSync({ onChange }: { onChange: (open: (ref: OpenCitation) => void) 
 function metricText(value: MetricValue): string {
   const point = formatPercentPoints(value.value);
   const market = `median ${formatPercentPoints(value.marketMedian)}, mean ${formatPercentPoints(value.marketMean)}`;
-  if (value.outlier) return `${point} (outlier), ${market}`;
+  if (value.outlier !== null || value.percentile === null) {
+    return `${point} (outside the market comparison), ${market}`;
+  }
   return `${point}, ${market}, percentile ${String(value.percentile)}`;
 }
 

@@ -2,7 +2,7 @@ import { METRIC_KEYS, type BankMetrics as Report, type MetricKey } from '@fa/con
 import { Decimal } from 'decimal.js';
 import { FINANCIAL_BOUNDS, FINANCIAL_IMPOSSIBLE, FINANCIAL_OUTLIER_SHARE } from '../policy';
 import type { ValidationReport } from '../validate';
-import type { CallReport } from './financials';
+import type { CallReport } from './financials-types';
 import { mean, median, percentPoints, percentile } from './financials-market';
 
 function outsideBand(key: MetricKey, value: Decimal): boolean {
@@ -28,7 +28,9 @@ function flagRow(row: CallReport, previous: CallReport | undefined): CallReport 
     const value = new Decimal(fact.value.value);
     const before = previous?.report.metrics[key];
     const prior = before === undefined ? null : new Decimal(before.value.value);
-    const outlier = outsideBand(key, value) || (prior !== null && jumped(key, value, prior));
+    let outlier: 'band' | 'jump' | null = null;
+    if (outsideBand(key, value)) outlier = 'band';
+    else if (prior !== null && jumped(key, value, prior)) outlier = 'jump';
     metrics[key] = { ...fact, value: { ...fact.value, outlier } };
   }
   return { ...row, report: { ...row.report, metrics } };
@@ -46,11 +48,11 @@ function marketMetrics(
     const outlier = fact.value.outlier;
     const market =
       sample.length === 0
-        ? { marketMedian: 0, marketMean: 0, percentile: 0 }
+        ? { marketMedian: 0, marketMean: 0, percentile: null }
         : {
             marketMedian: percentPoints(median(sample)),
             marketMean: percentPoints(mean(sample)),
-            percentile: outlier ? 0 : percentile(new Decimal(fact.value.value), sample),
+            percentile: outlier === null ? percentile(new Decimal(fact.value.value), sample) : null,
           };
     metrics[key] = { ...fact, value: { ...fact.value, ...market, outlier } };
   }

@@ -1,13 +1,10 @@
-import {
-  BankMetrics,
-  METRIC_KEYS,
-  type BankMetrics as Report,
-  type MetricKey,
-} from '@fa/contracts';
+import { BankMetrics, METRIC_KEYS, type MetricKey } from '@fa/contracts';
 import { Decimal } from 'decimal.js';
 import { CodedError } from '../fetch-budget';
 import { withMarket } from './financials-check';
+import type { CallReport, FdicFinancialsRaw } from './financials-types';
 
+export type { CallReport, FdicFinancialsRaw } from './financials-types';
 export { validateFdicFinancials } from './financials-check';
 
 /** `GET /financials` on server `/banks`. Field codes from risview_properties.yaml, read 2026-11-12. */
@@ -22,16 +19,6 @@ const RATIO_FIELDS = {
   noncurrentLoansRatio: 'NCLNLSR',
   returnOnAssets: 'ROA',
 } as const satisfies Record<Exclude<MetricKey, 'liquidAssetsToAssets'>, string>;
-
-export interface FdicFinancialsRaw {
-  retrievedAt: string;
-  responses: readonly { url: string; body: string }[];
-}
-
-export interface CallReport {
-  report: Report;
-  depositsUsdThousands: number | null;
-}
 
 function digitsToInt(digits: string): number {
   let value = 0;
@@ -166,8 +153,8 @@ function oneReport(
         value: points.toNumber(),
         marketMedian: 0,
         marketMean: 0,
-        percentile: 0,
-        outlier: false,
+        percentile: null,
+        outlier: null,
       },
       provenance,
     };

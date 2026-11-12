@@ -45,7 +45,7 @@ export function generateBankMetrics(
             marketMedian: percent(median),
             marketMean: percent(median + rng.int(-30, 30)),
             percentile: rng.int(1, 99),
-            outlier: false,
+            outlier: null,
           },
           provenance,
         };

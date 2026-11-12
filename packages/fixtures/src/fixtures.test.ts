@@ -168,7 +168,7 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
-    // 94795416: document clauses other than the penalty belong to the same product (fine print)
-    expect(fnv1a(JSON.stringify(f))).toBe('94795416');
+    // 459d396c: call-report outliers are null, not a boolean, and have no percentile
+    expect(fnv1a(JSON.stringify(f))).toBe('459d396c');
   });
 });
