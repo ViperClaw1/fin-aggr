@@ -73,7 +73,7 @@ describe('BankMetrics', () => {
     totalAssetsUsdThousands: 1200000,
     metrics: {
       tier1LeverageRatio: {
-        value: { value: 9.1, marketMedian: 10.2, marketMean: 10.8, percentile: 35 },
+        value: { value: 9.1, marketMedian: 10.2, marketMean: 10.8, percentile: 35, outlier: false },
         provenance,
       },
     },

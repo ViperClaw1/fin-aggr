@@ -95,6 +95,13 @@ function OpenSync({ onChange }: { onChange: (open: (ref: OpenCitation) => void) 
   return null;
 }
 
+function metricText(value: MetricValue): string {
+  const point = formatPercentPoints(value.value);
+  const market = `median ${formatPercentPoints(value.marketMedian)}, mean ${formatPercentPoints(value.marketMean)}`;
+  if (value.outlier) return `${point} (outlier), ${market}`;
+  return `${point}, ${market}, percentile ${String(value.percentile)}`;
+}
+
 function CallReport({
   metrics,
   now,
@@ -138,9 +145,7 @@ function CallReport({
                     fact={fact}
                     {...(now === null ? {} : { now })}
                     {...open}
-                    render={(value) =>
-                      `${formatPercentPoints(value.value)}, median ${formatPercentPoints(value.marketMedian)}, mean ${formatPercentPoints(value.marketMean)}, percentile ${String(value.percentile)}`
-                    }
+                    render={(value) => metricText(value)}
                   />
                   <MetricChart label={METRIC_LABEL[key]} metric={fact.value} />
                 </div>

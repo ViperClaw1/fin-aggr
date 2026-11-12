@@ -45,23 +45,72 @@ describe('FDIC financials', () => {
   it('drops a bank outside the directory and reviews a quarterly jump', () => {
     const rows = parseFdicFinancials(raw(), new Set(['fdic:3510']));
     expect(rows).toHaveLength(1);
-    const current = rows[0];
-    if (current === undefined) throw new Error('expected a call report');
+    const both = parseFdicFinancials(raw(), ids);
+    const jumping = both[0];
+    const stable = both[1];
+    if (jumping === undefined || stable === undefined) throw new Error('expected a call report');
     const previous: CallReport = {
-      depositsUsdThousands: current.depositsUsdThousands,
+      depositsUsdThousands: jumping.depositsUsdThousands,
       report: {
-        ...current.report,
+        ...jumping.report,
         metrics: {
+          ...jumping.report.metrics,
           tier1LeverageRatio: {
-            value: { value: 6, marketMedian: 6, marketMean: 6, percentile: 50 },
-            provenance: current.report.provenance,
+            value: { value: 4, marketMedian: 4, marketMean: 4, percentile: 50, outlier: false },
+            provenance: jumping.report.provenance,
           },
         },
       },
     };
-    const reviewed = validateFdicFinancials(rows, [previous], '2026-11-12');
-    expect(reviewed.suspicious.map((row) => row.reasons)).toEqual([['tier1LeverageRatio move']]);
+    const reviewed = validateFdicFinancials(both, [previous, stable], '2026-11-12');
+    expect(reviewed.blocked).toBeNull();
+    expect(reviewed.suspicious).toEqual([]);
+    expect(reviewed.clean[0]?.report.metrics.tier1LeverageRatio?.value.outlier).toBe(true);
     expect(validateFdicFinancials([], [], '2026-11-12').blocked).toBe('empty');
+  });
+
+  it('publishes a ratio above the band and drops it from the market median', () => {
+    const rows = parseFdicFinancials(raw(), ids);
+    const peer = rows[1];
+    const high = rows[0];
+    if (peer === undefined || high === undefined) throw new Error('expected a call report');
+    const fact = high.report.metrics.totalRiskBasedCapitalRatio;
+    if (fact === undefined) throw new Error('expected a capital ratio');
+    const specialist: CallReport = {
+      ...high,
+      report: {
+        ...high.report,
+        metrics: {
+          ...high.report.metrics,
+          totalRiskBasedCapitalRatio: {
+            ...fact,
+            value: { ...fact.value, value: 400 },
+          },
+        },
+      },
+    };
+    const reviewed = validateFdicFinancials(
+      [specialist, ...Array.from({ length: 20 }, () => peer)],
+      [],
+      '2026-11-12',
+    );
+    expect(reviewed.blocked).toBeNull();
+    const flagged = reviewed.clean[0]?.report.metrics.totalRiskBasedCapitalRatio?.value;
+    expect(flagged?.outlier).toBe(true);
+    expect(flagged?.marketMedian).toBe(peer.report.metrics.totalRiskBasedCapitalRatio?.value.value);
+    expect(validateFdicFinancials([specialist, peer], [], '2026-11-12').blocked).toBe(
+      'outlier_share',
+    );
+    const broken: CallReport = {
+      ...specialist,
+      report: {
+        ...specialist.report,
+        metrics: {
+          totalRiskBasedCapitalRatio: { ...fact, value: { ...fact.value, value: 20000 } },
+        },
+      },
+    };
+    expect(validateFdicFinancials([broken], [], '2026-11-12').blocked).toBe('impossible');
   });
 
   it('probes one certificate and pages inside the budget', async () => {

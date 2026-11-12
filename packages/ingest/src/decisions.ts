@@ -1,4 +1,5 @@
 import { requireReviewer } from './policy';
+import { integerId } from './postgres/id';
 
 export interface Sql {
   query(text: string, values?: readonly unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
@@ -25,9 +26,7 @@ export interface OpenReview {
 }
 
 function numberField(row: Record<string, unknown>, key: string): number {
-  const value = row[key];
-  if (typeof value !== 'number') throw new Error(`review row is missing ${key}`);
-  return value;
+  return integerId(row[key]);
 }
 
 function textField(row: Record<string, unknown>, key: string): string {
@@ -43,7 +42,7 @@ export function openReview(row: Record<string, unknown>): OpenReview {
     source_id: textField(row, 'source_id'),
     domain: textField(row, 'domain'),
     reason: textField(row, 'reason'),
-    snapshot_id: typeof snapshot === 'number' ? snapshot : null,
+    snapshot_id: snapshot === null || snapshot === undefined ? null : integerId(snapshot),
   };
 }
 

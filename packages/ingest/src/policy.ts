@@ -18,18 +18,27 @@ export const PRODUCT_BOUNDS = {
 
 /**
  * Call-report ratios are percent points, not rates.
- * A quarterly move above `maxMove` (50 basis points of a percent) is reviewed.
- * Read 2026-11-12 from the FDIC financial dictionary; see ADR-020.
+ * `low`/`high` is the typical band. A value outside it is published as an outlier
+ * and left out of the market median, mean, and percentile.
+ * `move` is that metric's quarterly jump, in percentage points.
+ * More than 5% of a metric outside the band, a median jump above `move`,
+ * or a value outside the impossible envelope holds the quarter.
+ * The band is a review rule, not an FDIC limit. See ADR-020.
  */
 export const FINANCIAL_BOUNDS = {
-  tier1LeverageRatio: ['0', '100'],
-  totalRiskBasedCapitalRatio: ['0', '100'],
-  allowanceToLoans: ['0', '100'],
-  loansToDeposits: ['0', '300'],
-  noncurrentLoansRatio: ['0', '100'],
-  returnOnAssets: ['-20', '20'],
-  maxMove: '0.5',
+  tier1LeverageRatio: { low: '0', high: '100', move: '2' },
+  totalRiskBasedCapitalRatio: { low: '0', high: '100', move: '5' },
+  allowanceToLoans: { low: '0', high: '100', move: '1' },
+  loansToDeposits: { low: '0', high: '300', move: '25' },
+  noncurrentLoansRatio: { low: '0', high: '100', move: '2' },
+  returnOnAssets: { low: '-20', high: '20', move: '3' },
 } as const;
+
+/** A ratio outside this envelope cannot be a call-report percent. It holds the quarter. */
+export const FINANCIAL_IMPOSSIBLE = { low: '-1000', high: '10000' } as const;
+
+/** Share of values outside the typical band. Above this, the quarter is a mass shift. */
+export const FINANCIAL_OUTLIER_SHARE = '0.05';
 
 const LOGIN = /^[A-Za-z0-9-]{1,39}$/;
 

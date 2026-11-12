@@ -31,6 +31,8 @@ export const MetricValue = z.strictObject({
   marketMedian: z.number(),
   marketMean: z.number(),
   percentile: z.number().min(0).max(100),
+  /** Outside the typical band, or a jump past that metric's threshold. Left out of the market. */
+  outlier: z.boolean(),
 });
 export type MetricValue = z.infer<typeof MetricValue>;
 

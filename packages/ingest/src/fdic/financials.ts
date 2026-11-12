@@ -4,11 +4,11 @@ import {
   type BankMetrics as Report,
   type MetricKey,
 } from '@fa/contracts';
-import { CodedError } from '../fetch-budget';
 import { Decimal } from 'decimal.js';
-import { FINANCIAL_BOUNDS } from '../policy';
-import type { ValidationReport } from '../validate';
-import { mean, median, percentPoints, percentile } from './financials-market';
+import { CodedError } from '../fetch-budget';
+import { withMarket } from './financials-check';
+
+export { validateFdicFinancials } from './financials-check';
 
 /** `GET /financials` on server `/banks`. Field codes from risview_properties.yaml, read 2026-11-12. */
 const ENDPOINT = 'https://api.fdic.gov/banks/financials';
@@ -162,7 +162,13 @@ function oneReport(
     if (literal === null) continue;
     const points = new Decimal(literal).toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
     metrics[key] = {
-      value: { value: points.toNumber(), marketMedian: 0, marketMean: 0, percentile: 0 },
+      value: {
+        value: points.toNumber(),
+        marketMedian: 0,
+        marketMean: 0,
+        percentile: 0,
+        outlier: false,
+      },
       provenance,
     };
   }
@@ -175,48 +181,6 @@ function oneReport(
     provenance,
   });
   return { report, depositsUsdThousands: thousands(deposits, 'deposits') };
-}
-
-function withMarket(rows: readonly CallReport[]): CallReport[] {
-  const byKey = new Map<MetricKey, Decimal[]>();
-  for (const key of METRIC_KEYS) {
-    if (key === 'liquidAssetsToAssets') continue;
-    byKey.set(
-      key,
-      rows.flatMap((row) => {
-        const fact = row.report.metrics[key];
-        return fact === undefined ? [] : [new Decimal(fact.value.value)];
-      }),
-    );
-  }
-  return rows.map((row) => ({
-    ...row,
-    report: {
-      ...row.report,
-      metrics: Object.fromEntries(
-        METRIC_KEYS.flatMap((key) => {
-          const fact = row.report.metrics[key];
-          const sample = byKey.get(key);
-          if (fact === undefined || sample === undefined || sample.length === 0) return [];
-          const value = new Decimal(fact.value.value);
-          return [
-            [
-              key,
-              {
-                ...fact,
-                value: {
-                  value: fact.value.value,
-                  marketMedian: percentPoints(median(sample)),
-                  marketMean: percentPoints(mean(sample)),
-                  percentile: percentile(value, sample),
-                },
-              },
-            ],
-          ];
-        }),
-      ),
-    },
-  }));
 }
 
 /** Pure. A bank that is not in the directory, or that has no assets, is omitted. */
@@ -237,51 +201,5 @@ export function parseFdicFinancials(
       rows.push(row);
     }
   }
-  return withMarket(rows);
-}
-
-function limitsOf(key: MetricKey): readonly [string, string] | null {
-  if (key === 'liquidAssetsToAssets') return null;
-  const pair = FINANCIAL_BOUNDS[key];
-  return pair;
-}
-
-function outOfBounds(key: MetricKey, value: number): boolean {
-  const limits = limitsOf(key);
-  if (limits === null) return false;
-  const points = new Decimal(value);
-  return points.lt(limits[0]) || points.gt(limits[1]);
-}
-
-function moved(next: number, previous: number): boolean {
-  return new Decimal(next).minus(previous).abs().gt(FINANCIAL_BOUNDS.maxMove);
-}
-
-export function validateFdicFinancials(
-  rows: readonly CallReport[],
-  previous: readonly CallReport[],
-  asOf: string,
-): ValidationReport<CallReport> {
-  if (rows.length === 0) return { clean: [], suspicious: [], blocked: 'empty' };
-  if (rows.some((row) => row.report.asOf > asOf)) {
-    return { clean: [], suspicious: [], blocked: 'future' };
-  }
-  const prior = new Map(previous.map((row) => [row.report.institutionId, row]));
-  const suspicious: { key: string; reasons: string[] }[] = [];
-  const clean: CallReport[] = [];
-  for (const row of rows) {
-    const reasons: string[] = [];
-    for (const key of METRIC_KEYS) {
-      const fact = row.report.metrics[key];
-      if (fact === undefined) continue;
-      if (outOfBounds(key, fact.value.value)) reasons.push(`${key} bounds`);
-      const before = prior.get(row.report.institutionId)?.report.metrics[key];
-      if (before !== undefined && moved(fact.value.value, before.value.value)) {
-        reasons.push(`${key} move`);
-      }
-    }
-    if (reasons.length > 0) suspicious.push({ key: row.report.institutionId, reasons });
-    else clean.push(row);
-  }
-  return { clean, suspicious, blocked: null };
+  return withMarket(rows, []);
 }

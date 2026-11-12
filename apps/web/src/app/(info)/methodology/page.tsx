@@ -50,10 +50,10 @@ export default function MethodologyPage() {
       <h2>Bank health</h2>
       <p>
         DRAFT. Ratios on a bank page come from the FDIC call report for the quarter date shown
-        there. The market median and the market mean are the half-up, four-decimal figures for the
-        banks published that quarter. The percentile is the share of those banks at or below this
-        bank, rounded half-up to a whole percent. A ratio the FDIC dictionary does not define is
-        left blank.
+        there. The market median, mean, and percentile use the banks inside the typical band for
+        that quarter. A bank outside the band is marked as an outlier and is left out of those
+        figures. The figures are half-up, four decimal places. A ratio the FDIC dictionary does not
+        define is left blank.
       </p>
       <h2>Sources</h2>
       <p>
