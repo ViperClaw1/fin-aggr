@@ -62,10 +62,10 @@ const STATE_ZONE: Record<string, string> = {
 export const PILOT_LIMIT = 10;
 export const DEPOSIT_LIMIT = 50;
 
-export type BankCohort = 'pilot' | 'deposits' | 'open-membership';
+type BankCohort = 'pilot' | 'deposits' | 'open-membership';
 
 /** `unchecked` until someone looks for a public rates API. This step does not fetch the bank. */
-export type RatesChannel = 'unchecked';
+type RatesChannel = 'unchecked';
 
 export interface DirectoryInstitution {
   id: string;
@@ -75,7 +75,7 @@ export interface DirectoryInstitution {
   website: string | null;
 }
 
-export interface DepositRank {
+interface DepositRank {
   institutionId: string;
   depositsCents: string;
 }
