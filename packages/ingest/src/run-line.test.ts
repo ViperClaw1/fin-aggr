@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { formatRunLine, writeStepSummary } from './run-line';
+import { formatRunLine, formatStageFailure, writeStepSummary } from './run-line';
 
 describe('run line', () => {
   it('counts a published fdic run', () => {
@@ -28,6 +28,12 @@ describe('run line', () => {
         revalidate: 'failed',
       }),
     ).toBe('source fdic-institutions published rows=4123 queued=0 version=17 revalidate=failed');
+  });
+
+  it('names the stage and the code when a run throws', () => {
+    expect(formatStageFailure('fdic-financials', 'fetch', 'timeout')).toBe(
+      'source fdic-financials failed stage=fetch code=timeout',
+    );
   });
 
   it('appends the same line to the actions summary', () => {

@@ -93,7 +93,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cadence: 'weekly-monday',
     cron: '0 11 * * 1',
     workflow: 'ingest-weekly.yml',
-    timeoutMinutes: 45,
+    timeoutMinutes: 15,
     ready: true,
   },
   {

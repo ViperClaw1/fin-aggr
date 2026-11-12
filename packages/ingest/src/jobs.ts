@@ -10,7 +10,7 @@ import {
   prepareFinancialsSource,
 } from './postgres/ports';
 import { runSource, type RunSummary } from './pipeline';
-import { formatRunLine, writeStdout, writeStepSummary } from './run-line';
+import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
 import { registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
 
@@ -41,7 +41,16 @@ function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): voi
   if (summary.status === 'published' && summary.versionId === null) {
     throw new Error(`source ${id} published without a version`);
   }
-  if (summary.status === 'failed') throw new Error(`source ${id} failed`);
+  if (summary.status === 'failed') {
+    const line = formatStageFailure(
+      id,
+      summary.failure?.stage ?? 'failed',
+      summary.failure?.code ?? 'failed',
+    );
+    writeStdout(line);
+    writeStepSummary(line, env);
+    throw new Error(line);
+  }
 }
 
 async function runFdicInstitutions(env: NodeJS.ProcessEnv): Promise<void> {

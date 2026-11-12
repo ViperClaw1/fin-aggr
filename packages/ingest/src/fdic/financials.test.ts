@@ -6,6 +6,7 @@ import { commitFinancials } from '../postgres/financials';
 import { checkFinancialsShape, fetchFdicFinancials } from './financials-fetch';
 import {
   financialFieldProblems,
+  financialsProbeUrl,
   parseFdicFinancials,
   validateFdicFinancials,
   type CallReport,
@@ -63,25 +64,71 @@ describe('FDIC financials', () => {
     expect(validateFdicFinancials([], [], '2026-11-12').blocked).toBe('empty');
   });
 
-  it('requests the newest quarter and checks the field names', async () => {
+  it('probes one certificate and pages inside the budget', async () => {
+    const budget = AbortSignal.timeout(5_000);
     const urls: string[] = [];
     const snapshot = await fetchFdicFinancials({
       retrievedAt: RETRIEVED_AT,
-      signal: AbortSignal.timeout(30_000),
+      signal: budget,
+      requestSignal: () => budget,
       pageSize: 1,
+      pause: () => Promise.resolve(),
       fetchImpl: (input) => {
         if (typeof input !== 'string') throw new Error('fdic financials url');
         urls.push(input);
-        return Promise.resolve(new Response(recorded, { status: 200 }));
+        const body = urls.length === 1 ? recorded : oneBank(urls.length === 2 ? 3510 : 628);
+        return Promise.resolve(new Response(body, { status: 200 }));
       },
     });
-    expect(urls[0]).toContain('sort_by=REPDTE');
-    expect(urls[1]).toContain('REPDTE%3A20260630');
-    expect(snapshot.requestCount).toBe(2);
+    expect(urls[0]).toBe(financialsProbeUrl());
+    expect(urls[0]).toContain('filters=CERT%3A3510');
+    expect(urls[0]).toContain('fields=REPDTE');
+    expect(urls[0]).toContain('limit=1');
+    expect(urls[0]).not.toContain('ASSET');
+    expect(urls[1]).toContain('limit=1');
+    expect(urls[2]).toContain('offset=1');
+    expect(urls).toHaveLength(3);
+    expect(snapshot.requestCount).toBe(3);
+    expect(budget.aborted).toBe(false);
     const line = await checkFinancialsShape(() => Promise.resolve(new Response(recorded)));
     expect(line).toBe('fdic financials shape ok');
   });
+
+  it('retries one hung page and does not restart the probe', async () => {
+    const urls: string[] = [];
+    let hung = false;
+    const snapshot = await fetchFdicFinancials({
+      retrievedAt: RETRIEVED_AT,
+      signal: AbortSignal.timeout(5_000),
+      requestSignal: () => AbortSignal.timeout(20),
+      pause: () => Promise.resolve(),
+      fetchImpl: (input, init) => {
+        if (typeof input !== 'string') throw new Error('fdic financials url');
+        urls.push(input);
+        if (urls.length === 1) return Promise.resolve(new Response(recorded, { status: 200 }));
+        if (!hung) {
+          hung = true;
+          return new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              const error = new Error('timed out');
+              error.name = 'TimeoutError';
+              reject(error);
+            });
+          });
+        }
+        return Promise.resolve(new Response(recorded, { status: 200 }));
+      },
+    });
+    expect(urls.filter((url) => url === financialsProbeUrl())).toHaveLength(1);
+    expect(urls.filter((url) => url.includes('limit=2500'))).toHaveLength(2);
+    expect(snapshot.requestCount).toBe(3);
+    expect(snapshot.body.responses).toHaveLength(1);
+  });
 });
+
+function oneBank(cert: number): string {
+  return `{"meta":{"total":2},"data":[{"data":{"CERT":${String(cert)},"REPDTE":"20260630"},"score":0}]}`;
+}
 
 describe('financials publish', () => {
   it('publishes one bank_metrics version', async () => {

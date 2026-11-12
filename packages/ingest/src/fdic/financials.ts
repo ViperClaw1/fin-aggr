@@ -38,9 +38,11 @@ function digitsToInt(digits: string): number {
   return value;
 }
 
+/** One certificate, one field. The newest quarter is the first row, not a scan of the index. */
 export function financialsProbeUrl(): string {
   const params = new URLSearchParams({
     fields: 'REPDTE',
+    filters: 'CERT:3510',
     sort_by: 'REPDTE',
     sort_order: 'DESC',
     limit: '1',

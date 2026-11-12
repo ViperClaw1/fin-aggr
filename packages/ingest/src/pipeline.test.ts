@@ -129,9 +129,14 @@ describe('publish or hold', () => {
     const lines: string[] = [];
     const summary = await runSource(broken, gate, (line) => lines.push(line));
     expect(summary.status).toBe('failed');
+    expect(summary.failure).toEqual({ stage: 'fetch', code: 'failed' });
     expect(gate.commit.mock.calls).toHaveLength(0);
+    expect(gate.finishJob.mock.calls[0]?.[0]).toMatchObject({
+      errors: [{ stage: 'fetch', code: 'failed' }],
+    });
+    expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('fetch failed');
     expect(lines).toEqual(['issue #8 created']);
-    expect(lines.join('\n')).not.toContain('token');
+    expect(JSON.stringify(gate.finishJob.mock.calls)).not.toContain('token');
   });
 
   it('keeps a published version when revalidate returns 500', async () => {

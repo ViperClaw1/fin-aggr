@@ -15,6 +15,11 @@ export function formatRunLine(input: {
   return `source ${input.id} ${input.status} rows=${rows} queued=${queued} version=${input.version}${cache}`;
 }
 
+/** Counts and a code only. The message, the URL, and the payload stay out of the log. */
+export function formatStageFailure(id: string, stage: string, code: string): string {
+  return `source ${id} failed stage=${stage} code=${code}`;
+}
+
 export function writeStdout(line: string): void {
   process.stdout.write(`${line}\n`);
 }

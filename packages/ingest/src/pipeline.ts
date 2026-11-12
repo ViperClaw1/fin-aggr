@@ -1,4 +1,12 @@
 import { createHash } from 'node:crypto';
+import {
+  CodedError,
+  guard,
+  jobRecord,
+  openFetch,
+  stageOf,
+  type FetchContext,
+} from './fetch-budget';
 import { reviewIssueBody } from './github';
 import type { DatasetDomain } from './index';
 import { formatIssueCreated } from './policy';
@@ -6,10 +14,6 @@ import { reportRevalidate, revalidateOrStatus } from './revalidate';
 import { countGate, type ValidationReport } from './validate';
 
 export type SourceKind = 'official_api' | 'scrape' | 'manual';
-
-interface FetchContext {
-  signal: AbortSignal;
-}
 
 interface RawSnapshot<Raw> {
   sha256: string;
@@ -22,6 +26,10 @@ export interface Source<Raw, Parsed> {
   id: string;
   domain: DatasetDomain;
   kind: SourceKind;
+  /** Per request. Default 30s. */
+  requestTimeoutMs?: number;
+  /** Whole `fetch`. Default 30s. */
+  fetchBudgetMs?: number;
   fetch(ctx: FetchContext): Promise<RawSnapshot<Raw>>;
   parse(raw: Raw): Parsed[];
   validate(rows: Parsed[], previous: Parsed[]): ValidationReport<Parsed>;
@@ -34,7 +42,9 @@ interface JobRecord {
   endedAt: string;
   status: 'published' | 'held' | 'failed';
   rowCount: number;
-  errors: readonly ({ code: string } | { stage: 'revalidate'; status: number })[];
+  errors: readonly (
+    { code: string } | { stage: string; code: string } | { stage: 'revalidate'; status: number }
+  )[];
   bytes: number;
   requestCount: number;
 }
@@ -75,6 +85,8 @@ export interface RunSummary {
   /** Current version written by this run. Null when nothing was published. */
   versionId: number | null;
   revalidateStatus: number | null;
+  /** Set when the run threw. The message is not stored. */
+  failure: { stage: string; code: string } | null;
 }
 
 const HASH = /^[0-9a-f]{64}$/;
@@ -111,7 +123,7 @@ export async function runSource<Raw, Parsed>(
   try {
     return await runBody(source, ports, log, startedAt);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'ingest failed';
+    const failure = stageOf(error);
     await ports.finishJob({
       sourceId: source.id,
       domain: source.domain,
@@ -119,11 +131,11 @@ export async function runSource<Raw, Parsed>(
       endedAt: ports.now(),
       status: 'failed',
       rowCount: 0,
-      errors: [{ code: 'failed' }],
+      errors: [failure],
       bytes: 0,
       requestCount: 0,
     });
-    const issue = await ports.notifyFailure(message);
+    const issue = await ports.notifyFailure(`${failure.stage} ${failure.code}`);
     if (issue !== null) log(formatIssueCreated(issue.number));
     return {
       status: 'failed',
@@ -132,6 +144,7 @@ export async function runSource<Raw, Parsed>(
       issueNumber: issue?.number ?? null,
       versionId: null,
       revalidateStatus: null,
+      failure,
     };
   }
 }
@@ -142,11 +155,15 @@ async function runBody<Raw, Parsed>(
   log: (line: string) => void,
   startedAt: string,
 ): Promise<RunSummary> {
-  const snapshot = await source.fetch({ signal: AbortSignal.timeout(30_000) });
-  if (!HASH.test(snapshot.sha256) || snapshot.sha256 !== sha256Hex(snapshot.bytes)) {
-    throw new Error('snapshot hash does not match the body');
-  }
-  if ((await ports.latestHash(source.id)) === snapshot.sha256) {
+  const snapshot = await guard('fetch', () => source.fetch(openFetch(source)));
+  await guard('hash', () => {
+    if (!HASH.test(snapshot.sha256) || snapshot.sha256 !== sha256Hex(snapshot.bytes)) {
+      throw new CodedError('hash');
+    }
+    return Promise.resolve();
+  });
+  const unchanged = await guard('hash', () => ports.latestHash(source.id));
+  if (unchanged === snapshot.sha256) {
     await ports.finishJob(
       jobRecord({
         source,
@@ -166,6 +183,7 @@ async function runBody<Raw, Parsed>(
       issueNumber: null,
       versionId: null,
       revalidateStatus: null,
+      failure: null,
     };
   }
   return publishOrHold({ source, ports, log, startedAt }, snapshot);
@@ -181,32 +199,36 @@ async function publishOrHold<Raw, Parsed>(
   snapshot: RawSnapshot<Raw>,
 ): Promise<RunSummary> {
   const { source, ports, log, startedAt } = run;
-  const saved = await ports.saveSnapshot({
-    sourceId: source.id,
-    sha256: snapshot.sha256,
-    bytes: snapshot.bytes,
-  });
-  const parsed = source.parse(snapshot.body);
-  const previous = await ports.previousRows(source.id);
-  const report = source.validate(parsed, previous);
+  const saved = await guard('snapshot', () =>
+    ports.saveSnapshot({
+      sourceId: source.id,
+      sha256: snapshot.sha256,
+      bytes: snapshot.bytes,
+    }),
+  );
+  const parsed = await guard('parse', () => Promise.resolve(source.parse(snapshot.body)));
+  const previous = await guard('previous', () => ports.previousRows(source.id));
+  const report = await guard('validate', () => Promise.resolve(source.validate(parsed, previous)));
   const decision = decidePublish({
     kind: source.kind,
     clean: report.clean,
     suspicious: report.suspicious,
     blocked: report.blocked ?? countGate(parsed.length, previous.length),
   });
-  const committed = await ports.commit({
-    publish: decision.publish,
-    queue:
-      decision.reason === null
-        ? null
-        : {
-            sourceId: source.id,
-            domain: source.domain,
-            snapshotId: saved.snapshotId,
-            reason: decision.reason,
-          },
-  });
+  const committed = await guard('commit', () =>
+    ports.commit({
+      publish: decision.publish,
+      queue:
+        decision.reason === null
+          ? null
+          : {
+              sourceId: source.id,
+              domain: source.domain,
+              snapshotId: saved.snapshotId,
+              reason: decision.reason,
+            },
+    }),
+  );
   return finishRun({
     source,
     ports,
@@ -267,6 +289,7 @@ async function finishRun<Raw, Parsed>(input: {
     issueNumber: failureIssue,
     versionId: committed.versionId,
     revalidateStatus,
+    failure: null,
   };
 }
 async function openBatchIssue<Parsed>(
@@ -294,27 +317,4 @@ async function openBatchIssue<Parsed>(
   } catch {
     return null;
   }
-}
-
-function jobRecord(input: {
-  source: { id: string; domain: DatasetDomain };
-  startedAt: string;
-  endedAt: string;
-  status: JobRecord['status'];
-  rowCount: number;
-  errors: readonly string[];
-  bytes: number;
-  requestCount: number;
-}): JobRecord {
-  return {
-    sourceId: input.source.id,
-    domain: input.source.domain,
-    startedAt: input.startedAt,
-    endedAt: input.endedAt,
-    status: input.status,
-    rowCount: input.rowCount,
-    errors: input.errors.map((code) => ({ code })),
-    bytes: input.bytes,
-    requestCount: input.requestCount,
-  };
 }
