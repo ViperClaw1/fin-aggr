@@ -153,6 +153,20 @@ describe('FDIC institutions', () => {
     expect(snapshot.body.responses[0]?.url).toContain('offset=0');
     expect(snapshot.body.responses[1]?.url).toContain('offset=1');
     expect(parseFdicInstitutions(snapshot.body).map((row) => row.id)).toEqual(['fdic:1', 'fdic:2']);
+    const later = await fetchFdicInstitutions({
+      fetchImpl: () => Promise.resolve(new Response(pages[0], { status: 200 })),
+      signal: AbortSignal.timeout(1000),
+      retrievedAt: '2026-11-10T12:00:00.000Z',
+      pageSize: 2,
+    });
+    const again = await fetchFdicInstitutions({
+      fetchImpl: () => Promise.resolve(new Response(pages[0], { status: 200 })),
+      signal: AbortSignal.timeout(1000),
+      retrievedAt: '2026-11-11T12:00:00.000Z',
+      pageSize: 2,
+    });
+    expect(later.sha256).toBe(again.sha256);
+    expect(later.body.retrievedAt).not.toBe(again.body.retrievedAt);
   });
 
   it('stops on an http error', async () => {

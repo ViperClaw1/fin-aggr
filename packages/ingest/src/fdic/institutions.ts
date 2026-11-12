@@ -1,5 +1,6 @@
 import { Institution, type Institution as InstitutionRow } from '@fa/contracts';
-import { sha256Hex, type Source } from '../pipeline';
+import { bodyHash } from '../content-hash';
+import { type Source } from '../pipeline';
 import type { ValidationReport } from '../validate';
 
 /** OpenAPI `GET /institutions`, server path `/banks` (read 2026-11-09). */
@@ -76,8 +77,7 @@ function snapshotOf(
   body: FdicInstitutionsRaw;
   requestCount: number;
 } {
-  const bytes = new TextEncoder().encode(JSON.stringify(raw));
-  return { sha256: sha256Hex(bytes), bytes, body: raw, requestCount };
+  return { ...bodyHash(raw.responses.map((response) => response.body)), body: raw, requestCount };
 }
 
 /** Pages with `sort_by=CERT` until `meta.total`. The stored body is the response text, unchanged. */

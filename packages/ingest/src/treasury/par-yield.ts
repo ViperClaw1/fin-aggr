@@ -1,6 +1,7 @@
 import { rateFromPercent, type Rate } from '@fa/contracts';
 import { Decimal } from 'decimal.js';
-import { sha256Hex, type Source } from '../pipeline';
+import { bodyHash } from '../content-hash';
+import { type Source } from '../pipeline';
 import { rateMoveExceeds } from '../rate-move';
 import type { ValidationReport } from '../validate';
 
@@ -208,8 +209,7 @@ function snapshotOf(raw: ParYieldRaw): {
   body: ParYieldRaw;
   requestCount: number;
 } {
-  const bytes = new TextEncoder().encode(JSON.stringify(raw));
-  return { sha256: sha256Hex(bytes), bytes, body: raw, requestCount: 1 };
+  return { ...bodyHash([raw.body]), body: raw, requestCount: 1 };
 }
 
 interface FetchInput {

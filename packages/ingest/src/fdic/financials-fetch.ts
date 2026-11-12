@@ -1,5 +1,6 @@
 import { CodedError } from '../fetch-budget';
-import { sha256Hex, type Source } from '../pipeline';
+import { bodyHash } from '../content-hash';
+import { type Source } from '../pipeline';
 import {
   financialFieldProblems,
   financialsProbeUrl,
@@ -20,8 +21,7 @@ const PAGE_CAP = 20;
 const RETRY_MS = 5_000;
 
 function snapshotOf(raw: FdicFinancialsRaw, requestCount: number) {
-  const bytes = new TextEncoder().encode(JSON.stringify(raw));
-  return { sha256: sha256Hex(bytes), bytes, body: raw, requestCount };
+  return { ...bodyHash(raw.responses.map((response) => response.body)), body: raw, requestCount };
 }
 
 interface FetchInput {

@@ -174,6 +174,31 @@ describe('FDIC financials', () => {
     expect(snapshot.requestCount).toBe(3);
     expect(snapshot.body.responses).toHaveLength(1);
   });
+
+  it('hashes page bodies and ignores the fetch time', async () => {
+    const body =
+      '{"meta":{"total":1},"data":[{"data":{"CERT":3510,"REPDTE":"20260630"},"score":0}]}';
+    const fetchImpl = () => Promise.resolve(new Response(body, { status: 200 }));
+    const signal = AbortSignal.timeout(1_000);
+    const first = await fetchFdicFinancials({
+      retrievedAt: '2026-11-12T00:00:00.000Z',
+      signal,
+      requestSignal: () => signal,
+      pageSize: 10,
+      pause: () => Promise.resolve(),
+      fetchImpl,
+    });
+    const second = await fetchFdicFinancials({
+      retrievedAt: '2026-11-13T00:00:00.000Z',
+      signal,
+      requestSignal: () => signal,
+      pageSize: 10,
+      pause: () => Promise.resolve(),
+      fetchImpl,
+    });
+    expect(first.sha256).toBe(second.sha256);
+    expect(first.body.retrievedAt).not.toBe(second.body.retrievedAt);
+  });
 });
 
 function oneBank(cert: number): string {

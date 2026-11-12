@@ -95,6 +95,13 @@ describe('Treasury par yield', () => {
     expect(seen).toEqual([{ url: parYieldUrl(2026), agent: 'FA (+https://fin-aggr.vercel.app)' }]);
     expect(snapshot.body.body).toBe(recorded);
     expect(snapshot.sha256).toMatch(/^[0-9a-f]{64}$/);
+    const later = await fetchParYields({
+      retrievedAt: '2026-11-13T12:00:00.000Z',
+      signal: AbortSignal.timeout(30_000),
+      fetchImpl: () => Promise.resolve(new Response(recorded, { status: 200 })),
+    });
+    expect(later.sha256).toBe(snapshot.sha256);
+    expect(later.body.retrievedAt).not.toBe(snapshot.body.retrievedAt);
   });
 
   it('accepts the recorded header from the nightly shape check', async () => {
