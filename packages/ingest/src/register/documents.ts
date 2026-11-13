@@ -14,7 +14,7 @@ type RegisterAgency = (typeof REGISTER_AGENCIES)[number];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DOCUMENT_NUMBER = /^\d{4}-\d+$/;
 
-interface RegisterNotice {
+export interface RegisterNotice {
   documentNumber: string;
   publicationDate: string;
   title: string;

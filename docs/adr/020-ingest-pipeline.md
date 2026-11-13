@@ -121,7 +121,7 @@ Bounds in `FINANCIAL_BOUNDS` are a review band, not an FDIC limit and not a perc
 
 ### eCFR title 12 parts 330, 745, and 328 (2026-11-10)
 
-Read from the [versioner v1 documentation](https://www.ecfr.gov/developers/documentation/api/v1). Base `https://www.ecfr.gov/api/versioner/v1`. No API key. The full part XML is not stored. The 05:00 jobs stay `pending` until a review row can be written. The 06:30 shape check requests versions for part 330 only.
+Read from the [versioner v1 documentation](https://www.ecfr.gov/developers/documentation/api/v1). Base `https://www.ecfr.gov/api/versioner/v1`. No API key. The full part XML is not stored. The 05:00 jobs are `ready`. Each is a `watch` source: fetch, store the content hash, parse, compare with the previous snapshot of that source. The hash is `part|latest_amendment_date|sorted identifiers` for the sections amended on that date. `retrievedAt` is not part of the hash. The same hash logs `source <id> unchanged`. The first snapshot logs `source <id> baseline` and opens no issue. A different fingerprint logs `source <id> changed queued=1`, inserts one `review_queue` row, and opens one private issue. The issue names the part, the amendment date, the section ids, and the eCFR link. Parts 330 and 745 also say to recheck the SMDIA and SMSIA quotes before changing the insurance limit. A watch run does not validate, publish, or revalidate. The public log has no title.
 
 | Response field | Meaning | What we keep |
 | --- | --- | --- |
@@ -145,7 +145,7 @@ Read from the [API v1 documentation](https://www.federalregister.gov/developers/
 | `results[].title` | `title` |
 | `results[].html_url` | `url`, only `https://www.federalregister.gov` |
 
-`abstract`, `excerpts`, and the document body are not stored. An empty `results` array is a normal day. The schedule job stays `pending`. The nightly check requests one FDIC document and checks those four fields.
+`abstract`, `excerpts`, and the document body are not stored. An empty `results` array is a normal day. The 05:00 job is a `watch` source. The hash is the sorted document numbers, without titles and without `retrievedAt`. The first snapshot is a baseline and opens no issue. A later run queues one review only when a document number was not in the previous snapshot. An empty day, or a page that only drops old numbers, logs `source federal-register unchanged` and does not replace the stored set. The issue lists each new document's number, date, title, and link. The public log does not. The run does not publish.
 
 ### Deposit insurance limit quote (2026-11-10)
 

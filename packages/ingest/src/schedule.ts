@@ -66,6 +66,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'ecfr-745',
@@ -73,6 +74,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'ecfr-328',
@@ -80,6 +82,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'federal-register',
@@ -87,6 +90,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'fdic-financials',

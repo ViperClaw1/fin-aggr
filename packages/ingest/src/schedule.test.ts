@@ -93,6 +93,10 @@ describe('schedule catalog', () => {
     expect(SCHEDULE.filter((row) => row.ready === true).map((row) => row.id)).toEqual([
       'fdic-institutions',
       'treasury-par-yield',
+      'ecfr-330',
+      'ecfr-745',
+      'ecfr-328',
+      'federal-register',
       'fdic-financials',
     ]);
   });
@@ -275,7 +279,7 @@ describe('schedule workflows', () => {
     expect(text).toContain('FRED_API_KEY');
     expect(text).toContain('FA_SCRAPE_MAILBOX');
     expect(text).toContain(
-      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials"]')`,
+      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ecfr-330","ecfr-745","ecfr-328","federal-register"]')`,
     );
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');

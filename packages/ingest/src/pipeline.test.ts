@@ -29,6 +29,7 @@ function ports(): PipelinePorts<{ id: string }> & {
   return {
     now: () => '2026-11-06T00:00:00.000Z',
     latestHash: () => Promise.resolve(null),
+    previousSnapshot: () => Promise.resolve(null),
     saveSnapshot: () => Promise.resolve({ snapshotId: 4 }),
     previousRows: () => Promise.resolve([]),
     commit: vi.fn(() => Promise.resolve({ queueId: null, versionId: 9 })),

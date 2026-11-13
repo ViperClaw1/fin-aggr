@@ -23,6 +23,7 @@ import {
   ensureFinancialsSource,
   previousFinancials,
 } from './financials';
+import { commitWatch, ensureWatchSources } from './watch';
 
 export async function prepareFdicSource(env: NodeJS.ProcessEnv): Promise<void> {
   await withClient(databaseUrl(env), ensureFdicSource);
@@ -54,6 +55,24 @@ async function uploadRaw(env: NodeJS.ProcessEnv, path: string, bytes: Uint8Array
   if (uploaded.error !== null) throw new Error('raw snapshot upload failed');
 }
 
+async function previousSnapshotBytes(
+  env: NodeJS.ProcessEnv,
+  sourceId: string,
+): Promise<Uint8Array | null> {
+  const path = await withClient(databaseUrl(env), async (sql) => {
+    const result = await sql.query(
+      `select bucket_path from raw_snapshots where source_id = $1 order by id desc limit 1`,
+      [sourceId],
+    );
+    const bucketPath = result.rows[0]?.['bucket_path'];
+    return typeof bucketPath === 'string' ? bucketPath : null;
+  });
+  if (path === null) return null;
+  const downloaded = await storageClient(env).storage.from(RAW_BUCKET).download(path);
+  if (downloaded.error !== null) throw new Error('raw snapshot download failed');
+  return new Uint8Array(await downloaded.data.arrayBuffer());
+}
+
 async function signedRawUrl(env: NodeJS.ProcessEnv, path: string): Promise<string> {
   const signed = await storageClient(env)
     .storage.from(RAW_BUCKET)
@@ -75,6 +94,7 @@ export function institutionPorts(
     now,
     latestHash: (sourceId) =>
       withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
     previousRows: () => withClient(databaseUrl(env), previousInstitutions),
     commit: (input) =>
@@ -98,6 +118,7 @@ export function parYieldPorts(
     now,
     latestHash: (sourceId) =>
       withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
     previousRows: () => withClient(databaseUrl(env), previousParYields),
     commit: (input) => withClient(databaseUrl(env), (sql) => commitParYields(sql, input)),
@@ -121,6 +142,7 @@ export function financialPorts(
     now,
     latestHash: (sourceId) =>
       withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
     previousRows: () => withClient(databaseUrl(env), previousFinancials),
     commit: (input) => withClient(databaseUrl(env), (sql) => commitFinancials(sql, input)),
@@ -133,6 +155,33 @@ export function financialPorts(
     notifyFailure: (message, title = 'Ingest fdic-financials failed') =>
       notifyFailure(env, message, title),
   };
+}
+
+/** Ports for a watch source. Commit refuses a publish. Revalidate is not used. */
+export function watchPorts<Parsed>(
+  env: NodeJS.ProcessEnv,
+  now: () => string,
+): PipelinePorts<Parsed> {
+  return {
+    now,
+    latestHash: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
+    previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
+    saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
+    previousRows: () => Promise.resolve([]),
+    commit: (input) => withClient(databaseUrl(env), (sql) => commitWatch(sql, input)),
+    sign: (snapshotId) => signSnapshot(env, snapshotId),
+    openIssue: (input) => openReview(env, input),
+    attachIssue: (queueId, issueUrl) =>
+      withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
+    finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
+    revalidate: () => Promise.reject(new Error('watch does not revalidate')),
+    notifyFailure: (message, title = 'Ingest watch failed') => notifyFailure(env, message, title),
+  };
+}
+
+export async function prepareWatchSources(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureWatchSources);
 }
 
 async function saveInstitutionSnapshot(

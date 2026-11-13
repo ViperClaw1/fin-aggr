@@ -1,6 +1,6 @@
-import { REVIEW_OWNER, REVIEW_REPO } from './policy';
+import { REVIEW_OWNER, REVIEW_REPO, formatIssueCreated } from './policy';
 
-export function reviewIssueBody(input: {
+function reviewIssueBody(input: {
   sourceId: string;
   domain: string;
   queueId: number;
@@ -85,4 +85,36 @@ export async function commentOnIssue(
     },
   );
   if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
+}
+
+/** Opens the review issue for a held batch. A failure leaves the queue row and returns null. */
+export async function openQueuedIssue(
+  source: { id: string; domain: string },
+  ports: {
+    sign(snapshotId: number): Promise<string>;
+    openIssue(input: { title: string; body: string }): Promise<{ number: number; url: string }>;
+    attachIssue(queueId: number, issueUrl: string): Promise<void>;
+  },
+  log: (line: string) => void,
+  batch: { snapshotId: number; queueId: number | null; reason: string | null },
+): Promise<number | null> {
+  if (batch.queueId === null || batch.reason === null) return null;
+  try {
+    const signedUrl = await ports.sign(batch.snapshotId);
+    const issue = await ports.openIssue({
+      title: `Review ${source.id}`,
+      body: reviewIssueBody({
+        sourceId: source.id,
+        domain: source.domain,
+        queueId: batch.queueId,
+        reason: batch.reason,
+        signedUrl,
+      }),
+    });
+    await ports.attachIssue(batch.queueId, issue.url);
+    log(formatIssueCreated(issue.number));
+    return issue.number;
+  } catch {
+    return null;
+  }
 }

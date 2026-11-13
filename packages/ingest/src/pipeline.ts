@@ -7,7 +7,7 @@ import {
   stageOf,
   type FetchContext,
 } from './fetch-budget';
-import { reviewIssueBody } from './github';
+import { openQueuedIssue } from './github';
 import type { DatasetDomain } from './index';
 import { formatIssueCreated } from './policy';
 import { reportRevalidate, revalidateOrStatus } from './revalidate';
@@ -30,6 +30,8 @@ export interface Source<Raw, Parsed> {
   requestTimeoutMs?: number;
   /** Whole `fetch`. Default 30s. */
   fetchBudgetMs?: number;
+  /** `watch` stores a snapshot and may queue a review. It does not publish. */
+  mode?: 'publish' | 'watch';
   fetch(ctx: FetchContext): Promise<RawSnapshot<Raw>>;
   parse(raw: Raw): Parsed[];
   validate(rows: Parsed[], previous: Parsed[]): ValidationReport<Parsed>;
@@ -59,6 +61,8 @@ interface QueueInput {
 export interface PipelinePorts<Parsed> {
   now(): string;
   latestHash(sourceId: string): Promise<string | null>;
+  /** Latest raw bytes for this source. Null when the source has no snapshot. */
+  previousSnapshot(sourceId: string): Promise<Uint8Array | null>;
   /** `bytes` is the raw body. The port stores it in the private `raw` bucket. */
   saveSnapshot(input: { sourceId: string; sha256: string; bytes: Uint8Array }): Promise<{
     snapshotId: number;
@@ -87,6 +91,8 @@ export interface RunSummary {
   revalidateStatus: number | null;
   /** Set when the run threw. The message is not stored. */
   failure: { stage: string; code: string } | null;
+  /** Set by a watch run. The public log is this word, not a publish line. */
+  watch?: 'unchanged' | 'baseline' | 'changed';
 }
 
 const HASH = /^[0-9a-f]{64}$/;
@@ -155,6 +161,7 @@ async function runBody<Raw, Parsed>(
   log: (line: string) => void,
   startedAt: string,
 ): Promise<RunSummary> {
+  if (source.mode === 'watch') throw new CodedError('watch');
   const snapshot = await guard('fetch', () => source.fetch(openFetch(source)));
   await guard('hash', () => {
     if (!HASH.test(snapshot.sha256) || snapshot.sha256 !== sha256Hex(snapshot.bytes)) {
@@ -255,7 +262,7 @@ async function finishRun<Raw, Parsed>(input: {
   revalidateStatus: number | null;
 }): Promise<RunSummary> {
   const { source, ports, log, startedAt, snapshot, decision, committed, revalidateStatus } = input;
-  const issueNumber = await openBatchIssue(source, ports, log, {
+  const issueNumber = await openQueuedIssue(source, ports, log, {
     snapshotId: input.snapshotId,
     queueId: committed.queueId,
     reason: decision.reason,
@@ -291,30 +298,4 @@ async function finishRun<Raw, Parsed>(input: {
     revalidateStatus,
     failure: null,
   };
-}
-async function openBatchIssue<Parsed>(
-  source: Source<unknown, Parsed>,
-  ports: PipelinePorts<Parsed>,
-  log: (line: string) => void,
-  batch: { snapshotId: number; queueId: number | null; reason: string | null },
-): Promise<number | null> {
-  if (batch.queueId === null || batch.reason === null) return null;
-  try {
-    const signedUrl = await ports.sign(batch.snapshotId);
-    const issue = await ports.openIssue({
-      title: `Review ${source.id}`,
-      body: reviewIssueBody({
-        sourceId: source.id,
-        domain: source.domain,
-        queueId: batch.queueId,
-        reason: batch.reason,
-        signedUrl,
-      }),
-    });
-    await ports.attachIssue(batch.queueId, issue.url);
-    log(formatIssueCreated(issue.number));
-    return issue.number;
-  } catch {
-    return null;
-  }
 }

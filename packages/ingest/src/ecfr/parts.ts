@@ -91,6 +91,20 @@ function partTitle(structure: unknown, part: string): string {
  * Pure. The stamp is the part id, the sections touched on the latest amendment date,
  * that date, and the part title. It is not a published dollar amount.
  */
+/** Amendment date plus the section ids touched on that date, sorted. The title is not included. */
+export function ecfrFingerprint(versions: unknown): {
+  part: string;
+  amendmentDate: string;
+  identifiers: string;
+} {
+  const fields = versionFields(versions);
+  return {
+    part: fields.part,
+    amendmentDate: fields.amendmentDate,
+    identifiers: latestIdentifiers(fields.versions, fields.amendmentDate),
+  };
+}
+
 export function parseEcfrPart(versions: unknown, structure: unknown): EcfrPartStamp {
   const fields = versionFields(versions);
   return {
