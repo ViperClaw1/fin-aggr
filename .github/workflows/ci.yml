@@ -32,7 +32,7 @@ jobs:
       - run: pnpm depcruise
       - run: pnpm knip
       - run: pnpm test
-      - run: pnpm ingest:run ncua-5300 # not ready → "source ncua-5300 pending", exit 0, no secrets
+      - run: pnpm ingest:run bank-pdf-hashes # not ready → "source bank-pdf-hashes pending", exit 0, no secrets
       - run: pnpm bench # spec §5: rankProducts ≤ 50 ms on 120 products and on the 60 CDs
       - run: pnpm golden:check # Python 3 ships with ubuntu-latest
       - run: pnpm build

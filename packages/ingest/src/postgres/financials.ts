@@ -2,6 +2,7 @@ import { BankMetrics } from '@fa/contracts';
 import { CodedError } from '../fetch-budget';
 import { withTransaction, type Sql } from '../decisions';
 import type { CallReport } from '../fdic/financials';
+import { type CohortPrefix, otherCohort } from './cohort';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
 
@@ -58,19 +59,21 @@ function reportFromDb(row: Record<string, unknown>): CallReport {
   };
 }
 
-async function readFinancials(sql: Sql): Promise<CallReport[]> {
+async function readFinancials(sql: Sql, prefix?: CohortPrefix): Promise<CallReport[]> {
   const result = await sql.query(
     `select m.institution_id, m.as_of::text as as_of, m.total_assets_usd_thousands,
             m.deposits_usd_thousands, m.metrics, m.balance_sheet_mix, m.provenance
      from bank_metrics m
      join dataset_versions v on v.id = m.version_id
-     where v.domain = 'bank_metrics' and v.is_current`,
+     where v.domain = 'bank_metrics' and v.is_current${prefix === undefined ? '' : ' and m.institution_id like $1'}`,
+    prefix === undefined ? [] : [`${prefix}%`],
   );
   return result.rows.map(reportFromDb);
 }
 
-export async function previousFinancials(sql: Sql): Promise<CallReport[]> {
-  return previousUnlessMock(sql, 'bank_metrics', readFinancials);
+/** Own prefix only, so a shrink or a median move is not measured against the other regulator. */
+export function previousFinancials(sql: Sql, prefix: CohortPrefix): Promise<CallReport[]> {
+  return previousUnlessMock(sql, 'bank_metrics', (db) => readFinancials(db, prefix));
 }
 
 async function insertVersion(sql: Sql, asOf: string): Promise<number> {
@@ -108,16 +111,36 @@ async function insertRows(sql: Sql, versionId: number, rows: readonly CallReport
   );
 }
 
-async function publishRows(sql: Sql, rows: readonly CallReport[] | null): Promise<number | null> {
+function runDay(iso: string): string {
+  const date = iso.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('as_of is not a date');
+  return date;
+}
+
+/** Replaces this prefix and copies every other id. Caller owns the transaction. */
+export async function replaceCohortFinancials(
+  sql: Sql,
+  input: {
+    rows: readonly CallReport[] | null;
+    asOf: string;
+    prefix: CohortPrefix;
+    sourceId?: string | undefined;
+  },
+): Promise<number | null> {
+  const { rows, prefix } = input;
   if (rows === null || rows.length === 0) return null;
-  const asOf = rows[0]?.report.asOf;
-  if (asOf === undefined || rows.some((row) => row.report.asOf !== asOf)) {
+  const quarter = rows[0]?.report.asOf;
+  if (quarter === undefined || rows.some((row) => row.report.asOf !== quarter)) {
     throw new CodedError('mixed_quarter');
   }
-  const versionId = await insertVersion(sql, asOf);
-  await insertRows(sql, versionId, rows);
+  const current = await previousUnlessMock(sql, 'bank_metrics', (db) => readFinancials(db));
+  const kept = otherCohort(current, (row) => row.report.institutionId, prefix);
+  const versionId = await insertVersion(sql, runDay(input.asOf));
+  await insertRows(sql, versionId, [...kept, ...rows]);
   await sql.query(`select publish_domain('bank_metrics', $1)`, [versionId]);
-  await sql.query(`update sources set last_updated_at = now() where id = $1`, [SOURCE_ID]);
+  await sql.query(`update sources set last_updated_at = now() where id = $1`, [
+    input.sourceId ?? SOURCE_ID,
+  ]);
   return versionId;
 }
 
@@ -139,10 +162,19 @@ export async function commitFinancials(
   input: {
     publish: readonly CallReport[] | null;
     queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null;
+    /** Version date is the run day. The quarter stays on each metrics row. */
+    asOf: string;
+    prefix: CohortPrefix;
+    sourceId?: string;
   },
 ): Promise<{ queueId: number | null; versionId: number | null }> {
   return withTransaction(sql, async (tx) => ({
-    versionId: await publishRows(tx, input.publish),
+    versionId: await replaceCohortFinancials(tx, {
+      rows: input.publish,
+      asOf: input.asOf,
+      prefix: input.prefix,
+      sourceId: input.sourceId,
+    }),
     queueId: await enqueue(tx, input.queue),
   }));
 }

@@ -120,7 +120,7 @@ function runPlan(
   ];
   const seen = new Set<Id>();
   const candidates = ordered.flatMap((item) => {
-    if (seen.has(item.id)) return [];
+    if (seen.has(item.id) || item.regulator === 'UST') return [];
     seen.add(item.id);
     return [
       {
@@ -140,7 +140,7 @@ function runPlan(
   return {
     allocations: result.allocations.flatMap((allocation) => {
       const inst = byId.get(allocation.institutionId);
-      if (inst === undefined) return [];
+      if (inst === undefined || inst.regulator === 'UST') return [];
       return [
         {
           institutionId: allocation.institutionId,

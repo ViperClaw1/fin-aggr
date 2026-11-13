@@ -5,6 +5,9 @@ import { checkEcfrPartShape } from './ecfr/live';
 import { checkFinancialsShape } from './fdic/financials-fetch';
 import { checkInstitutionShape } from './fdic/live';
 import { checkRegisterShape } from './register/live';
+import { checkNationalRatesShape } from './fred/national';
+import { checkNcuaShape } from './ncua/live';
+import { checkDirectShape, checkFiscalShape } from './treasury/auctions';
 import { checkParYieldShape } from './treasury/live';
 
 function recorded(name: string): unknown {
@@ -23,6 +26,10 @@ export async function checkLiveShapes(fetchImpl: typeof fetch): Promise<string[]
     ),
     await checkRegisterShape(fetchImpl),
     await checkParYieldShape(fetchImpl),
+    await checkNcuaShape(fetchImpl),
+    await checkNationalRatesShape(fetchImpl, process.env['FRED_API_KEY'] ?? ''),
+    await checkFiscalShape(fetchImpl),
+    await checkDirectShape(fetchImpl),
   ];
 }
 

@@ -34,7 +34,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Ids passed to registerJob. A source that is not ready skips this and stays green.
       - name: Check secrets
-        if: contains(fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ecfr-330","ecfr-745","ecfr-328","federal-register"]'), inputs.source)
+        if: contains(fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ncua-5300","fdic-national-rates","treasury-fiscal-data","treasurydirect","ecfr-330","ecfr-745","ecfr-328","federal-register"]'), inputs.source)
         run: |
           missing=""
           for n in SUPABASE_DB_URL REVIEW_REPO_TOKEN; do
@@ -44,6 +44,12 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           REVIEW_REPO_TOKEN: ${{ secrets.REVIEW_REPO_TOKEN }}
+      - name: Check FRED key
+        if: inputs.source == 'fdic-national-rates'
+        run: |
+          if [ -z "$FRED_API_KEY" ]; then echo "::error::Actions secret FRED_API_KEY is not set"; exit 1; fi
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       - run: pnpm ingest:run ${{ inputs.source }}
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

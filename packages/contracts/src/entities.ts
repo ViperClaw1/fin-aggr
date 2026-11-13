@@ -7,13 +7,16 @@ import { Id, IsoDate } from './primitives';
 import { fact, Provenance } from './provenance';
 import { Rule } from './rules';
 
+/** Deposit-insurance regulators. Treasury is not one of them. */
 export const Regulator = z.enum(['FDIC', 'NCUA']);
+/** Charter regulator on an institution. `UST` has no insurance limit in this schema. */
+export const InstitutionRegulator = z.enum(['FDIC', 'NCUA', 'UST']);
 export const InstitutionKind = z.enum(INSTITUTION_KINDS);
 
 export const Institution = z.strictObject({
-  id: Id, // 'fdic:<cert>' or 'ncua:<charter>'
+  id: Id, // 'fdic:<cert>', 'ncua:<charter>', or 'ust'
   name: z.string().min(1),
-  regulator: Regulator,
+  regulator: InstitutionRegulator,
   kind: InstitutionKind,
   partnerInstitutionIds: z.array(Id), // fintech_partner: the program banks; otherwise []
   hqState: z.string().length(2),

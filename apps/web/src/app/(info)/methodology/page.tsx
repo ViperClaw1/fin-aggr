@@ -1,5 +1,6 @@
 import { allAssumptions } from '@fa/engine';
 import type { Metadata } from 'next';
+import { NationalDepositRates } from './national-rates';
 
 export const metadata: Metadata = {
   title: 'Methodology',
@@ -57,6 +58,7 @@ export default function MethodologyPage() {
         percentile. The figures are half-up, four decimal places. A ratio the FDIC dictionary does
         not define is left blank.
       </p>
+      <NationalDepositRates />
       <h2>Sources</h2>
       <p>
         Each rate, penalty and limit links to the document it comes from, with its verification

@@ -101,7 +101,7 @@ The request sorts by `CERT` ascending, asks for `limit` 10000 (the OpenAPI maxim
 
 ### FDIC financials (2026-11-12)
 
-Read from [`risview_properties.yaml`](https://api.fdic.gov/banks/docs/risview_properties.yaml) (the Financial API Definitions file linked from the BankFind docs) and `GET /financials` on server `/banks`. The Monday 11:00 job is `ready`. `as_of` is `REPDTE`, the last day of the reporting period, not the run date. The same quarter hashes the same and stays `held` with `unchanged`. Ratios are percent points. Each JSON number token is read as text, rounded half-up to four decimal places with decimal.js, then converted once with `toNumber()` because `MetricValue` stores a display percent. `ASSET` and `DEP` are already thousands of USD; they are stored as that integer and are not passed through `centsFromInteger`.
+Read from [`risview_properties.yaml`](https://api.fdic.gov/banks/docs/risview_properties.yaml) (the Financial API Definitions file linked from the BankFind docs) and `GET /financials` on server `/banks`. The Monday 11:00 job is `ready`. The metrics row `as_of` is `REPDTE`, the last day of the reporting period. The version `as_of` is the run day: FDIC and NCUA share one current `bank_metrics` version, so the version date is not a quarter. The same quarter hashes the same and stays `held` with `unchanged`. Ratios are percent points. Each JSON number token is read as text, rounded half-up to four decimal places with decimal.js, then converted once with `toNumber()` because `MetricValue` stores a display percent. `ASSET` and `DEP` are already thousands of USD; they are stored as that integer and are not passed through `centsFromInteger`.
 
 | `MetricKey` or column | FDIC field | Units | Formula |
 | --- | --- | --- | --- |
@@ -114,6 +114,8 @@ Read from [`risview_properties.yaml`](https://api.fdic.gov/banks/docs/risview_pr
 | `liquidAssetsToAssets` | none | — | No title in the dictionary matches this ratio. The key is omitted. The page shows n/a. |
 | `totalAssetsUsdThousands` | `ASSET` Total assets | thousands of USD | Sum of all assets. Off-balance-sheet items are excluded. |
 | `deposits_usd_thousands` | `DEP` Total deposits | thousands of USD | Demand, money market, other savings, time, and foreign-office deposits. Nullable. A later registry step turns the digit string into cents by appending five zeros. |
+
+FDIC and NCUA share the current `institutions` version and the current `bank_metrics` version. A publish copies every id that does not start with that run's prefix (`fdic:` or `ncua:`) and replaces only its own prefix. The count gate, the median, the mean, the percentile, and a quarterly jump are computed on that prefix alone. Copied rows are not recomputed. `mixed_quarter` looks only at the rows in the file being published. A first NCUA publish is not compared with the FDIC catalog.
 
 `balanceSheetMix` is `[]`. The dictionary has no partition that sums to 1. A row with no `ASSET` or no `DEP` is skipped, so the page shows “no call report” rather than zero. A certificate that is not in the current `institutions` version is skipped. The directory is not part of the hashed body. A probe `filters=CERT:3510&fields=REPDTE&sort_by=REPDTE&sort_order=DESC&limit=1` reads the newest compact date from one bank and is not stored. Pages then use `filters=REPDTE:<YYYYMMDD>`, `sort_by=CERT`, `limit` 2500, until `meta.total`, and stop at 20 pages. Each request has its own 120s timeout. The whole fetch has a 600s budget. A timeout or a 5xx retries that page once after 5s and does not restart the source. `requestCount` counts attempts, including the probe and a retry. The workflow timeout is 15 minutes. A thrown run logs `source <id> failed stage=<stage> code=<code>` and stores that pair in `job_runs.errors`. The log has no URL and no row.
 
@@ -183,6 +185,77 @@ The empty `page` parameter is part of that URL. The header read on 2026-11-12 is
 `Date` is `MM/DD/YYYY` and becomes `curve_date`. Each percent string becomes a `Rate` with `rateFromPercent` (`4.05` → `0.0405`). `N/A` or a blank cell is a missing tenor and holds the batch. A date after the fetch day, or a rate outside 0–20%, holds the batch. A move of more than 50bp is reviewed only for the newest date: against the stored rate for that same date, otherwise against the prior date in the file, otherwise against the newest stored curve. Older days in the year file are not flagged. The comparison set is that newest stored date, not the whole year, so the first file of a new year is not a shrink.
 
 This is a market benchmark, not a `Product`. It is stored in `par_yields` on domain `reference`. `reference` has one current version, and tax and insurance already use it. Calling `publish_domain('reference', …)` would clear `is_current` on that version and hide those rows from `anon`. The curve therefore replaces `par_yields` on the current reference version and does not copy tax or insurance rows. A reference version is created only when none is current. `dataset_versions.as_of` for an existing reference version stays the tax or insurance date; the curve date is `curve_date`. Revalidate tag `reference` also refreshes tax and insurance pages. Treasury bills and notes that are products stay on domain `treasury`.
+
+### NCUA 5300 (2026-11-13)
+
+Read from the [quarterly data page](https://ncua.gov/analysis/credit-union-corporate-call-report-data/quarterly-data) and `AcctDesc.txt` inside `call-report-data-2026-06.zip`. The page says the file is a ZIP for WinZip. The saved file starts with `PK`, so it is PKZIP. `node:zlib` does not open that. `fflate` 0.8.3 is pinned in ADR-014. The Monday 11:00 job is `ready`. One run writes `institutions` and `bank_metrics` for the `ncua:` prefix and keeps `fdic:` rows. The version date is the run day. The quarter stays on the metrics row.
+
+| NCUA field | NCUA definition, from the file | Our field |
+| --- | --- | --- |
+| `FOICU.CU_NUMBER` | Charter number | `id` = `ncua:` plus the digits |
+| `FOICU.CU_NAME` | Credit union name | `name` |
+| `FOICU.STATE` | Two-letter state | `hqState`. Any other value is skipped. |
+| `FOICU.CYCLE_DATE` | Cycle, `M/D/YYYY` | Quarter date. Two dates in one file are `mixed_quarter`. |
+| website | No column in `FOICU` or `FOICUDES` | `website` is null. It is not inferred. |
+| membership | No column | Open membership is not marked. |
+| `FS220.ACCT_010` | `TOTAL ASSETS`. Sibling amount accounts say "dollar amount". The June 2026 file stores charter 1 as `13220539`, whole dollars. | `totalAssetsUsdThousands`. Integer half-up division by 1000. No float. |
+| `FS220.ACCT_018` | `Total Amount of Shares and Deposits`. "Should include the sum of all deposits both member and non-member." Same dollar unit. | `deposits_usd_thousands`, same conversion. |
+| `FS220R.ACCT_RB0172` | `RBC Total Risk Based Capital Ratio` | Not stored. The description does not state the scale. The June 2026 file uses integers such as `1343`. |
+| `FS220A.Acct_998` | `Net Worth Ratio`. "Net Worth divided by Total Assets." | Not a `MetricKey`. `tier1LeverageRatio` stays absent. |
+| `returnOnAssets`, `loansToDeposits`, `allowanceToLoans`, `noncurrentLoansRatio`, `liquidAssetsToAssets` | No account title matches these ratios | The key is omitted. The page shows n/a. |
+
+`regulator` is `NCUA`. `kind` is `credit_union`. Provenance is `verified`, `by: official_api`, `isMock: false`. The nightly check reads the first 80KB of the newest ZIP, which holds `AcctDesc.txt`, and checks the header plus account `Acct_010`. It does not download the quarter.
+
+### FDIC national rates via FRED (2026-11-13)
+
+Read from FRED release 317, table "National Deposit Rates" (`eid=1217866`, [the table](https://fred.stlouisfed.org/release/tables?rid=317&eid=1217866)). The table header says Percent. Series ids were taken from the links on that page on 2026-11-13. Rate caps are a different table and are not stored. This is a deposit-market average, not a product and not a bank metric. It is not an input to Compare. The Monday job is `ready`. The key is `FRED_API_KEY`. The value is not written into the repository. A monthly series with the same hash stays `held` / `unchanged`.
+
+| Series | Table name |
+| --- | --- |
+| `SNDR` | Savings |
+| `ICNDR` | Interest Checking |
+| `MMNDR` | Money Market |
+| `NDR1MCD` | 1-Month CD |
+| `NDR3MCD` | 3-Month CD |
+| `NDR6MCD` | 6-Month CD |
+| `NDR12MCD` | 12-Month CD |
+| `NDR24MCD` | 24-Month CD |
+| `NDR36MCD` | 36-Month CD |
+| `NDR48MCD` | 48-Month CD |
+| `NDR60MCD` | 60-Month CD |
+
+Each observation is one row in `national_deposit_rates` on the current `reference` version. `publish_domain('reference')` is not called when that version already exists, so tax, insurance, and `par_yields` stay. A percent becomes a `Rate` with `rateFromPercent`. An empty observation (`.` or blank), a rate outside 0–20%, a date after the run day, or two series on different dates holds the whole batch and leaves the previous table in place. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
+
+### Fiscal Data auctions and TreasuryDirect (2026-11-13)
+
+Par yields are unchanged. Bills and notes would be `Product` rows of category `treasury` on domain `treasury`. The `products` domain stays the CD and savings fixtures, and the DEMO banner stays.
+
+`Institution.regulator` is `FDIC | NCUA | UST`. `Regulator` for insurance stays `FDIC | NCUA`, so a Treasury issuer does not require an invented insurance limit. The issuer id is `ust`. No `fdic:` id is minted for the Treasury. The auctions response has no institution name, headquarters state, or website, so the `ust` row is not published.
+
+Both jobs are on the 07:00 workflow and are `ready`. Each fetches one page. The nightly check is one request each.
+
+Fiscal Data `auctions_query` (`sort=-auction_date`, `page[size]=1`), labels from the API metadata read 2026-11-13:
+
+| Response field | Label |
+| --- | --- |
+| `cusip` | CUSIP |
+| `security_type` | Security Type (`Bill`, `Note`, `Bond`) |
+| `security_term` | Security Term |
+| `issue_date`, `maturity_date` | Issue Date, Maturity Date |
+| `high_yield` | High Yield |
+| `int_rate` | Interest Rate |
+| `int_payment_frequency` | Frequency Of Interest Payments |
+| `min_to_issue` | Minimum To Issue |
+
+TreasuryDirect `GET /TA_WS/securities/auctioned?format=json&pagesize=1`, names from the JSON object read 2026-11-13: `cusip`, `securityType`, `securityTerm`, `issueDate`, `maturityDate`, `highRate`, `investmentRate`, `interestRate`, `frequencyOfInterestPayments`, `minimumToIssueAmount`.
+
+Neither response has a balance-tier schedule, an early-withdrawal penalty, an eligibility rule, or a tax treatment. Those `Product` fields are not filled in. No treasury product is published. A new auction updates the snapshot and the run stays `held` with `missing_fields`. It does not open a review, because the gap does not change from one auction to the next. A missing official column fails the run.
+
+### Insurance limit and 2026 tax brackets (2026-11-13)
+
+The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They are not copied into fixtures or written as `verified` / `by: human`. `commitInsuranceLimits` can update `insurance_limits` on the current reference version, without calling `publish_domain` and without changing `par_yields`, and it refuses a row that is not `verified` by a human. That call is not scheduled.
+
+`publishFederalBrackets` throws. Rev. Proc. 2025-32 stays a one-checker draft. `TAX_YEAR` is unchanged. State brackets are not started.
 
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.

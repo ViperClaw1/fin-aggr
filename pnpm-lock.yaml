@@ -226,6 +226,9 @@ importers:
       decimal.js:
         specifier: 10.6.0
         version: 10.6.0
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       pg:
         specifier: 8.23.1
         version: 8.23.1

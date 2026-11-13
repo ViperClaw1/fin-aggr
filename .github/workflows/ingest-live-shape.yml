@@ -29,3 +29,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm ingest:live
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

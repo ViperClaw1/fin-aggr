@@ -211,13 +211,19 @@ describe('financials publish', () => {
     const sql: Sql = {
       query: (text) => {
         texts.push(text);
+        if (text.includes('select is_mock')) return Promise.resolve({ rows: [{ is_mock: true }] });
         if (text.includes('dataset_versions')) return Promise.resolve({ rows: [{ id: '12' }] });
         return Promise.resolve({ rows: [] });
       },
     };
     const [row] = parseFdicFinancials(raw(), ids);
     if (row === undefined) throw new Error('expected a call report');
-    const result = await commitFinancials(sql, { publish: [row], queue: null });
+    const result = await commitFinancials(sql, {
+      publish: [row],
+      queue: null,
+      asOf: '2026-11-12T12:00:00.000Z',
+      prefix: 'fdic:',
+    });
     expect(result).toEqual({ queueId: null, versionId: 12 });
     expect(texts.some((text) => text.includes("publish_domain('bank_metrics'"))).toBe(true);
     expect(texts.some((text) => text.includes('deposits_usd_thousands'))).toBe(true);
@@ -233,7 +239,7 @@ describe('previous call reports', () => {
         return Promise.resolve({ rows: [{ is_mock: true }] });
       },
     };
-    await expect(previousFinancials(sql)).resolves.toEqual([]);
+    await expect(previousFinancials(sql, 'fdic:')).resolves.toEqual([]);
     expect(texts.some((text) => text.includes('from bank_metrics'))).toBe(false);
   });
 
@@ -258,7 +264,7 @@ describe('previous call reports', () => {
         });
       },
     };
-    const [loaded] = await previousFinancials(sql);
+    const [loaded] = await previousFinancials(sql, 'fdic:');
     expect(loaded?.depositsUsdThousands).toBeNull();
     expect(loaded?.report.institutionId).toBe('fdic:3510');
   });

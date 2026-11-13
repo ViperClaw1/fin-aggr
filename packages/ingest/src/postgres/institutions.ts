@@ -1,5 +1,6 @@
 import { Institution, type Institution as InstitutionRow } from '@fa/contracts';
 import { withTransaction, type Sql } from '../decisions';
+import { type CohortPrefix, otherCohort } from './cohort';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
 
@@ -50,17 +51,21 @@ function institutionFromDb(row: Record<string, unknown>): InstitutionRow {
   return parsed.data;
 }
 
-export function previousInstitutions(sql: Sql): Promise<InstitutionRow[]> {
-  return previousUnlessMock(sql, 'institutions', readInstitutions);
+/** Own prefix only. The count gate must not see the other regulator. */
+export function previousInstitutions(sql: Sql, prefix: CohortPrefix): Promise<InstitutionRow[]> {
+  return previousUnlessMock(sql, 'institutions', (db) => readInstitutions(db, prefix));
 }
 
-async function readInstitutions(sql: Sql): Promise<InstitutionRow[]> {
+const INSTITUTION_COLUMNS = `i.id, i.name, i.regulator, i.kind, i.partner_institution_ids, i.hq_state, i.website, i.provenance`;
+
+async function readInstitutions(sql: Sql, prefix?: CohortPrefix): Promise<InstitutionRow[]> {
   const result = await sql.query(
-    `select i.id, i.name, i.regulator, i.kind, i.partner_institution_ids, i.hq_state, i.website, i.provenance
+    `select ${INSTITUTION_COLUMNS}
      from institutions i
      join dataset_versions v on v.id = i.version_id
-     where v.domain = 'institutions' and v.is_current
+     where v.domain = 'institutions' and v.is_current${prefix === undefined ? '' : ' and i.id like $1'}
      order by i.id`,
+    prefix === undefined ? [] : [`${prefix}%`],
   );
   return result.rows.map(institutionFromDb);
 }
@@ -114,26 +119,44 @@ export async function commitInstitutions(
     publish: readonly InstitutionRow[] | null;
     queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null;
     asOf: string;
+    /** Whose rows this run replaces. The other prefix is copied unchanged. */
+    prefix: CohortPrefix;
+    sourceId?: string;
   },
 ): Promise<{ queueId: number | null; versionId: number | null }> {
   const asOf = asOfDate(input.asOf);
   return withTransaction(sql, async (tx) => {
-    const versionId = await publishRows(tx, input.publish, asOf);
+    const versionId = await replaceCohortInstitutions(tx, {
+      rows: input.publish,
+      asOf,
+      prefix: input.prefix,
+      sourceId: input.sourceId,
+    });
     const queueId = await enqueue(tx, input.queue);
     return { queueId, versionId };
   });
 }
 
-async function publishRows(
+/** Replaces this prefix and copies every other id. Caller owns the transaction. */
+export async function replaceCohortInstitutions(
   sql: Sql,
-  rows: readonly InstitutionRow[] | null,
-  asOf: string,
+  input: {
+    rows: readonly InstitutionRow[] | null;
+    asOf: string;
+    prefix: CohortPrefix;
+    sourceId?: string | undefined;
+  },
 ): Promise<number | null> {
+  const { rows, asOf, prefix } = input;
   if (rows === null || rows.length === 0) return null;
+  const current = await previousUnlessMock(sql, 'institutions', (db) => readInstitutions(db));
+  const kept = otherCohort(current, (row) => row.id, prefix);
   const versionId = await insertVersion(sql, asOf);
-  await insertInstitutionRows(sql, versionId, rows);
+  await insertInstitutionRows(sql, versionId, [...kept, ...rows]);
   await sql.query(`select publish_domain('institutions', $1)`, [versionId]);
-  await sql.query(`update sources set last_updated_at = now() where id = $1`, [SOURCE_ID]);
+  await sql.query(`update sources set last_updated_at = now() where id = $1`, [
+    input.sourceId ?? SOURCE_ID,
+  ]);
   return versionId;
 }
 

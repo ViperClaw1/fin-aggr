@@ -92,12 +92,16 @@ describe('schedule catalog', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(SCHEDULE.filter((row) => row.ready === true).map((row) => row.id)).toEqual([
       'fdic-institutions',
+      'treasury-fiscal-data',
+      'treasurydirect',
       'treasury-par-yield',
       'ecfr-330',
       'ecfr-745',
       'ecfr-328',
       'federal-register',
       'fdic-financials',
+      'ncua-5300',
+      'fdic-national-rates',
     ]);
   });
 
@@ -114,8 +118,8 @@ describe('scheduled run', () => {
 
   it('logs a fixed line when the connector is not registered', async () => {
     const lines: string[] = [];
-    await runScheduled('treasury-fiscal-data', {}, (line) => lines.push(line));
-    expect(lines).toEqual(['source treasury-fiscal-data pending']);
+    await runScheduled('bank-pdf-hashes', {}, (line) => lines.push(line));
+    expect(lines).toEqual(['source bank-pdf-hashes pending']);
   });
 
   it('fails a ready source that has no job', async () => {
@@ -286,7 +290,7 @@ describe('schedule workflows', () => {
     expect(text).toContain('FRED_API_KEY');
     expect(text).toContain('FA_SCRAPE_MAILBOX');
     expect(text).toContain(
-      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ecfr-330","ecfr-745","ecfr-328","federal-register"]')`,
+      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ncua-5300","fdic-national-rates","treasury-fiscal-data","treasurydirect","ecfr-330","ecfr-745","ecfr-328","federal-register"]')`,
     );
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');

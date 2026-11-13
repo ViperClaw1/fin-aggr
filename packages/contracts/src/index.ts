@@ -33,6 +33,7 @@ export {
   FactRecord,
   Institution,
   InstitutionKind,
+  InstitutionRegulator,
   MetricKey,
   MetricValue,
   Product,

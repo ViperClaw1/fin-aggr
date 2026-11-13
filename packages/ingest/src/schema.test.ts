@@ -46,6 +46,32 @@ describe('par yields', () => {
   });
 });
 
+describe('national deposit rates', () => {
+  const rates = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261113120100_national_deposit_rates.sql'),
+    'utf8',
+  );
+
+  it('stores the FRED percent as a rate on the reference version and caps it at 20%', () => {
+    expect(rates).toContain('rate rate not null check (rate <= 0.2)');
+    expect(rates).toContain('rate::text');
+    expect(rates).toContain('national_deposit_rates_text');
+    expect(rates).not.toContain("publish_domain('reference'");
+  });
+});
+
+describe('institution regulator', () => {
+  const regulator = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261113120000_institution_regulator_ust.sql'),
+    'utf8',
+  );
+
+  it('allows the Treasury issuer and does not add an insurance limit for it', () => {
+    expect(regulator).toContain("check (regulator in ('FDIC', 'NCUA', 'UST'))");
+    expect(regulator).not.toContain('alter table insurance_limits');
+  });
+});
+
 describe('bank deposits', () => {
   const deposits = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261112160000_bank_deposits.sql'),

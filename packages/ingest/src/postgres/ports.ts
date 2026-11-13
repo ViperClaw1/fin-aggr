@@ -24,6 +24,9 @@ import {
   previousFinancials,
 } from './financials';
 import { commitWatch, ensureWatchSources } from './watch';
+import { ensureAuctionSources } from './auctions';
+import { ensureNationalRatesSource } from './national';
+import { ensureNcuaSource } from './ncua';
 
 export async function prepareFdicSource(env: NodeJS.ProcessEnv): Promise<void> {
   await withClient(databaseUrl(env), ensureFdicSource);
@@ -55,7 +58,7 @@ async function uploadRaw(env: NodeJS.ProcessEnv, path: string, bytes: Uint8Array
   if (uploaded.error !== null) throw new Error('raw snapshot upload failed');
 }
 
-async function previousSnapshotBytes(
+export async function previousSnapshotBytes(
   env: NodeJS.ProcessEnv,
   sourceId: string,
 ): Promise<Uint8Array | null> {
@@ -96,9 +99,11 @@ export function institutionPorts(
       withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
     previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
-    previousRows: () => withClient(databaseUrl(env), previousInstitutions),
+    previousRows: () => withClient(databaseUrl(env), (sql) => previousInstitutions(sql, 'fdic:')),
     commit: (input) =>
-      withClient(databaseUrl(env), (sql) => commitInstitutions(sql, { ...input, asOf: now() })),
+      withClient(databaseUrl(env), (sql) =>
+        commitInstitutions(sql, { ...input, asOf: now(), prefix: 'fdic:' }),
+      ),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
     attachIssue: (queueId, issueUrl) =>
@@ -144,8 +149,11 @@ export function financialPorts(
       withClient(databaseUrl(env), (sql) => latestSnapshotHash(sql, sourceId)),
     previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
-    previousRows: () => withClient(databaseUrl(env), previousFinancials),
-    commit: (input) => withClient(databaseUrl(env), (sql) => commitFinancials(sql, input)),
+    previousRows: () => withClient(databaseUrl(env), (sql) => previousFinancials(sql, 'fdic:')),
+    commit: (input) =>
+      withClient(databaseUrl(env), (sql) =>
+        commitFinancials(sql, { ...input, asOf: now(), prefix: 'fdic:' }),
+      ),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
     attachIssue: (queueId, issueUrl) =>
@@ -184,7 +192,19 @@ export async function prepareWatchSources(env: NodeJS.ProcessEnv): Promise<void>
   await withClient(databaseUrl(env), ensureWatchSources);
 }
 
-async function saveInstitutionSnapshot(
+export async function prepareNcuaSource(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureNcuaSource);
+}
+
+export async function prepareNationalRatesSource(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureNationalRatesSource);
+}
+
+export async function prepareAuctionSources(env: NodeJS.ProcessEnv): Promise<void> {
+  await withClient(databaseUrl(env), ensureAuctionSources);
+}
+
+export async function saveInstitutionSnapshot(
   env: NodeJS.ProcessEnv,
   input: { sourceId: string; sha256: string; bytes: Uint8Array },
 ): Promise<{ snapshotId: number }> {
@@ -201,7 +221,7 @@ async function saveInstitutionSnapshot(
   return { snapshotId };
 }
 
-async function signSnapshot(env: NodeJS.ProcessEnv, snapshotId: number): Promise<string> {
+export async function signSnapshot(env: NodeJS.ProcessEnv, snapshotId: number): Promise<string> {
   const path = await withClient(databaseUrl(env), async (sql) => {
     const result = await sql.query(`select bucket_path from raw_snapshots where id = $1`, [
       snapshotId,
@@ -213,7 +233,7 @@ async function signSnapshot(env: NodeJS.ProcessEnv, snapshotId: number): Promise
   return signedRawUrl(env, path);
 }
 
-async function openReview(
+export async function openReview(
   env: NodeJS.ProcessEnv,
   input: { title: string; body: string },
 ): Promise<{ number: number; url: string }> {
@@ -222,11 +242,11 @@ async function openReview(
   return createReviewIssue(fetch, { token, title: input.title, body: input.body });
 }
 
-async function attachIssue(sql: Sql, queueId: number, issueUrl: string): Promise<void> {
+export async function attachIssue(sql: Sql, queueId: number, issueUrl: string): Promise<void> {
   await sql.query(`update review_queue set issue_url = $2 where id = $1`, [queueId, issueUrl]);
 }
 
-async function finishJob(
+export async function finishJob(
   sql: Sql,
   job: Parameters<PipelinePorts<InstitutionRow>['finishJob']>[0],
 ): Promise<void> {
@@ -248,7 +268,7 @@ async function finishJob(
   );
 }
 
-async function notifyFailure(
+export async function notifyFailure(
   env: NodeJS.ProcessEnv,
   message: string,
   title = 'Ingest fdic-institutions failed',

@@ -37,6 +37,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'treasurydirect',
@@ -44,6 +45,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
+    ready: true,
   },
   {
     id: 'treasury-par-yield',
@@ -106,6 +108,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
+    ready: true,
   },
   {
     id: 'fdic-national-rates',
@@ -113,6 +116,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     cron: '0 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
+    ready: true,
   },
   {
     id: 'bank-pdf-hashes',

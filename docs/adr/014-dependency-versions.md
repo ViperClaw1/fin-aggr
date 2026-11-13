@@ -64,12 +64,12 @@ Installed on 2026-11-06 with step 2: `pg` 8.23.1 and `@types/pg` 8.23.1 as root 
 | @types/pg | 8.23.1 | 2026-10-04 | root devDependency. `pg@8.23.1` does not set `types` |
 | robots-parser | 3.0.1 | 2023-02-21 | `packages/ingest`, step 8. Latest release; ships its own types |
 | cheerio | 1.2.0 | 2026-01-23 | `packages/ingest`, step 8, and only if static HTML is enough |
+| fflate | 0.8.3 | 2026-05-16 | `packages/ingest`. NCUA quarters are PKZIP. `node:zlib` inflates gzip, not PKZIP. `npm view` on 2026-11-13: 0.8.3 is the current release and is older than two weeks. |
 
 Not pinned:
 - `@supabase/supabase-js` 2.119.0 and `supabase` 3.0.0 were published 2026-11-04. `supabase` 2.122.1 was published 2026-11-02.
 - `postgres` 4.0.0 was published 2026-10-29. The previous line is 3.4.9 (2026-04-05). One driver is enough: `pg`, whose current release already clears two weeks.
-- A ZIP package. NCUA archives go through `node:zlib` first. A package is pinned in this ADR only if that is not enough.
-- Playwright and pdf.js stay on the versions already accepted above.
+- Playwright and pdf.js stay on the versions already accepted above. `cheerio` still waits until static HTML is the adapter path.
 
 ## Amendment (E6, ADR-018, 2026-10-30): installed
 

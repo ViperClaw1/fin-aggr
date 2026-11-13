@@ -1,10 +1,16 @@
 import { fdicFinancialsSource } from './fdic/financials-fetch';
 import { fdicInstitutionsSource } from './fdic/institutions';
 import { ecfrWatchSource } from './ecfr/watch';
+import { nationalRatesSource } from './fred/national';
+import { ncuaSource } from './ncua/source';
+import { auctionPorts, nationalRatesPorts, ncuaPorts } from './postgres/gov-ports';
 import {
+  prepareAuctionSources,
   prepareFdicSource,
   institutionPorts,
   parYieldPorts,
+  prepareNationalRatesSource,
+  prepareNcuaSource,
   prepareParYieldSource,
   financialPorts,
   loadInstitutionIds,
@@ -17,12 +23,17 @@ import { federalRegisterSource } from './register/watch';
 import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
 import { registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
+import { directGap, fiscalGap, runAuctionGap } from './treasury/gap';
 import { formatWatchLine, runWatchSource } from './watch';
 
 /** Step 6 wires a connector. A second call is a mistake: registerJob refuses a duplicate. */
 export function registerConnectors(): void {
   registerJob('fdic-institutions', (env) => runFdicInstitutions(env));
   registerJob('fdic-financials', (env) => runFdicFinancials(env));
+  registerJob('ncua-5300', (env) => runNcua(env));
+  registerJob('fdic-national-rates', (env) => runNationalRates(env));
+  registerJob('treasury-fiscal-data', (env) => runFiscal(env));
+  registerJob('treasurydirect', (env) => runTreasuryDirect(env));
   registerJob('treasury-par-yield', (env) => runParYield(env));
   registerJob('ecfr-330', (env) => runEcfr(env, '330'));
   registerJob('ecfr-745', (env) => runEcfr(env, '745'));
@@ -79,6 +90,40 @@ async function runFdicFinancials(env: NodeJS.ProcessEnv): Promise<void> {
   await prepareFinancialsSource(env);
   const source = fdicFinancialsSource(now, await loadInstitutionIds(env));
   reportRun(source.id, await runSource(source, financialPorts(env, now), writeStdout), env);
+}
+
+async function runNcua(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  const source = ncuaSource(now);
+  await prepareNcuaSource(env);
+  reportRun(source.id, await runSource(source, ncuaPorts(env, now), writeStdout), env);
+}
+
+async function runNationalRates(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  const source = nationalRatesSource(now, env['FRED_API_KEY'] ?? '');
+  await prepareNationalRatesSource(env);
+  reportRun(source.id, await runSource(source, nationalRatesPorts(env, now), writeStdout), env);
+}
+
+async function runFiscal(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  await prepareAuctionSources(env);
+  reportRun(
+    'treasury-fiscal-data',
+    await runAuctionGap(fiscalGap(), auctionPorts(env, now), writeStdout),
+    env,
+  );
+}
+
+async function runTreasuryDirect(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  await prepareAuctionSources(env);
+  reportRun(
+    'treasurydirect',
+    await runAuctionGap(directGap(), auctionPorts(env, now), writeStdout),
+    env,
+  );
 }
 
 async function runParYield(env: NodeJS.ProcessEnv): Promise<void> {
