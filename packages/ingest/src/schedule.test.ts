@@ -237,6 +237,13 @@ describe('ingest run command', () => {
     );
   });
 
+  it('keeps the CI smoke run on a source that is not ready', () => {
+    const text = readFileSync(join(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
+    const match = /pnpm ingest:run (\S+)/.exec(text);
+    const id = match?.[1] ?? '';
+    expect(scheduleById(id)?.ready).toBeUndefined();
+  });
+
   it('logs pending for a known source', async () => {
     const lines: string[] = [];
     await main(['tax-tables'], {}, (line) => lines.push(line));
