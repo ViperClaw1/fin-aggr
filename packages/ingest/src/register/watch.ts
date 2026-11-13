@@ -5,15 +5,19 @@ import type { WatchSource } from '../watch';
 import {
   REGISTER_AGENCIES,
   documentsUrl,
-  parseRegisterDocuments,
+  readRegisterPage,
   type RegisterNotice,
 } from './documents';
 
 export interface RegisterWatchRaw {
-  notices: readonly RegisterNotice[];
+  pages: readonly { agency: string; body: string }[];
 }
 
 const PER_PAGE = 20;
+
+function noticesOf(raw: RegisterWatchRaw): RegisterNotice[] {
+  return raw.pages.flatMap((page) => readRegisterPage(page.body, page.agency));
+}
 
 function numbers(notices: readonly RegisterNotice[]): string[] {
   return [...new Set(notices.map((notice) => notice.documentNumber))].sort();
@@ -28,31 +32,30 @@ function seenNumbers(previous: Uint8Array): Set<string> {
   return new Set(text === '' ? [] : text.split('\n'));
 }
 
-/** Newest page from each agency. An empty page is a normal day. */
+/** Newest page from each agency. Parsing happens later, so one bad row is not a fetch failure. */
 async function fetchRegisterWatch(
   fetchImpl: typeof fetch,
   signal: AbortSignal,
 ): Promise<{ sha256: string; bytes: Uint8Array; body: RegisterWatchRaw; requestCount: number }> {
-  const notices: RegisterNotice[] = [];
+  const pages: { agency: string; body: string }[] = [];
   for (const agency of REGISTER_AGENCIES) {
     const response = await fetchImpl(documentsUrl(agency, PER_PAGE), {
       signal,
       headers: { accept: 'application/json' },
     });
-    if (!response.ok) throw new CodedError(`http_${String(response.status)}`);
-    notices.push(...parseRegisterDocuments(JSON.parse(await response.text()) as unknown));
+    if (!response.ok) throw new CodedError(`http_${String(response.status)}`, agency);
+    pages.push({ agency, body: await response.text() });
   }
-  const body = { notices };
   return {
-    ...fingerprintOf(encode(numbers(notices))),
-    body,
-    requestCount: REGISTER_AGENCIES.length,
+    ...fingerprintOf(pages.map((page) => page.body).join('\n')),
+    body: { pages },
+    requestCount: pages.length,
   };
 }
 
 function newRegisterNotices(previous: Uint8Array, next: RegisterWatchRaw): RegisterNotice[] {
   const seen = seenNumbers(previous);
-  return next.notices.filter((notice) => !seen.has(notice.documentNumber));
+  return noticesOf(next).filter((notice) => !seen.has(notice.documentNumber));
 }
 
 function registerIssueBody(notices: readonly RegisterNotice[]): string {
@@ -64,7 +67,7 @@ function registerIssueBody(notices: readonly RegisterNotice[]): string {
 
 function union(previous: Uint8Array | null, next: RegisterWatchRaw): string {
   const prior = previous === null ? [] : [...seenNumbers(previous)];
-  return encode([...new Set([...prior, ...numbers(next.notices)])].sort());
+  return encode([...new Set([...prior, ...numbers(noticesOf(next))])].sort());
 }
 
 function emptyReport(): ValidationReport<RegisterNotice> {
@@ -80,7 +83,7 @@ export function federalRegisterSource(
     kind: 'official_api',
     mode: 'watch',
     fetch: (ctx) => fetchRegisterWatch(fetchImpl, ctx.requestSignal()),
-    parse: (raw) => [...raw.notices],
+    parse: (raw) => noticesOf(raw),
     validate: emptyReport,
     changed: (previous, next) => newRegisterNotices(previous, next).length > 0,
     persist: (previous, next) => fingerprintOf(union(previous, next)),

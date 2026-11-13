@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   CodedError,
+  failureText,
   guard,
   jobRecord,
   openFetch,
@@ -141,7 +142,7 @@ export async function runSource<Raw, Parsed>(
       bytes: 0,
       requestCount: 0,
     });
-    const issue = await ports.notifyFailure(`${failure.stage} ${failure.code}`);
+    const issue = await ports.notifyFailure(failureText(failure));
     if (issue !== null) log(formatIssueCreated(issue.number));
     return {
       status: 'failed',

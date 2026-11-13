@@ -1,15 +1,22 @@
 import { pathToFileURL } from 'node:url';
-import { documentsUrl, registerEnvelopeProblems } from './documents';
+import { CodedError } from '../fetch-budget';
+import { documentsUrl, readRegisterPage } from './documents';
 
-/** One newest FDIC document, or an empty page. The body is not logged. */
+const AGENCY = 'internal-revenue-service';
+
+/** Twenty newest IRS documents. The body is not logged. */
 export async function checkRegisterShape(fetchImpl: typeof fetch): Promise<string> {
-  const response = await fetchImpl(documentsUrl('federal-deposit-insurance-corporation', 1), {
+  const response = await fetchImpl(documentsUrl(AGENCY, 20), {
     signal: AbortSignal.timeout(30_000),
     headers: { accept: 'application/json' },
   });
   if (!response.ok) return `federal register shape http ${String(response.status)}`;
-  const problems = registerEnvelopeProblems(await response.json());
-  if (problems.length > 0) return `federal register shape ${problems.join(' ')}`;
+  try {
+    readRegisterPage(await response.text(), AGENCY);
+  } catch (error) {
+    if (error instanceof CodedError) return `federal register shape ${error.code}`;
+    return 'federal register shape unknown';
+  }
   return 'federal register shape ok';
 }
 

@@ -1,3 +1,5 @@
+import { CodedError } from '../fetch-budget';
+
 /**
  * Federal Register API v1. Agency slugs are the `slug` values from
  * `/api/v1/agencies.json` (read 2026-11-10). No API key.
@@ -12,7 +14,8 @@ export const REGISTER_AGENCIES = [
 type RegisterAgency = (typeof REGISTER_AGENCIES)[number];
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const DOCUMENT_NUMBER = /^\d{4}-\d+$/;
+/** `2026-22495`, or a correction prefix such as the live `C1-2025-19864`. */
+const DOCUMENT_NUMBER = /^(?:[A-Z]\d-)?\d{4}-\d+$/;
 
 export interface RegisterNotice {
   documentNumber: string;
@@ -33,26 +36,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** `Array.isArray` narrows to `any[]`. The assertion puts the element back on `unknown`. */
-function firstItem(value: unknown): unknown {
-  if (!Array.isArray(value) || value.length === 0) return undefined;
-  const items = value as readonly unknown[];
-  return items[0];
-}
-
 /** An empty `results` array is a normal day, not a broken response. */
 export function registerEnvelopeProblems(body: unknown): string[] {
   if (!isRecord(body)) return ['body'];
   if (!Array.isArray(body['results'])) return ['results'];
-  const first = firstItem(body['results']);
-  if (first === undefined) return [];
-  if (!isRecord(first)) return ['results.0'];
-  const problems: string[] = [];
-  if (typeof first['document_number'] !== 'string') problems.push('document_number');
-  if (typeof first['publication_date'] !== 'string') problems.push('publication_date');
-  if (typeof first['title'] !== 'string') problems.push('title');
-  if (typeof first['html_url'] !== 'string') problems.push('html_url');
-  return problems;
+  return [];
+}
+
+type NoticeCode = 'fr_invalid_number' | 'fr_invalid_date' | 'fr_invalid_title' | 'fr_invalid_url';
+
+function noticeCode(item: Record<string, unknown>): NoticeCode | null {
+  const documentNumber = item['document_number'];
+  if (typeof documentNumber !== 'string' || !DOCUMENT_NUMBER.test(documentNumber)) {
+    return 'fr_invalid_number';
+  }
+  const publicationDate = item['publication_date'];
+  if (typeof publicationDate !== 'string' || !DATE.test(publicationDate)) return 'fr_invalid_date';
+  const title = item['title'];
+  if (typeof title !== 'string' || title.trim() === '') return 'fr_invalid_title';
+  const url = item['html_url'];
+  if (typeof url !== 'string' || !registerUrl(url)) return 'fr_invalid_url';
+  return null;
+}
+
+function registerUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.host === 'www.federalregister.gov';
+  } catch {
+    return false;
+  }
 }
 
 function noticeFrom(item: Record<string, unknown>): RegisterNotice {
@@ -62,35 +75,50 @@ function noticeFrom(item: Record<string, unknown>): RegisterNotice {
   const url = item['html_url'];
   if (
     typeof documentNumber !== 'string' ||
-    !DOCUMENT_NUMBER.test(documentNumber) ||
     typeof publicationDate !== 'string' ||
-    !DATE.test(publicationDate) ||
     typeof title !== 'string' ||
-    title.trim() === '' ||
     typeof url !== 'string'
   ) {
-    throw new Error('federal register invalid');
+    throw new CodedError('fr_invalid_number');
   }
-  const parsed = new URL(url);
-  if (parsed.protocol !== 'https:' || parsed.host !== 'www.federalregister.gov') {
-    throw new Error('federal register invalid');
-  }
-  return {
-    documentNumber,
-    publicationDate,
-    title: title.trim(),
-    url,
-  };
+  return { documentNumber, publicationDate, title: title.trim(), url };
 }
 
-/** Number, date, title, and URL only. Abstract and excerpts are not copied. */
-export function parseRegisterDocuments(body: unknown): RegisterNotice[] {
-  const problems = registerEnvelopeProblems(body);
-  if (problems.length > 0) throw new Error(`federal register invalid: ${problems.join(' ')}`);
+/**
+ * Keeps valid rows. One bad row is skipped. More than half the page, or a body that is
+ * not a results envelope, fails with a code and the agency slug.
+ */
+export function parseRegisterDocuments(body: unknown, agency = ''): RegisterNotice[] {
+  if (registerEnvelopeProblems(body).length > 0) throw new CodedError('fr_envelope', agency);
   if (!isRecord(body) || !Array.isArray(body['results']))
-    throw new Error('federal register invalid');
-  return body['results'].map((item) => {
-    if (!isRecord(item)) throw new Error('federal register invalid');
-    return noticeFrom(item);
-  });
+    throw new CodedError('fr_envelope', agency);
+  const results = body['results'] as readonly unknown[];
+  const notices: RegisterNotice[] = [];
+  let invalid = 0;
+  let code: NoticeCode = 'fr_invalid_number';
+  for (const item of results) {
+    if (!isRecord(item)) {
+      invalid += 1;
+      continue;
+    }
+    const problem = noticeCode(item);
+    if (problem !== null) {
+      invalid += 1;
+      code = problem;
+      continue;
+    }
+    notices.push(noticeFrom(item));
+  }
+  if (results.length > 0 && invalid * 2 > results.length) throw new CodedError(code, agency);
+  return notices;
+}
+
+/** The page text is stored raw. JSON that is not an object fails as `json_invalid`. */
+export function readRegisterPage(text: string, agency: string): RegisterNotice[] {
+  try {
+    return parseRegisterDocuments(JSON.parse(text) as unknown, agency);
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new CodedError('json_invalid', agency);
+    throw error;
+  }
 }

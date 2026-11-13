@@ -11,11 +11,14 @@ const DEFAULT_FETCH_MS = 30_000;
 /** A failure code with no URL and no payload. `stage` is added by the pipeline. */
 export class CodedError extends Error {
   readonly code: string;
+  /** Agency slug when the failure belongs to one Federal Register page. */
+  readonly agency: string;
 
-  constructor(code: string) {
+  constructor(code: string, agency = '') {
     super(code);
     this.name = 'CodedError';
     this.code = code;
+    this.agency = agency;
   }
 }
 
@@ -31,9 +34,25 @@ export function openFetch(timeouts: {
   };
 }
 
-export function stageOf(error: unknown): { stage: string; code: string } {
-  if (error instanceof StageFailure) return { stage: error.stage, code: error.code };
-  return { stage: 'fetch', code: codeOf(error) };
+export function stageOf(error: unknown): { stage: string; code: string; agency?: string } {
+  if (error instanceof StageFailure) return failureOf(error.stage, error.code, error.agency);
+  const agency = error instanceof CodedError ? error.agency : '';
+  return failureOf('fetch', codeOf(error), agency);
+}
+
+/** Issue text. Unclassified errors are `unknown`, not a guessed transport failure. */
+export function failureText(failure: { stage: string; code: string; agency?: string }): string {
+  return failure.agency === undefined
+    ? `${failure.stage} ${failure.code}`
+    : `${failure.stage} ${failure.code} ${failure.agency}`;
+}
+
+function failureOf(
+  stage: string,
+  code: string,
+  agency: string,
+): { stage: string; code: string; agency?: string } {
+  return agency === '' ? { stage, code } : { stage, code, agency };
 }
 
 function codeOf(error: unknown): string {
@@ -45,18 +64,20 @@ function codeOf(error: unknown): string {
     const code = error.code;
     if (typeof code === 'string' && code !== '') return code;
   }
-  return 'failed';
+  return 'unknown';
 }
 
 class StageFailure extends Error {
   readonly stage: string;
   readonly code: string;
+  readonly agency: string;
 
-  constructor(stage: string, code: string) {
+  constructor(stage: string, code: string, agency = '') {
     super(code);
     this.name = 'StageFailure';
     this.stage = stage;
     this.code = code;
+    this.agency = agency;
   }
 }
 
@@ -65,7 +86,8 @@ export async function guard<T>(stage: string, run: () => Promise<T>): Promise<T>
     return await run();
   } catch (error) {
     if (error instanceof StageFailure) throw error;
-    throw new StageFailure(stage, codeOf(error));
+    const agency = error instanceof CodedError ? error.agency : '';
+    throw new StageFailure(stage, codeOf(error), agency);
   }
 }
 

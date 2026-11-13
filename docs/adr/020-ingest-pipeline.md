@@ -140,12 +140,12 @@ Read from the [API v1 documentation](https://www.federalregister.gov/developers/
 
 | Response field | What we keep |
 | --- | --- |
-| `results[].document_number` | `documentNumber` |
+| `results[].document_number` | `documentNumber`. `YYYY-NNNNN`, or a correction prefix and that form. The live CFPB page included `C1-2025-19864`. The pattern is `^(?:[A-Z]\d-)?\d{4}-\d+$`. |
 | `results[].publication_date` | `publicationDate` |
 | `results[].title` | `title` |
 | `results[].html_url` | `url`, only `https://www.federalregister.gov` |
 
-`abstract`, `excerpts`, and the document body are not stored. An empty `results` array is a normal day. The 05:00 job is a `watch` source. The hash is the sorted document numbers, without titles and without `retrievedAt`. The first snapshot is a baseline and opens no issue. A later run queues one review only when a document number was not in the previous snapshot. An empty day, or a page that only drops old numbers, logs `source federal-register unchanged` and does not replace the stored set. The issue lists each new document's number, date, title, and link. The public log does not. The run does not publish.
+`abstract`, `excerpts`, and the document body are not stored. An empty `results` array is a normal day. Fetch stores the response text. Parse reads it. A row with a bad number, date, title, or URL is skipped. More than half the rows on one agency page, or a body that is not a `results` envelope, fails that page with `fr_invalid_number`, `fr_invalid_date`, `fr_invalid_title`, `fr_invalid_url`, or `fr_envelope`. HTML or other non-JSON is `json_invalid`. The failure issue names the code and the agency slug. An unclassified error is `unknown`. The 05:00 job is a `watch` source. The hash is the response bodies, without `retrievedAt`. The comparison set is the parsed document numbers. The first snapshot is a baseline and opens no issue. A later run queues one review only when a document number was not in the previous snapshot. An empty day, or a page that only drops old numbers, logs `source federal-register unchanged` and does not replace the stored set. The issue lists each new document's number, date, title, and link. The public log does not. The run does not publish. The nightly shape check parses twenty IRS documents.
 
 ### Deposit insurance limit quote (2026-11-10)
 

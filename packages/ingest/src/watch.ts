@@ -1,4 +1,4 @@
-import { CodedError, guard, jobRecord, openFetch, stageOf } from './fetch-budget';
+import { CodedError, failureText, guard, jobRecord, openFetch, stageOf } from './fetch-budget';
 import { formatIssueCreated } from './policy';
 import { sha256Hex, type PipelinePorts, type RunSummary, type Source } from './pipeline';
 
@@ -50,7 +50,7 @@ export async function runWatchSource<Raw, Parsed>(
       bytes: 0,
       requestCount: 0,
     });
-    const issue = await ports.notifyFailure(`${failure.stage} ${failure.code}`);
+    const issue = await ports.notifyFailure(failureText(failure));
     if (issue !== null) log(formatIssueCreated(issue.number));
     return {
       status: 'failed',

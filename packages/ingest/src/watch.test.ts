@@ -179,4 +179,24 @@ describe('watch mode', () => {
     expect(ports.revalidate.mock.calls).toHaveLength(0);
     expect(ports.saveSnapshot.mock.calls).toHaveLength(0);
   });
+
+  it('reports a non-JSON Federal Register page with the agency', async () => {
+    const ports = gate();
+    let seen = '';
+    ports.notifyFailure = (message) => {
+      seen = message;
+      return Promise.resolve({ number: 6 });
+    };
+    const source = federalRegisterSource(() =>
+      Promise.resolve(new Response('<html></html>', { status: 200 })),
+    );
+    const summary = await runWatchSource(source, ports, () => undefined);
+    expect(summary.failure).toEqual({
+      stage: 'parse',
+      code: 'json_invalid',
+      agency: 'federal-deposit-insurance-corporation',
+    });
+    expect(seen).toBe('parse json_invalid federal-deposit-insurance-corporation');
+    expect(ports.commit.mock.calls).toHaveLength(0);
+  });
 });

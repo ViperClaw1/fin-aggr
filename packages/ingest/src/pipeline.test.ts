@@ -131,12 +131,12 @@ describe('publish or hold', () => {
     const lines: string[] = [];
     const summary = await runSource(broken, gate, (line) => lines.push(line));
     expect(summary.status).toBe('failed');
-    expect(summary.failure).toEqual({ stage: 'fetch', code: 'failed' });
+    expect(summary.failure).toEqual({ stage: 'fetch', code: 'unknown' });
     expect(gate.commit.mock.calls).toHaveLength(0);
     expect(gate.finishJob.mock.calls[0]?.[0]).toMatchObject({
-      errors: [{ stage: 'fetch', code: 'failed' }],
+      errors: [{ stage: 'fetch', code: 'unknown' }],
     });
-    expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('fetch failed');
+    expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('fetch unknown');
     expect(lines).toEqual(['issue #8 created']);
     expect(JSON.stringify(gate.finishJob.mock.calls)).not.toContain('token');
   });
