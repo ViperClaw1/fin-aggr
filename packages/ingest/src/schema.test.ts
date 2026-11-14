@@ -60,6 +60,23 @@ describe('national deposit rates', () => {
   });
 });
 
+describe('curve and national domains', () => {
+  const split = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261114130000_curve_and_national_domains.sql'),
+    'utf8',
+  );
+
+  it('moves a real curve off the reference version onto its own non-mock version', () => {
+    expect(split).toContain("'par_yields'");
+    expect(split).toContain("'national_rates'");
+    expect(split).toContain("values ('par_yields', curve, false, false)");
+    expect(split).toContain("values ('national_rates', observed, false, false)");
+    expect(split).toContain("publish_domain('par_yields', new_id)");
+    expect(split).toContain("publish_domain('national_rates', new_id)");
+    expect(split).toContain("v.domain = 'reference'");
+  });
+});
+
 describe('institution regulator', () => {
   const regulator = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261113120000_institution_regulator_ust.sql'),

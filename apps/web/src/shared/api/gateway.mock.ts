@@ -219,6 +219,8 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
           products: { asOf: f.asOf, isMock: true },
           treasury: { asOf: f.asOf, isMock: true },
           reference: { asOf: f.asOf, isMock: true },
+          par_yields: { asOf: f.asOf, isMock: true },
+          national_rates: { asOf: f.asOf, isMock: true },
           documents: { asOf: f.asOf, isMock: true },
         };
         return { ...datasetRollup(domains), domains };

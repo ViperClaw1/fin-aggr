@@ -38,7 +38,7 @@ function rateFromDb(row: Record<string, unknown>): NationalRate {
 }
 
 export function previousNationalRates(sql: Sql): Promise<NationalRate[]> {
-  return previousUnlessMock(sql, 'reference', readNationalRates);
+  return previousUnlessMock(sql, 'national_rates', readNationalRates);
 }
 
 async function readNationalRates(sql: Sql): Promise<NationalRate[]> {
@@ -46,24 +46,16 @@ async function readNationalRates(sql: Sql): Promise<NationalRate[]> {
     `select series_id, label, observation_date::text as observation_date, rate::text as rate
      from national_deposit_rates
      where version_id = (
-       select id from dataset_versions where domain = 'reference' and is_current
+       select id from dataset_versions where domain = 'national_rates' and is_current
      )`,
   );
   return result.rows.map(rateFromDb);
 }
 
-async function currentReferenceVersion(sql: Sql): Promise<number | null> {
-  const result = await sql.query(
-    `select id from dataset_versions where domain = 'reference' and is_current`,
-  );
-  const id = result.rows[0]?.['id'];
-  return id === undefined ? null : integerId(id);
-}
-
-async function insertReferenceVersion(sql: Sql, asOf: string): Promise<number> {
+async function insertVersion(sql: Sql, asOf: string): Promise<number> {
   const result = await sql.query(
     `insert into dataset_versions (domain, as_of, is_mock, is_current)
-     values ('reference', $1, false, false) returning id`,
+     values ('national_rates', $1, false, false) returning id`,
     [asOf],
   );
   return integerId(result.rows[0]?.['id']);
@@ -89,10 +81,7 @@ async function insertRates(
   );
 }
 
-/**
- * Tax, insurance, and the par curve already occupy the current reference version.
- * Replacing only this table leaves those rows in place.
- */
+/** A new non-mock version. Tax, insurance, and the curve stay on their own domains. */
 async function publishRates(
   sql: Sql,
   rows: readonly NationalRate[] | null,
@@ -102,13 +91,9 @@ async function publishRates(
   if (date === undefined || rows.some((row) => row.date !== date)) {
     throw new Error('national rates date');
   }
-  const existing = await currentReferenceVersion(sql);
-  const versionId = existing ?? (await insertReferenceVersion(sql, date));
-  if (existing !== null) {
-    await sql.query(`delete from national_deposit_rates where version_id = $1`, [versionId]);
-  }
+  const versionId = await insertVersion(sql, date);
   await insertRates(sql, versionId, rows);
-  if (existing === null) await sql.query(`select publish_domain('reference', $1)`, [versionId]);
+  await sql.query(`select publish_domain('national_rates', $1)`, [versionId]);
   await sql.query(`update sources set last_updated_at = now() where id = $1`, [SOURCE_ID]);
   return versionId;
 }

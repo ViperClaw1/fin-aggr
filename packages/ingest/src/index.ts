@@ -9,6 +9,8 @@ export const DATASET_DOMAINS = [
   'products',
   'treasury',
   'reference',
+  'par_yields',
+  'national_rates',
   'documents',
 ] as const;
 

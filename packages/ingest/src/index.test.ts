@@ -10,6 +10,8 @@ describe('dataset domains', () => {
       'products',
       'treasury',
       'reference',
+      'par_yields',
+      'national_rates',
       'documents',
     ]);
   });

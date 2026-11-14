@@ -132,7 +132,7 @@ export function parYieldPorts(
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
-    revalidate: () => revalidateDomain(env, 'reference'),
+    revalidate: () => revalidateDomain(env, 'par_yields'),
     notifyFailure: (message, title = 'Ingest treasury-par-yield failed') =>
       notifyFailure(env, message, title),
   };

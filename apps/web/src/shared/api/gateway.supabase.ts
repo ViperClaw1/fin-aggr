@@ -284,6 +284,8 @@ async function datasetInfo(): Promise<DatasetInfo> {
     products: domainOf(rows, 'products'),
     treasury: domainOf(rows, 'treasury'),
     reference: domainOf(rows, 'reference'),
+    par_yields: domainOf(rows, 'par_yields'),
+    national_rates: domainOf(rows, 'national_rates'),
     documents: domainOf(rows, 'documents'),
   };
   return parsed(DatasetInfo, { ...datasetRollup(domains), domains }, 'dataset');

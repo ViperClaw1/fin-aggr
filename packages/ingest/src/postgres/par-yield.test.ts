@@ -10,38 +10,30 @@ const point: ParYieldPoint = {
   rate: rateFromPercent('4.98'),
 };
 
-function memorySql(current: boolean): { sql: Sql; texts: string[] } {
-  const texts: string[] = [];
-  const sql: Sql = {
-    query: (text) => {
-      texts.push(text);
-      if (text.includes('and is_current')) {
-        return Promise.resolve({ rows: current ? [{ id: '9' }] : [] });
-      }
-      if (text.includes('insert into dataset_versions'))
-        return Promise.resolve({ rows: [{ id: '17' }] });
-      if (text.includes('review_queue')) return Promise.resolve({ rows: [{ id: '4' }] });
-      return Promise.resolve({ rows: [] });
-    },
-  };
-  return { sql, texts };
-}
-
 describe('par yield publish', () => {
-  it('keeps the current reference version when tax or insurance already published', async () => {
+  it('opens a new non-mock version and makes that version current', async () => {
     expect(point.rate).toBe('0.0498');
-    const { sql, texts } = memorySql(true);
-    const result = await commitParYields(sql, { publish: [point], queue: null });
-    expect(result).toEqual({ queueId: null, versionId: 9 });
-    expect(texts.some((text) => text.includes('delete from par_yields'))).toBe(true);
-    expect(texts.some((text) => text.includes('insert into par_yields'))).toBe(true);
-    expect(texts.some((text) => text.includes('publish_domain'))).toBe(false);
-  });
-
-  it('opens a reference version only when none is current', async () => {
-    const { sql, texts } = memorySql(false);
-    const result = await commitParYields(sql, { publish: [point], queue: null });
-    expect(result).toEqual({ queueId: null, versionId: 17 });
-    expect(texts.some((text) => text.includes("publish_domain('reference'"))).toBe(true);
+    let next = 20;
+    const texts: string[] = [];
+    const sql: Sql = {
+      query: (text) => {
+        texts.push(text);
+        if (text.includes('insert into dataset_versions')) {
+          next += 1;
+          return Promise.resolve({ rows: [{ id: String(next) }] });
+        }
+        return Promise.resolve({ rows: [] });
+      },
+    };
+    const first = await commitParYields(sql, { publish: [point], queue: null });
+    const second = await commitParYields(sql, { publish: [point], queue: null });
+    expect(first).toEqual({ queueId: null, versionId: 21 });
+    expect(second).toEqual({ queueId: null, versionId: 22 });
+    expect(texts.filter((text) => text.includes("publish_domain('par_yields'"))).toHaveLength(2);
+    expect(texts.some((text) => text.includes("values ('par_yields', $1, false, false)"))).toBe(
+      true,
+    );
+    expect(texts.some((text) => text.includes('delete from par_yields'))).toBe(false);
+    expect(texts.some((text) => text.includes("'reference'"))).toBe(false);
   });
 });

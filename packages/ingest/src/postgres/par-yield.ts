@@ -35,7 +35,7 @@ function pointFromDb(row: Record<string, unknown>): ParYieldPoint {
 
 /** Newest stored curve only, so a new calendar year is not a shrink and an old spike is not a hold. */
 export function previousParYields(sql: Sql): Promise<ParYieldPoint[]> {
-  return previousUnlessMock(sql, 'reference', readParYields);
+  return previousUnlessMock(sql, 'par_yields', readParYields);
 }
 
 async function readParYields(sql: Sql): Promise<ParYieldPoint[]> {
@@ -43,12 +43,12 @@ async function readParYields(sql: Sql): Promise<ParYieldPoint[]> {
     `select curve_date::text as curve_date, tenor, rate::text as rate
      from par_yields
      where version_id = (
-       select id from dataset_versions where domain = 'reference' and is_current
+       select id from dataset_versions where domain = 'par_yields' and is_current
      )
        and curve_date = (
          select max(curve_date) from par_yields
          where version_id = (
-           select id from dataset_versions where domain = 'reference' and is_current
+           select id from dataset_versions where domain = 'par_yields' and is_current
          )
        )`,
   );
@@ -65,18 +65,10 @@ function newestCurveDate(rows: readonly ParYieldPoint[]): string {
   return date;
 }
 
-async function currentReferenceVersion(sql: Sql): Promise<number | null> {
-  const result = await sql.query(
-    `select id from dataset_versions where domain = 'reference' and is_current`,
-  );
-  const id = result.rows[0]?.['id'];
-  return id === undefined ? null : integerId(id);
-}
-
-async function insertReferenceVersion(sql: Sql, asOf: string): Promise<number> {
+async function insertVersion(sql: Sql, asOf: string): Promise<number> {
   const result = await sql.query(
     `insert into dataset_versions (domain, as_of, is_mock, is_current)
-     values ('reference', $1, false, false) returning id`,
+     values ('par_yields', $1, false, false) returning id`,
     [asOf],
   );
   return integerId(result.rows[0]?.['id']);
@@ -100,21 +92,15 @@ async function insertParYields(
   );
 }
 
-/**
- * Tax and insurance already occupy the current `reference` version.
- * `publish_domain` would hide them from anon, so a later curve replaces only `par_yields`.
- */
+/** A new non-mock version. The previous curve stays on its own version. */
 async function publishParYields(
   sql: Sql,
   rows: readonly ParYieldPoint[] | null,
 ): Promise<number | null> {
   if (rows === null || rows.length === 0) return null;
-  const existing = await currentReferenceVersion(sql);
-  const versionId = existing ?? (await insertReferenceVersion(sql, newestCurveDate(rows)));
-  if (existing !== null)
-    await sql.query(`delete from par_yields where version_id = $1`, [versionId]);
+  const versionId = await insertVersion(sql, newestCurveDate(rows));
   await insertParYields(sql, versionId, rows);
-  if (existing === null) await sql.query(`select publish_domain('reference', $1)`, [versionId]);
+  await sql.query(`select publish_domain('par_yields', $1)`, [versionId]);
   await sql.query(`update sources set last_updated_at = now() where id = $1`, [SOURCE_ID]);
   return versionId;
 }

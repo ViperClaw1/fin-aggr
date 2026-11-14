@@ -184,7 +184,7 @@ The empty `page` parameter is part of that URL. The header read on 2026-11-12 is
 
 `Date` is `MM/DD/YYYY` and becomes `curve_date`. Each percent string becomes a `Rate` with `rateFromPercent` (`4.05` → `0.0405`). `N/A` or a blank cell is a missing tenor and holds the batch. A date after the fetch day, or a rate outside 0–20%, holds the batch. A move of more than 50bp is reviewed only for the newest date: against the stored rate for that same date, otherwise against the prior date in the file, otherwise against the newest stored curve. Older days in the year file are not flagged. The comparison set is that newest stored date, not the whole year, so the first file of a new year is not a shrink.
 
-This is a market benchmark, not a `Product`. It is stored in `par_yields` on domain `reference`. `reference` has one current version, and tax and insurance already use it. Calling `publish_domain('reference', …)` would clear `is_current` on that version and hide those rows from `anon`. The curve therefore replaces `par_yields` on the current reference version and does not copy tax or insurance rows. A reference version is created only when none is current. `dataset_versions.as_of` for an existing reference version stays the tax or insurance date; the curve date is `curve_date`. Revalidate tag `reference` also refreshes tax and insurance pages. Treasury bills and notes that are products stay on domain `treasury`.
+This is a market benchmark, not a `Product`. It is stored in `par_yields` on domain `par_yields`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('par_yields', …)`. The version date is the newest `curve_date` in that file. Tax and insurance stay on `reference`. Revalidate tag is `par_yields`. Treasury bills and notes that are products stay on domain `treasury`.
 
 ### NCUA 5300 (2026-11-13)
 
@@ -224,7 +224,7 @@ Read from FRED release 317, table "National Deposit Rates" (`eid=1217866`, [the 
 | `NDR48MCD` | 48-Month CD |
 | `NDR60MCD` | 60-Month CD |
 
-Each observation is one row in `national_deposit_rates` on the current `reference` version. `publish_domain('reference')` is not called when that version already exists, so tax, insurance, and `par_yields` stay. A percent becomes a `Rate` with `rateFromPercent`. An empty observation (`.` or blank), a rate outside 0–20%, a date after the run day, or two series on different dates holds the whole batch and leaves the previous table in place. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
+Each observation is one row in `national_deposit_rates` on domain `national_rates`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('national_rates', …)`. The version date is the observation date. Tax, insurance, and the curve stay on their own domains. A percent becomes a `Rate` with `rateFromPercent`. An empty observation (`.` or blank), a rate outside 0–20%, a date after the run day, or two series on different dates holds the whole batch and leaves the previous table in place. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
 
 ### Fiscal Data auctions and TreasuryDirect (2026-11-13)
 

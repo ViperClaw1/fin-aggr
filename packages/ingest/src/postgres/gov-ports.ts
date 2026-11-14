@@ -53,7 +53,7 @@ export function ncuaPorts(env: NodeJS.ProcessEnv, now: () => string): PipelinePo
   };
 }
 
-/** Replaces only the national-rate table on the current reference version. */
+/** Publishes national rates as their own version. */
 export function nationalRatesPorts(
   env: NodeJS.ProcessEnv,
   now: () => string,
@@ -71,7 +71,7 @@ export function nationalRatesPorts(
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
-    revalidate: () => revalidateDomain(env, 'reference'),
+    revalidate: () => revalidateDomain(env, 'national_rates'),
     notifyFailure: (message, title = 'Ingest fdic-national-rates failed') =>
       notifyFailure(env, message, title),
   };

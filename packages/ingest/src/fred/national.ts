@@ -177,7 +177,7 @@ export function nationalRatesSource(
   let asOf = now().slice(0, 10);
   return {
     id: 'fdic-national-rates',
-    domain: 'reference',
+    domain: 'national_rates',
     kind: 'official_api',
     requestTimeoutMs: 30_000,
     fetchBudgetMs: 180_000,

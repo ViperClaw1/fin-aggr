@@ -1,7 +1,16 @@
 // Turns a fixture set into parameterized inserts. Rates stay decimal strings until Postgres
 // parses them into numeric (ADR-019). No float on the way in.
 
-const DOMAINS = ['institutions', 'bank_metrics', 'products', 'treasury', 'reference', 'documents'];
+const DOMAINS = [
+  'institutions',
+  'bank_metrics',
+  'products',
+  'treasury',
+  'reference',
+  'par_yields',
+  'national_rates',
+  'documents',
+];
 
 const json = (value) => JSON.stringify(value);
 

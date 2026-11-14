@@ -239,7 +239,7 @@ export function parYieldSource(now: () => string): Source<ParYieldRaw, ParYieldP
   let asOf = now().slice(0, 10);
   return {
     id: 'treasury-par-yield',
-    domain: 'reference',
+    domain: 'par_yields',
     kind: 'official_api',
     fetch: (ctx) => {
       const retrievedAt = now();
