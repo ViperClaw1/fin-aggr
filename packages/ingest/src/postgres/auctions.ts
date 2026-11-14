@@ -1,4 +1,5 @@
-import type { Sql } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
+import { publishTreasuryProducts } from '../treasury/product-gaps';
 
 export async function ensureAuctionSources(sql: Sql): Promise<void> {
   await sql.query(
@@ -21,4 +22,21 @@ export async function ensureAuctionSources(sql: Sql): Promise<void> {
       'https://www.treasurydirect.gov/TA_WS/securities/auctioned',
     ],
   );
+}
+
+/** A review row only. A product publish is refused until the quotes are confirmed. */
+export async function commitAuctionHold(
+  sql: Sql,
+  input: {
+    publish: readonly unknown[] | null;
+    queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null;
+  },
+): Promise<{ queueId: number | null; versionId: number | null; issueUrl: string | null }> {
+  if (input.publish !== null) publishTreasuryProducts();
+  const queue = input.queue;
+  if (queue === null) return { queueId: null, versionId: null, issueUrl: null };
+  return withTransaction(sql, async (tx) => {
+    const queued = await enqueueReview(tx, queue);
+    return { queueId: queued.queueId, versionId: null, issueUrl: queued.issueUrl };
+  });
 }

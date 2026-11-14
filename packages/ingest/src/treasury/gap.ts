@@ -1,7 +1,9 @@
 import { CodedError, failureText, guard, jobRecord, openFetch, stageOf } from '../fetch-budget';
+import { openQueuedIssue } from '../github';
 import type { DatasetDomain } from '../index';
 import { formatIssueCreated } from '../policy';
 import type { PipelinePorts, RunSummary } from '../pipeline';
+import { missingFieldsReason } from './product-gaps';
 import {
   DIRECT_URL,
   FISCAL_URL,
@@ -31,8 +33,6 @@ const DIRECT: GapSource = {
   problems: directShapeProblems,
 };
 
-const MISSING_PRODUCT_FIELDS = ['tier', 'early_withdrawal', 'eligibility', 'tax_treatment'];
-
 function held(reason: string, published = 0): RunSummary {
   return {
     status: 'held',
@@ -48,7 +48,7 @@ function held(reason: string, published = 0): RunSummary {
 
 /**
  * Official columns are stored. Product fields the schema requires are absent,
- * so nothing is published and the standing gap does not open a review.
+ * so nothing is published. A changed snapshot updates the one open review.
  */
 export async function runAuctionGap(
   source: GapSource,
@@ -82,22 +82,18 @@ export async function runAuctionGap(
       );
       return held('unchanged');
     }
-    await guard('snapshot', () =>
+    const saved = await guard('snapshot', () =>
       ports.saveSnapshot({ sourceId: source.id, sha256: snapshot.sha256, bytes: snapshot.bytes }),
     );
-    await ports.finishJob(
-      jobRecord({
-        source,
-        startedAt,
-        endedAt: ports.now(),
-        status: 'held',
-        rowCount: 0,
-        errors: ['missing_fields'],
-        bytes: snapshot.bytes.byteLength,
-        requestCount: snapshot.requestCount,
-      }),
-    );
-    return held(`missing_fields:${MISSING_PRODUCT_FIELDS.join(',')}`);
+    return await holdMissingFields({
+      source,
+      ports,
+      log,
+      startedAt,
+      snapshotId: saved.snapshotId,
+      bytes: snapshot.bytes.byteLength,
+      requestCount: snapshot.requestCount,
+    });
   } catch (error) {
     const failure = stageOf(error);
     await ports.finishJob({
@@ -123,6 +119,48 @@ export async function runAuctionGap(
       failure,
     };
   }
+}
+
+async function holdMissingFields(input: {
+  source: GapSource;
+  ports: PipelinePorts<never>;
+  log: (line: string) => void;
+  startedAt: string;
+  snapshotId: number;
+  bytes: number;
+  requestCount: number;
+}): Promise<RunSummary> {
+  const { source, ports, log, startedAt, snapshotId } = input;
+  const reason = missingFieldsReason();
+  const committed = await guard('commit', () =>
+    ports.commit({
+      publish: null,
+      queue: { sourceId: source.id, domain: source.domain, snapshotId, reason },
+    }),
+  );
+  const issueNumber = await openQueuedIssue(source, ports, log, {
+    snapshotId,
+    queueId: committed.queueId,
+    reason,
+    issueUrl: committed.issueUrl ?? null,
+  });
+  await ports.finishJob(
+    jobRecord({
+      source,
+      startedAt,
+      endedAt: ports.now(),
+      status: 'held',
+      rowCount: 0,
+      errors: ['missing_fields'],
+      bytes: input.bytes,
+      requestCount: input.requestCount,
+    }),
+  );
+  return {
+    ...held(reason),
+    queued: committed.queueId === null ? 0 : 1,
+    issueNumber,
+  };
 }
 
 export function fiscalGap(): GapSource {

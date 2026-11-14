@@ -6,6 +6,7 @@ import type { NcuaRow } from '../ncua/parse';
 import type { PipelinePorts } from '../pipeline';
 import { previousFinancials } from './financials';
 import { latestSnapshotHash, previousInstitutions } from './institutions';
+import { commitAuctionHold } from './auctions';
 import { commitNationalRates, previousNationalRates } from './national';
 import { commitNcua } from './ncua';
 import {
@@ -89,7 +90,7 @@ export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): Pipelin
     previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
     previousRows: () => Promise.resolve([]),
-    commit: () => Promise.reject(new Error('treasury auctions do not publish products')),
+    commit: (input) => withClient(databaseUrl(env), (sql) => commitAuctionHold(sql, input)),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
     commentIssue: (input) => commentReview(env, input),

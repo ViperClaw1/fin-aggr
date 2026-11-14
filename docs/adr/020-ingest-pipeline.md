@@ -249,7 +249,16 @@ Fiscal Data `auctions_query` (`sort=-auction_date`, `page[size]=1`), labels from
 
 TreasuryDirect `GET /TA_WS/securities/auctioned?format=json&pagesize=1`, names from the JSON object read 2026-11-13: `cusip`, `securityType`, `securityTerm`, `issueDate`, `maturityDate`, `highRate`, `investmentRate`, `interestRate`, `frequencyOfInterestPayments`, `minimumToIssueAmount`.
 
-Neither response has a balance-tier schedule, an early-withdrawal penalty, an eligibility rule, or a tax treatment. Those `Product` fields are not filled in. No treasury product is published. A new auction updates the snapshot and the run stays `held` with `missing_fields`. It does not open a review, because the gap does not change from one auction to the next. A missing official column fails the run.
+Neither response has a balance-tier schedule, an early-withdrawal penalty, an eligibility rule, or a tax treatment. Those `Product` fields are not filled in. The quotes that describe the gap, read 2026-11-14, stay `unverified` in `packages/ingest/src/treasury/product-gaps.ts` and are not a published product:
+
+| Held field | Product field | Quote |
+| --- | --- | --- |
+| `tier` | `tiers` | 31 CFR 356.12(a): a bid states a par amount at or above the minimum in the auction announcement, in the stated multiple. TreasuryDirect (Buying a Treasury Marketable Security): minimum bid $100, increments of $100, non-competitive maximum $10 million. That is one minimum, not a balance-tier schedule. |
+| `early_withdrawal` | `earlyWithdrawal` | TreasuryDirect, Selling a Treasury Marketable Security: hold to maturity or sell before maturity through a bank, broker, or dealer. A security bought in TreasuryDirect must be held 45 days before it can be sold or transferred. That is not a days-of-interest, months-of-interest, or percent-of-principal penalty. |
+| `eligibility` | `eligibility` | 31 CFR 363.10: a TreasuryDirect account is an online account maintained solely in the account holder's name for eligible book-entry Treasury securities. The page does not state a rule the profile can evaluate. |
+| `tax_treatment` | `taxTreatment` | 31 CFR 356.32(a): securities issued under that part are subject to the Internal Revenue Code of 1986. Under 31 U.S.C. 3124 they are exempt from taxation by a State or political subdivision of a State, except for estate or inheritance taxes and the other exceptions in that section. TreasuryDirect, Treasury Bills: federal tax is due on interest earned, and there is no state or local tax. The enum value is not chosen until a person confirms the quote. |
+
+No treasury product is published until that confirmation. `publishTreasuryProducts` throws. A new auction updates the snapshot and the one open review for that source (same row, comment on the same issue). The run stays `held` with `reason=missing_fields:tier,early_withdrawal,eligibility,tax_treatment`. An unchanged hash stays `held` with `reason=unchanged` and does not open another issue. A missing official column fails the run.
 
 ### Insurance limit and 2026 tax brackets (2026-11-13)
 
