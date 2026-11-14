@@ -43,22 +43,32 @@ export function registerConnectors(): void {
 
 function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): void {
   if (summary.watch !== undefined) {
-    const line = formatWatchLine(id, summary.watch);
-    writeStdout(line);
-    writeStepSummary(line, env);
+    recordLine(formatWatchLine(id, summary.watch), env);
     return;
   }
+  recordLine(publishLine(id, summary), env);
+  assertFinished(id, summary, env);
+}
+
+function recordLine(line: string, env: NodeJS.ProcessEnv): void {
+  writeStdout(line);
+  writeStepSummary(line, env);
+}
+
+function publishLine(id: string, summary: RunSummary): string {
   const version = summary.versionId === null ? '-' : String(summary.versionId);
-  const line = formatRunLine({
+  return formatRunLine({
     id,
     status: summary.status,
     rows: summary.published,
     queued: summary.queued,
     version,
     ...(summary.revalidateStatus === null ? {} : { revalidate: 'failed' as const }),
+    ...(summary.status === 'held' ? { reason: summary.holdReason ?? 'unchanged' } : {}),
   });
-  writeStdout(line);
-  writeStepSummary(line, env);
+}
+
+function assertFinished(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): void {
   if (summary.revalidateStatus !== null) {
     const status = String(summary.revalidateStatus);
     writeStdout(`source ${id} failed stage=revalidate status=${status}`);

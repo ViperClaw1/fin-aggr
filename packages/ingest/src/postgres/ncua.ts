@@ -1,8 +1,6 @@
-import type { Sql } from '../decisions';
-import { withTransaction } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 import type { NcuaRow } from '../ncua/parse';
 import { replaceCohortFinancials } from './financials';
-import { integerId } from './id';
 import { replaceCohortInstitutions } from './institutions';
 
 const SOURCE_ID = 'ncua-5300';
@@ -57,12 +55,8 @@ export async function commitNcua(
       prefix: 'ncua:',
       sourceId: SOURCE_ID,
     });
-    if (input.queue === null) return { queueId: null, versionId };
-    const queued = await tx.query(
-      `insert into review_queue (source_id, domain, snapshot_id, reason)
-       values ($1, $2, $3, $4) returning id`,
-      [input.queue.sourceId, input.queue.domain, input.queue.snapshotId, input.queue.reason],
-    );
-    return { queueId: integerId(queued.rows[0]?.['id']), versionId };
+    if (input.queue === null) return { queueId: null, versionId, issueUrl: null };
+    const queued = await enqueueReview(tx, input.queue);
+    return { queueId: queued.queueId, versionId, issueUrl: queued.issueUrl };
   });
 }

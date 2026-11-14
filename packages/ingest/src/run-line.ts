@@ -8,11 +8,14 @@ export function formatRunLine(input: {
   queued: number;
   version: string;
   revalidate?: 'failed';
+  /** Present on every held line: unchanged, queued:<reason>, missing_fields:<list>, blocked:<reason>. */
+  reason?: string;
 }): string {
   const rows = String(input.rows);
   const queued = String(input.queued);
   const cache = input.revalidate === 'failed' ? ' revalidate=failed' : '';
-  return `source ${input.id} ${input.status} rows=${rows} queued=${queued} version=${input.version}${cache}`;
+  const reason = input.reason === undefined ? '' : ` reason=${input.reason}`;
+  return `source ${input.id} ${input.status} rows=${rows} queued=${queued} version=${input.version}${cache}${reason}`;
 }
 
 /** Counts and a code only. The message, the URL, and the payload stay out of the log. */

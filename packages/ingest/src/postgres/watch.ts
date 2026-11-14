@@ -1,5 +1,4 @@
-import { withTransaction, type Sql } from '../decisions';
-import { integerId } from './id';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 
 const WATCH_SOURCES = [
   {
@@ -42,16 +41,12 @@ export async function commitWatch(
     publish: readonly unknown[] | null;
     queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null;
   },
-): Promise<{ queueId: number | null; versionId: number | null }> {
+): Promise<{ queueId: number | null; versionId: number | null; issueUrl: string | null }> {
   if (input.publish !== null) throw new Error('watch does not publish');
   const queue = input.queue;
-  if (queue === null) return { queueId: null, versionId: null };
+  if (queue === null) return { queueId: null, versionId: null, issueUrl: null };
   return withTransaction(sql, async (tx) => {
-    const result = await tx.query(
-      `insert into review_queue (source_id, domain, snapshot_id, reason)
-       values ($1, $2, $3, $4) returning id`,
-      [queue.sourceId, queue.domain, queue.snapshotId, queue.reason],
-    );
-    return { queueId: integerId(result.rows[0]?.['id']), versionId: null };
+    const queued = await enqueueReview(tx, queue);
+    return { queueId: queued.queueId, versionId: null, issueUrl: queued.issueUrl };
   });
 }

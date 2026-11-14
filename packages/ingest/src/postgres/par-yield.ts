@@ -1,5 +1,5 @@
 import { isRate } from '@fa/contracts';
-import { withTransaction, type Sql } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 import { PAR_TENORS, type ParTenor, type ParYieldPoint } from '../treasury/par-yield';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
@@ -108,14 +108,9 @@ async function publishParYields(
 async function enqueue(
   sql: Sql,
   queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null,
-): Promise<number | null> {
+): Promise<{ queueId: number; issueUrl: string | null } | null> {
   if (queue === null) return null;
-  const result = await sql.query(
-    `insert into review_queue (source_id, domain, snapshot_id, reason)
-     values ($1, $2, $3, $4) returning id`,
-    [queue.sourceId, queue.domain, queue.snapshotId, queue.reason],
-  );
-  return integerId(result.rows[0]?.['id']);
+  return enqueueReview(sql, queue);
 }
 
 export async function commitParYields(
@@ -127,7 +122,7 @@ export async function commitParYields(
 ): Promise<{ queueId: number | null; versionId: number | null }> {
   return withTransaction(sql, async (tx) => {
     const versionId = await publishParYields(tx, input.publish);
-    const queueId = await enqueue(tx, input.queue);
-    return { queueId, versionId };
+    const queued = await enqueue(tx, input.queue);
+    return { queueId: queued?.queueId ?? null, versionId, issueUrl: queued?.issueUrl ?? null };
   });
 }

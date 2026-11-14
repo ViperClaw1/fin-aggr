@@ -26,7 +26,7 @@ describe('national rates publish', () => {
       },
     };
     const result = await commitNationalRates(sql, { publish: [row], queue: null });
-    expect(result).toEqual({ queueId: null, versionId: 31 });
+    expect(result).toEqual({ queueId: null, versionId: 31, issueUrl: null });
     expect(texts.some((text) => text.includes("publish_domain('national_rates'"))).toBe(true);
     expect(texts.some((text) => text.includes("values ('national_rates', $1, false, false)"))).toBe(
       true,

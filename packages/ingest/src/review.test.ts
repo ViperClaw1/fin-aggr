@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { approveReview, rejectReview, type Sql } from './decisions';
-import { createReviewIssue } from './github';
+import { formatDecision } from './cli';
+import { approveReview, enqueueReview, rejectReview, type Sql } from './decisions';
+import { closeReviewIssue, createReviewIssue } from './github';
 import { mentionOverdue } from './overdue';
 import { formatIssueCreated, requireReviewer } from './policy';
 
@@ -53,6 +54,29 @@ describe('review decisions', () => {
   });
 });
 
+describe('open review row', () => {
+  it('updates the open row for a source instead of inserting another', async () => {
+    const sql = scripted((text) => {
+      if (text.includes('issue_url')) {
+        return [{ id: 4, issue_url: 'https://github.com/ViperClaw1/fin-aggr-review/issues/9' }];
+      }
+      return [];
+    });
+    const queued = await enqueueReview(sql, {
+      sourceId: 'fdic-national-rates',
+      domain: 'national_rates',
+      snapshotId: 12,
+      reason: 'fred_series_missing:NOPE',
+    });
+    expect(queued).toEqual({
+      queueId: 4,
+      issueUrl: 'https://github.com/ViperClaw1/fin-aggr-review/issues/9',
+    });
+    expect(sql.calls.some((call) => call.startsWith('insert'))).toBe(false);
+    expect(sql.calls.some((call) => call.startsWith('update'))).toBe(true);
+  });
+});
+
 describe('private issue', () => {
   it('returns the issue number and does not put the diff in the error', async () => {
     const fetchImpl = (() =>
@@ -74,6 +98,30 @@ describe('private issue', () => {
     });
     expect(formatIssueCreated(issue.number)).toBe('issue #9 created');
     expect(formatIssueCreated(issue.number)).not.toContain('http');
+  });
+
+  it('prints the decision and closes the issue with that reason', async () => {
+    const calls: { method: string; url: string; body: string }[] = [];
+    const fetchImpl = ((url: string, init?: RequestInit) => {
+      calls.push({
+        method: init?.method ?? 'GET',
+        url,
+        body: typeof init?.body === 'string' ? init.body : '',
+      });
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    }) as typeof fetch;
+    expect(formatDecision(4, 'rejected', 'ViperClaw1')).toBe('review 4 rejected by ViperClaw1');
+    expect(formatDecision(4, 'approved', 'ViperClaw1')).toBe('review 4 approved by ViperClaw1');
+    await closeReviewIssue(fetchImpl, {
+      token: 'secret-token',
+      issueNumber: 9,
+      body: 'rejected by ViperClaw1: parser returned empty',
+    });
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.url).toContain('/issues/9/comments');
+    expect(calls[0]?.body).toContain('rejected by ViperClaw1: parser returned empty');
+    expect(calls[1]?.method).toBe('PATCH');
+    expect(JSON.parse(calls[1]?.body ?? '{}')).toMatchObject({ state: 'closed' });
   });
 
   it('omits the response body from a failure', async () => {

@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { commandOf } from './args';
+import { closeReviewIssue, issueNumberFromUrl } from './github';
 import { databaseUrl, withClient } from './db';
 import {
   approveReview,
@@ -38,6 +39,14 @@ export async function reviewerFrom(
 
 export function formatReviewRow(row: OpenReview): string {
   return `${String(row.id)} ${row.source_id} ${row.domain} ${row.reason}`;
+}
+
+export function formatDecision(
+  id: number,
+  decision: 'approved' | 'rejected',
+  login: string,
+): string {
+  return `review ${String(id)} ${decision} by ${login}`;
 }
 
 async function signedUrl(path: string, env: NodeJS.ProcessEnv): Promise<string> {
@@ -81,7 +90,7 @@ export async function revalidateDomain(env: NodeJS.ProcessEnv, domain: string): 
 
 async function openRow(sql: Sql, id: number): Promise<OpenReview> {
   const result = await sql.query(
-    `select id, source_id, domain, reason, snapshot_id
+    `select id, source_id, domain, reason, snapshot_id, issue_url
      from review_queue where id = $1 and status = 'open'`,
     [id],
   );
@@ -109,12 +118,15 @@ export async function runCommand(
     const login = await reviewerFrom(env, io.ghLogin);
     const row = await openRow(sql, command.id);
     if (command.kind === 'reject') {
+      const reason = command.reason ?? '';
       await rejectReview(sql, {
         id: command.id,
         login,
         decidedAt: io.now(),
-        reason: command.reason ?? '',
+        reason,
       });
+      io.log(formatDecision(command.id, 'rejected', login));
+      await closePrivateIssue(env, row.issue_url, `rejected by ${login}: ${reason.trim()}`);
       return;
     }
     const publish = publishers.get(row.source_id);
@@ -128,7 +140,22 @@ export async function runCommand(
       publish: (tx) => publish(tx, row),
     });
     await revalidateDomain(env, row.domain);
+    io.log(formatDecision(command.id, 'approved', login));
+    await closePrivateIssue(env, row.issue_url, `approved by ${login}`);
   });
+}
+
+async function closePrivateIssue(
+  env: NodeJS.ProcessEnv,
+  issueUrl: string | null,
+  body: string,
+): Promise<void> {
+  if (issueUrl === null) return;
+  const issueNumber = issueNumberFromUrl(issueUrl);
+  if (issueNumber === null) return;
+  const token = env['REVIEW_REPO_TOKEN']?.trim() ?? '';
+  if (token === '') throw new Error('REVIEW_REPO_TOKEN is missing');
+  await closeReviewIssue(fetch, { token, issueNumber, body });
 }
 
 function isDirect(): boolean {

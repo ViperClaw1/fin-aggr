@@ -224,7 +224,7 @@ describe('financials publish', () => {
       asOf: '2026-11-12T12:00:00.000Z',
       prefix: 'fdic:',
     });
-    expect(result).toEqual({ queueId: null, versionId: 12 });
+    expect(result).toEqual({ queueId: null, versionId: 12, issueUrl: null });
     expect(texts.some((text) => text.includes("publish_domain('bank_metrics'"))).toBe(true);
     expect(texts.some((text) => text.includes('deposits_usd_thousands'))).toBe(true);
   });

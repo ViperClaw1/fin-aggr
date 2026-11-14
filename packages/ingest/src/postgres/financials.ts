@@ -1,6 +1,6 @@
 import { BankMetrics } from '@fa/contracts';
 import { CodedError } from '../fetch-budget';
-import { withTransaction, type Sql } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 import type { CallReport } from '../fdic/financials';
 import { type CohortPrefix, otherCohort } from './cohort';
 import { integerId } from './id';
@@ -147,14 +147,9 @@ export async function replaceCohortFinancials(
 async function enqueue(
   sql: Sql,
   queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null,
-): Promise<number | null> {
+): Promise<{ queueId: number; issueUrl: string | null } | null> {
   if (queue === null) return null;
-  const result = await sql.query(
-    `insert into review_queue (source_id, domain, snapshot_id, reason)
-     values ($1, $2, $3, $4) returning id`,
-    [queue.sourceId, queue.domain, queue.snapshotId, queue.reason],
-  );
-  return integerId(result.rows[0]?.['id']);
+  return enqueueReview(sql, queue);
 }
 
 export async function commitFinancials(
@@ -168,13 +163,14 @@ export async function commitFinancials(
     sourceId?: string;
   },
 ): Promise<{ queueId: number | null; versionId: number | null }> {
-  return withTransaction(sql, async (tx) => ({
-    versionId: await replaceCohortFinancials(tx, {
+  return withTransaction(sql, async (tx) => {
+    const versionId = await replaceCohortFinancials(tx, {
       rows: input.publish,
       asOf: input.asOf,
       prefix: input.prefix,
       sourceId: input.sourceId,
-    }),
-    queueId: await enqueue(tx, input.queue),
-  }));
+    });
+    const queued = await enqueue(tx, input.queue);
+    return { versionId, queueId: queued?.queueId ?? null, issueUrl: queued?.issueUrl ?? null };
+  });
 }

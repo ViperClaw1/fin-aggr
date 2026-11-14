@@ -1,5 +1,5 @@
 import { Institution, type Institution as InstitutionRow } from '@fa/contracts';
-import { withTransaction, type Sql } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 import { type CohortPrefix, otherCohort } from './cohort';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
@@ -132,8 +132,8 @@ export async function commitInstitutions(
       prefix: input.prefix,
       sourceId: input.sourceId,
     });
-    const queueId = await enqueue(tx, input.queue);
-    return { queueId, versionId };
+    const queued = await enqueue(tx, input.queue);
+    return { queueId: queued?.queueId ?? null, versionId, issueUrl: queued?.issueUrl ?? null };
   });
 }
 
@@ -163,12 +163,7 @@ export async function replaceCohortInstitutions(
 async function enqueue(
   sql: Sql,
   queue: { sourceId: string; domain: string; snapshotId: number; reason: string } | null,
-): Promise<number | null> {
+): Promise<{ queueId: number; issueUrl: string | null } | null> {
   if (queue === null) return null;
-  const result = await sql.query(
-    `insert into review_queue (source_id, domain, snapshot_id, reason)
-     values ($1, $2, $3, $4) returning id`,
-    [queue.sourceId, queue.domain, queue.snapshotId, queue.reason],
-  );
-  return integerId(result.rows[0]?.['id']);
+  return enqueueReview(sql, queue);
 }

@@ -10,6 +10,7 @@ import { commitNationalRates, previousNationalRates } from './national';
 import { commitNcua } from './ncua';
 import {
   attachIssue,
+  commentReview,
   finishJob,
   notifyFailure,
   openReview,
@@ -41,6 +42,7 @@ export function ncuaPorts(env: NodeJS.ProcessEnv, now: () => string): PipelinePo
       withClient(databaseUrl(env), (sql) => commitNcua(sql, { ...input, asOf: now() })),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -68,6 +70,7 @@ export function nationalRatesPorts(
     commit: (input) => withClient(databaseUrl(env), (sql) => commitNationalRates(sql, input)),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -89,6 +92,7 @@ export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): Pipelin
     commit: () => Promise.reject(new Error('treasury auctions do not publish products')),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),

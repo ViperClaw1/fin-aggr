@@ -1,4 +1,5 @@
 import { CodedError, failureText, guard, jobRecord, openFetch, stageOf } from './fetch-budget';
+import { issueNumberFromUrl } from './github';
 import { formatIssueCreated } from './policy';
 import { sha256Hex, type PipelinePorts, type RunSummary, type Source } from './pipeline';
 
@@ -130,7 +131,11 @@ async function queueChange<Raw, Parsed>(
     }),
   );
   if (committed.queueId === null) throw new CodedError('queue');
-  const issueNumber = await openWatchIssue(run, { ...change, queueId: committed.queueId });
+  const issueNumber = await openWatchIssue(run, {
+    ...change,
+    queueId: committed.queueId,
+    issueUrl: committed.issueUrl ?? null,
+  });
   const errors = issueNumber === null ? ['issue_failed'] : [];
   return finishWatch(run, {
     name: 'changed',
@@ -143,13 +148,16 @@ async function queueChange<Raw, Parsed>(
 
 async function openWatchIssue<Raw, Parsed>(
   run: WatchRun<Raw, Parsed>,
-  change: { previous: Uint8Array; body: Raw; queueId: number },
+  change: { previous: Uint8Array; body: Raw; queueId: number; issueUrl: string | null },
 ): Promise<number | null> {
+  const body = `${run.source.issueBody(change.previous, change.body)}\nQueue: ${String(change.queueId)}`;
   try {
-    const issue = await run.ports.openIssue({
-      title: `Review ${run.source.id}`,
-      body: `${run.source.issueBody(change.previous, change.body)}\nQueue: ${String(change.queueId)}`,
-    });
+    const existing = change.issueUrl === null ? null : issueNumberFromUrl(change.issueUrl);
+    if (existing !== null && run.ports.commentIssue !== undefined) {
+      await run.ports.commentIssue({ issueNumber: existing, body });
+      return existing;
+    }
+    const issue = await run.ports.openIssue({ title: `Review ${run.source.id}`, body });
     await run.ports.attachIssue(change.queueId, issue.url);
     return issue.number;
   } catch {

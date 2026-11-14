@@ -60,7 +60,7 @@ describe('institution publish', () => {
       asOf: '2026-11-11T08:00:00.000Z',
       prefix: 'fdic:',
     });
-    expect(result).toEqual({ queueId: null, versionId: 17 });
+    expect(result).toEqual({ queueId: null, versionId: 17, issueUrl: null });
     expect(texts.some((text) => text.includes("publish_domain('institutions'"))).toBe(true);
     expect(texts.some((text) => text.includes('insert into institutions'))).toBe(true);
     expect(texts.at(-1)).toContain('commit');
@@ -79,7 +79,7 @@ describe('institution publish', () => {
       asOf: '2026-11-11T08:00:00.000Z',
       prefix: 'fdic:',
     });
-    expect(result).toEqual({ queueId: 4, versionId: null });
+    expect(result).toEqual({ queueId: 4, versionId: null, issueUrl: null });
     expect(texts.some((text) => text.includes('publish_domain'))).toBe(false);
   });
 

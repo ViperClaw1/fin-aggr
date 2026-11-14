@@ -27,8 +27,8 @@ describe('par yield publish', () => {
     };
     const first = await commitParYields(sql, { publish: [point], queue: null });
     const second = await commitParYields(sql, { publish: [point], queue: null });
-    expect(first).toEqual({ queueId: null, versionId: 21 });
-    expect(second).toEqual({ queueId: null, versionId: 22 });
+    expect(first).toEqual({ queueId: null, versionId: 21, issueUrl: null });
+    expect(second).toEqual({ queueId: null, versionId: 22, issueUrl: null });
     expect(texts.filter((text) => text.includes("publish_domain('par_yields'"))).toHaveLength(2);
     expect(texts.some((text) => text.includes("values ('par_yields', $1, false, false)"))).toBe(
       true,

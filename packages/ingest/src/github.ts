@@ -17,6 +17,11 @@ function reviewIssueBody(input: {
   ].join('\n');
 }
 
+function issueNumber(url: string | null | undefined): number | null {
+  if (url === undefined || url === null) return null;
+  return issueNumberFromUrl(url);
+}
+
 export function issueNumberFromUrl(url: string): number | null {
   const match = /\/issues\/(\d+)$/.exec(url);
   const digits = match?.[1];
@@ -87,6 +92,28 @@ export async function commentOnIssue(
   if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
 }
 
+/** Comment with the decision, then close the private issue. */
+export async function closeReviewIssue(
+  fetchImpl: typeof fetch,
+  input: { token: string; issueNumber: number; body: string },
+): Promise<void> {
+  await commentOnIssue(fetchImpl, input);
+  const response = await fetchImpl(
+    `https://api.github.com/repos/${REVIEW_REPO}/issues/${String(input.issueNumber)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${input.token}`,
+        accept: 'application/vnd.github+json',
+        'x-github-api-version': '2022-11-28',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ state: 'closed', state_reason: 'completed' }),
+    },
+  );
+  if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
+}
+
 /** Opens the review issue for a held batch. A failure leaves the queue row and returns null. */
 export async function openQueuedIssue(
   source: { id: string; domain: string },
@@ -94,23 +121,32 @@ export async function openQueuedIssue(
     sign(snapshotId: number): Promise<string>;
     openIssue(input: { title: string; body: string }): Promise<{ number: number; url: string }>;
     attachIssue(queueId: number, issueUrl: string): Promise<void>;
+    commentIssue?(input: { issueNumber: number; body: string }): Promise<void>;
   },
   log: (line: string) => void,
-  batch: { snapshotId: number; queueId: number | null; reason: string | null },
+  batch: {
+    snapshotId: number;
+    queueId: number | null;
+    reason: string | null;
+    issueUrl?: string | null;
+  },
 ): Promise<number | null> {
   if (batch.queueId === null || batch.reason === null) return null;
   try {
     const signedUrl = await ports.sign(batch.snapshotId);
-    const issue = await ports.openIssue({
-      title: `Review ${source.id}`,
-      body: reviewIssueBody({
-        sourceId: source.id,
-        domain: source.domain,
-        queueId: batch.queueId,
-        reason: batch.reason,
-        signedUrl,
-      }),
+    const body = reviewIssueBody({
+      sourceId: source.id,
+      domain: source.domain,
+      queueId: batch.queueId,
+      reason: batch.reason,
+      signedUrl,
     });
+    const existing = issueNumber(batch.issueUrl);
+    if (existing !== null && ports.commentIssue !== undefined) {
+      await ports.commentIssue({ issueNumber: existing, body });
+      return existing;
+    }
+    const issue = await ports.openIssue({ title: `Review ${source.id}`, body });
     await ports.attachIssue(batch.queueId, issue.url);
     log(formatIssueCreated(issue.number));
     return issue.number;

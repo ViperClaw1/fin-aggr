@@ -3,7 +3,7 @@ import type { Institution as InstitutionRow } from '@fa/contracts';
 import { revalidateDomain } from '../cli';
 import { databaseUrl, withClient } from '../db';
 import type { Sql } from '../decisions';
-import { createReviewIssue } from '../github';
+import { commentOnIssue, createReviewIssue } from '../github';
 import type { PipelinePorts } from '../pipeline';
 import { SIGNED_URL_SECONDS } from '../policy';
 import { RAW_BUCKET } from '../scrape/rules';
@@ -106,6 +106,7 @@ export function institutionPorts(
       ),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -129,6 +130,7 @@ export function parYieldPorts(
     commit: (input) => withClient(databaseUrl(env), (sql) => commitParYields(sql, input)),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -156,6 +158,7 @@ export function financialPorts(
       ),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -180,6 +183,7 @@ export function watchPorts<Parsed>(
     commit: (input) => withClient(databaseUrl(env), (sql) => commitWatch(sql, input)),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
+    commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
@@ -231,6 +235,15 @@ export async function signSnapshot(env: NodeJS.ProcessEnv, snapshotId: number): 
     return bucketPath;
   });
   return signedRawUrl(env, path);
+}
+
+export async function commentReview(
+  env: NodeJS.ProcessEnv,
+  input: { issueNumber: number; body: string },
+): Promise<void> {
+  const token = reviewToken(env);
+  if (token === '') throw new Error('REVIEW_REPO_TOKEN is missing');
+  await commentOnIssue(fetch, { token, issueNumber: input.issueNumber, body: input.body });
 }
 
 export async function openReview(

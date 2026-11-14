@@ -73,7 +73,8 @@ export interface PipelinePorts<Parsed> {
   commit(input: {
     publish: readonly Parsed[] | null;
     queue: QueueInput | null;
-  }): Promise<{ queueId: number | null; versionId: number | null }>;
+  }): Promise<{ queueId: number | null; versionId: number | null; issueUrl?: string | null }>;
+  commentIssue?(input: { issueNumber: number; body: string }): Promise<void>;
   sign(snapshotId: number): Promise<string>;
   openIssue(input: { title: string; body: string }): Promise<{ number: number; url: string }>;
   attachIssue(queueId: number, issueUrl: string): Promise<void>;
@@ -94,9 +95,21 @@ export interface RunSummary {
   failure: { stage: string; code: string } | null;
   /** Set by a watch run. The public log is this word, not a publish line. */
   watch?: 'unchanged' | 'baseline' | 'changed';
+  /** Set when status is held. Printed as `reason=`. */
+  holdReason?: string | undefined;
 }
 
 const HASH = /^[0-9a-f]{64}$/;
+
+function holdLine(
+  published: boolean,
+  blocked: string | null,
+  reason: string | null,
+): string | undefined {
+  if (published) return undefined;
+  if (blocked !== null) return `blocked:${blocked}`;
+  return `queued:${reason ?? 'empty'}`;
+}
 
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -192,6 +205,7 @@ async function runBody<Raw, Parsed>(
       versionId: null,
       revalidateStatus: null,
       failure: null,
+      holdReason: 'unchanged',
     };
   }
   return publishOrHold({ source, ports, log, startedAt }, snapshot);
@@ -217,11 +231,12 @@ async function publishOrHold<Raw, Parsed>(
   const parsed = await guard('parse', () => Promise.resolve(source.parse(snapshot.body)));
   const previous = await guard('previous', () => ports.previousRows(source.id));
   const report = await guard('validate', () => Promise.resolve(source.validate(parsed, previous)));
+  const blocked = report.blocked ?? countGate(parsed.length, previous.length);
   const decision = decidePublish({
     kind: source.kind,
     clean: report.clean,
     suspicious: report.suspicious,
-    blocked: report.blocked ?? countGate(parsed.length, previous.length),
+    blocked,
   });
   const committed = await guard('commit', () =>
     ports.commit({
@@ -237,6 +252,7 @@ async function publishOrHold<Raw, Parsed>(
             },
     }),
   );
+  const holdReason = holdLine(decision.publish !== null, blocked, decision.reason);
   return finishRun({
     source,
     ports,
@@ -245,6 +261,7 @@ async function publishOrHold<Raw, Parsed>(
     snapshot,
     decision,
     committed,
+    holdReason,
     snapshotId: saved.snapshotId,
     revalidateStatus:
       decision.publish === null ? null : await revalidateOrStatus(() => ports.revalidate()),
@@ -258,7 +275,8 @@ async function finishRun<Raw, Parsed>(input: {
   startedAt: string;
   snapshot: RawSnapshot<Raw>;
   decision: { publish: readonly Parsed[] | null; reason: string | null };
-  committed: { queueId: number | null; versionId: number | null };
+  committed: { queueId: number | null; versionId: number | null; issueUrl?: string | null };
+  holdReason: string | undefined;
   snapshotId: number;
   revalidateStatus: number | null;
 }): Promise<RunSummary> {
@@ -267,6 +285,7 @@ async function finishRun<Raw, Parsed>(input: {
     snapshotId: input.snapshotId,
     queueId: committed.queueId,
     reason: decision.reason,
+    issueUrl: committed.issueUrl ?? null,
   });
   const status = decision.publish === null ? 'held' : 'published';
   const record = jobRecord({
@@ -298,5 +317,6 @@ async function finishRun<Raw, Parsed>(input: {
     versionId: committed.versionId,
     revalidateStatus,
     failure: null,
+    holdReason: input.holdReason,
   };
 }

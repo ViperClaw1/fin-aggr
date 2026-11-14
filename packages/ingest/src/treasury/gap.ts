@@ -31,7 +31,9 @@ const DIRECT: GapSource = {
   problems: directShapeProblems,
 };
 
-function held(published = 0): RunSummary {
+const MISSING_PRODUCT_FIELDS = ['tier', 'early_withdrawal', 'eligibility', 'tax_treatment'];
+
+function held(reason: string, published = 0): RunSummary {
   return {
     status: 'held',
     published,
@@ -40,6 +42,7 @@ function held(published = 0): RunSummary {
     versionId: null,
     revalidateStatus: null,
     failure: null,
+    holdReason: reason,
   };
 }
 
@@ -77,7 +80,7 @@ export async function runAuctionGap(
           requestCount: 0,
         }),
       );
-      return held();
+      return held('unchanged');
     }
     await guard('snapshot', () =>
       ports.saveSnapshot({ sourceId: source.id, sha256: snapshot.sha256, bytes: snapshot.bytes }),
@@ -94,7 +97,7 @@ export async function runAuctionGap(
         requestCount: snapshot.requestCount,
       }),
     );
-    return held();
+    return held(`missing_fields:${MISSING_PRODUCT_FIELDS.join(',')}`);
   } catch (error) {
     const failure = stageOf(error);
     await ports.finishJob({

@@ -1,5 +1,5 @@
 import { isRate } from '@fa/contracts';
-import { withTransaction, type Sql } from '../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../decisions';
 import { isNationalSeriesId, NATIONAL_SERIES, type NationalRate } from '../fred/national';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
@@ -107,12 +107,8 @@ export async function commitNationalRates(
 ): Promise<{ queueId: number | null; versionId: number | null }> {
   return withTransaction(sql, async (tx) => {
     const versionId = await publishRates(tx, input.publish);
-    if (input.queue === null) return { queueId: null, versionId };
-    const queued = await tx.query(
-      `insert into review_queue (source_id, domain, snapshot_id, reason)
-       values ($1, $2, $3, $4) returning id`,
-      [input.queue.sourceId, input.queue.domain, input.queue.snapshotId, input.queue.reason],
-    );
-    return { queueId: integerId(queued.rows[0]?.['id']), versionId };
+    if (input.queue === null) return { queueId: null, versionId, issueUrl: null };
+    const queued = await enqueueReview(tx, input.queue);
+    return { queueId: queued.queueId, versionId, issueUrl: queued.issueUrl };
   });
 }

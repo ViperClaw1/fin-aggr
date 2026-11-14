@@ -23,6 +23,7 @@ export interface OpenReview {
   domain: string;
   reason: string;
   snapshot_id: number | null;
+  issue_url: string | null;
 }
 
 function numberField(row: Record<string, unknown>, key: string): number {
@@ -43,7 +44,38 @@ export function openReview(row: Record<string, unknown>): OpenReview {
     domain: textField(row, 'domain'),
     reason: textField(row, 'reason'),
     snapshot_id: snapshot === null || snapshot === undefined ? null : integerId(snapshot),
+    issue_url: typeof row['issue_url'] === 'string' ? row['issue_url'] : null,
   };
+}
+
+/** One open row per source. A later hold updates that row instead of inserting another. */
+export async function enqueueReview(
+  sql: Sql,
+  queue: { sourceId: string; domain: string; snapshotId: number; reason: string },
+): Promise<{ queueId: number; issueUrl: string | null }> {
+  const existing = await sql.query(
+    `select id, issue_url from review_queue
+     where source_id = $1 and status = 'open'
+     order by id
+     limit 1`,
+    [queue.sourceId],
+  );
+  const row = existing.rows[0];
+  if (row !== undefined) {
+    const queueId = numberField(row, 'id');
+    await sql.query(
+      `update review_queue set snapshot_id = $2, reason = $3, domain = $4 where id = $1`,
+      [queueId, queue.snapshotId, queue.reason, queue.domain],
+    );
+    const url = row['issue_url'];
+    return { queueId, issueUrl: typeof url === 'string' ? url : null };
+  }
+  const inserted = await sql.query(
+    `insert into review_queue (source_id, domain, snapshot_id, reason)
+     values ($1, $2, $3, $4) returning id`,
+    [queue.sourceId, queue.domain, queue.snapshotId, queue.reason],
+  );
+  return { queueId: numberField(inserted.rows[0] ?? {}, 'id'), issueUrl: null };
 }
 
 export async function listOpen(sql: Sql): Promise<OpenReview[]> {
