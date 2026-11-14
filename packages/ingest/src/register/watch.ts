@@ -1,5 +1,6 @@
 import { fingerprintOf, readFingerprint } from '../content-hash';
 import { CodedError } from '../fetch-budget';
+import { fetchOfficial } from '../official-fetch';
 import type { ValidationReport } from '../validate';
 import type { WatchSource } from '../watch';
 import {
@@ -39,11 +40,16 @@ async function fetchRegisterWatch(
 ): Promise<{ sha256: string; bytes: Uint8Array; body: RegisterWatchRaw; requestCount: number }> {
   const pages: { agency: string; body: string }[] = [];
   for (const agency of REGISTER_AGENCIES) {
-    const response = await fetchImpl(documentsUrl(agency, PER_PAGE), {
-      signal,
-      headers: { accept: 'application/json' },
-    });
-    if (!response.ok) throw new CodedError(`http_${String(response.status)}`, agency);
+    let response: Response;
+    try {
+      response = await fetchOfficial(fetchImpl, documentsUrl(agency, PER_PAGE), {
+        signal,
+        headers: { accept: 'application/json' },
+      });
+    } catch (error) {
+      if (error instanceof CodedError) throw new CodedError(error.code, agency);
+      throw error;
+    }
     pages.push({ agency, body: await response.text() });
   }
   return {

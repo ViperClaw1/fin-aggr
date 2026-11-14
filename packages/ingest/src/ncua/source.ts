@@ -1,4 +1,5 @@
 import { sha256Hex, type Source } from '../pipeline';
+import { fetchOfficial } from '../official-fetch';
 import { validateFdicFinancials } from '../fdic/financials';
 import type { ValidationReport } from '../validate';
 import { parseNcuaQuarter, type NcuaRaw, type NcuaRow } from './parse';
@@ -28,18 +29,16 @@ async function fetchNcuaQuarter(input: {
   requestSignal: () => AbortSignal;
   retrievedAt: string;
 }): Promise<{ sha256: string; bytes: Uint8Array; body: NcuaRaw; requestCount: number }> {
-  const index = await input.fetchImpl(INDEX, {
+  const index = await fetchOfficial(input.fetchImpl, INDEX, {
     signal: input.requestSignal(),
     headers: { accept: 'text/html', 'user-agent': NCUA_USER_AGENT },
   });
-  if (!index.ok) throw new Error(`ncua index http ${String(index.status)}`);
   const sourceUrl = newestQuarterUrl(await index.text());
   if (sourceUrl === null) throw new Error('ncua index has no quarter');
-  const file = await input.fetchImpl(sourceUrl, {
+  const file = await fetchOfficial(input.fetchImpl, sourceUrl, {
     signal: input.requestSignal(),
     headers: { accept: 'application/zip', 'user-agent': NCUA_USER_AGENT },
   });
-  if (!file.ok) throw new Error(`ncua zip http ${String(file.status)}`);
   const zip = new Uint8Array(await file.arrayBuffer());
   return {
     sha256: sha256Hex(zip),

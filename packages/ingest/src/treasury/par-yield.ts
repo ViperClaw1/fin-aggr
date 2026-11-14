@@ -1,6 +1,7 @@
 import { rateFromPercent, type Rate } from '@fa/contracts';
 import { Decimal } from 'decimal.js';
 import { bodyHash } from '../content-hash';
+import { fetchOfficial } from '../official-fetch';
 import { type Source } from '../pipeline';
 import { rateMoveExceeds } from '../rate-move';
 import type { ValidationReport } from '../validate';
@@ -227,11 +228,10 @@ export async function fetchParYields(input: FetchInput): Promise<{
   const year = Number(input.retrievedAt.slice(0, 4));
   if (!Number.isInteger(year)) throw new Error('treasury par yield year');
   const url = parYieldUrl(year);
-  const response = await input.fetchImpl(url, {
+  const response = await fetchOfficial(input.fetchImpl, url, {
     signal: input.signal,
     headers: { accept: 'text/csv', 'user-agent': PAR_YIELD_USER_AGENT },
   });
-  if (!response.ok) throw new Error(`treasury par yield http ${String(response.status)}`);
   return snapshotOf({ retrievedAt: input.retrievedAt, url, body: await response.text() });
 }
 

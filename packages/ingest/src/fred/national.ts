@@ -1,6 +1,7 @@
 import { rateFromPercent, type Rate } from '@fa/contracts';
 import { Decimal } from 'decimal.js';
 import { sha256Hex, type Source } from '../pipeline';
+import { fetchOfficial } from '../official-fetch';
 import type { ValidationReport } from '../validate';
 
 /**
@@ -222,11 +223,10 @@ async function fetchNationalRates(input: {
   if (key === '') throw new Error('FRED_API_KEY is missing');
   const responses: { seriesId: string; body: string }[] = [];
   for (const [seriesId] of NATIONAL_SERIES) {
-    const response = await input.fetchImpl(observationsUrl(seriesId, key), {
+    const response = await fetchOfficial(input.fetchImpl, observationsUrl(seriesId, key), {
       signal: input.requestSignal(),
       headers: { accept: 'application/json', 'user-agent': FRED_USER_AGENT },
     });
-    if (!response.ok) throw new Error(`fred http ${String(response.status)}`);
     responses.push({ seriesId, body: await response.text() });
   }
   const bytes = new TextEncoder().encode(

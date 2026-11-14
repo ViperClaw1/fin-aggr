@@ -60,6 +60,40 @@ async function githubPost(
   return fields;
 }
 
+export async function openIssueNumber(
+  fetchImpl: typeof fetch,
+  token: string,
+  title: string,
+): Promise<number | null> {
+  const response = await fetchImpl(
+    `https://api.github.com/repos/${REVIEW_REPO}/issues?state=open&per_page=100`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: 'application/vnd.github+json',
+        'x-github-api-version': '2022-11-28',
+      },
+    },
+  );
+  if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
+  const payload: unknown = await response.json();
+  if (!Array.isArray(payload)) return null;
+  for (const item of payload) {
+    const issue = listedIssue(item);
+    if (issue !== null && issue.title === title) return issue.number;
+  }
+  return null;
+}
+
+function listedIssue(item: unknown): { title: string; number: number } | null {
+  if (typeof item !== 'object' || item === null) return null;
+  if ('pull_request' in item) return null;
+  if (!('title' in item) || !('number' in item)) return null;
+  const { title, number } = item;
+  if (typeof title !== 'string' || typeof number !== 'number') return null;
+  return { title, number };
+}
+
 /** Opens one issue. The caller logs `issue #N created` and does not print `body`. */
 export async function createReviewIssue(
   fetchImpl: typeof fetch,

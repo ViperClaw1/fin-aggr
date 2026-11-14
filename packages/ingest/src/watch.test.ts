@@ -196,7 +196,9 @@ describe('watch mode', () => {
       code: 'json_invalid',
       agency: 'federal-deposit-insurance-corporation',
     });
-    expect(seen).toBe('parse json_invalid federal-deposit-insurance-corporation');
+    expect(seen).toBe(
+      '2026-11-13T05:00:00.000Z json_invalid federal-deposit-insurance-corporation',
+    );
     expect(ports.commit.mock.calls).toHaveLength(0);
   });
 });

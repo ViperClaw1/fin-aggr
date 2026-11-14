@@ -1,7 +1,7 @@
-import { CodedError, failureText, guard, jobRecord, openFetch, stageOf } from '../fetch-budget';
+import { CodedError, guard, jobRecord, openFetch, stageOf } from '../fetch-budget';
+import { recordFailure } from '../failure';
 import { openQueuedIssue } from '../github';
 import type { DatasetDomain } from '../index';
-import { formatIssueCreated } from '../policy';
 import type { PipelinePorts, RunSummary } from '../pipeline';
 import { missingFieldsReason } from './product-gaps';
 import {
@@ -96,27 +96,22 @@ export async function runAuctionGap(
     });
   } catch (error) {
     const failure = stageOf(error);
-    await ports.finishJob({
+    const recorded = await recordFailure(ports, {
       sourceId: source.id,
       domain: source.domain,
       startedAt,
-      endedAt: ports.now(),
-      status: 'failed',
-      rowCount: 0,
-      errors: [failure],
-      bytes: 0,
-      requestCount: 0,
+      failure,
+      log,
     });
-    const issue = await ports.notifyFailure(failureText(failure));
-    if (issue !== null) log(formatIssueCreated(issue.number));
     return {
       status: 'failed',
       published: 0,
       queued: 0,
-      issueNumber: issue?.number ?? null,
+      issueNumber: recorded.issueNumber,
       versionId: null,
       revalidateStatus: null,
       failure,
+      holdReason: recorded.holdReason,
     };
   }
 }

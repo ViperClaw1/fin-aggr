@@ -1,5 +1,6 @@
 import { fingerprintOf, readFingerprint } from '../content-hash';
 import { CodedError } from '../fetch-budget';
+import { fetchOfficial } from '../official-fetch';
 import type { ValidationReport } from '../validate';
 import type { WatchSource } from '../watch';
 import { ecfrFingerprint, versionsUrl } from './parts';
@@ -33,11 +34,10 @@ async function fetchEcfrWatch(
   fetchImpl: typeof fetch,
   signal: AbortSignal,
 ): Promise<{ sha256: string; bytes: Uint8Array; body: EcfrWatchRaw; requestCount: number }> {
-  const response = await fetchImpl(versionsUrl(part), {
+  const response = await fetchOfficial(fetchImpl, versionsUrl(part), {
     signal,
     headers: { accept: 'application/json' },
   });
-  if (!response.ok) throw new CodedError(`http_${String(response.status)}`);
   const stamp = ecfrFingerprint(JSON.parse(await response.text()) as unknown);
   if (stamp.part !== part) throw new CodedError('part');
   const body: EcfrWatchRaw = stamp;

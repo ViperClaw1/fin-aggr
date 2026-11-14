@@ -57,6 +57,7 @@ function recordLine(line: string, env: NodeJS.ProcessEnv): void {
 
 function publishLine(id: string, summary: RunSummary): string {
   const version = summary.versionId === null ? '-' : String(summary.versionId);
+  const reason = runReason(summary);
   return formatRunLine({
     id,
     status: summary.status,
@@ -64,8 +65,14 @@ function publishLine(id: string, summary: RunSummary): string {
     queued: summary.queued,
     version,
     ...(summary.revalidateStatus === null ? {} : { revalidate: 'failed' as const }),
-    ...(summary.status === 'held' ? { reason: summary.holdReason ?? 'unchanged' } : {}),
+    ...(reason === undefined ? {} : { reason }),
   });
+}
+
+function runReason(summary: RunSummary): string | undefined {
+  if (summary.status === 'held') return summary.holdReason ?? 'unchanged';
+  if (summary.status === 'failed') return summary.holdReason;
+  return undefined;
 }
 
 function assertFinished(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): void {

@@ -1,5 +1,6 @@
 import { Institution, type Institution as InstitutionRow } from '@fa/contracts';
 import { bodyHash } from '../content-hash';
+import { fetchOfficial } from '../official-fetch';
 import { type Source } from '../pipeline';
 import type { ValidationReport } from '../validate';
 
@@ -29,6 +30,7 @@ interface FetchInput {
   signal: AbortSignal;
   retrievedAt: string;
   pageSize?: number;
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export function institutionsUrl(offset: number, pageSize: number): string {
@@ -96,11 +98,12 @@ export async function fetchFdicInstitutions(input: FetchInput): Promise<{
     first = false;
     if (responses.length >= PAGE_CAP) throw new Error('fdic institutions page cap');
     const url = institutionsUrl(offset, pageSize);
-    const response = await input.fetchImpl(url, {
-      signal: input.signal,
-      headers: { accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error(`fdic institutions http ${String(response.status)}`);
+    const response = await fetchOfficial(
+      input.fetchImpl,
+      url,
+      { signal: input.signal, headers: { accept: 'application/json' } },
+      input.sleep === undefined ? undefined : { sleep: input.sleep, now: () => Date.now() },
+    );
     const body = await response.text();
     const page: unknown = JSON.parse(body);
     if (!isRecord(page) || !isRecord(page['meta']) || typeof page['meta']['total'] !== 'number') {

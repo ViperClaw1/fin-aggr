@@ -1,5 +1,6 @@
 import { CodedError } from '../fetch-budget';
 import { bodyHash } from '../content-hash';
+import { fetchOfficial } from '../official-fetch';
 import { type Source } from '../pipeline';
 import {
   financialFieldProblems,
@@ -18,7 +19,6 @@ import {
 
 const PAGE_SIZE = 2_500;
 const PAGE_CAP = 20;
-const RETRY_MS = 5_000;
 
 function snapshotOf(raw: FdicFinancialsRaw, requestCount: number) {
   return { ...bodyHash(raw.responses.map((response) => response.body)), body: raw, requestCount };
@@ -33,58 +33,26 @@ interface FetchInput {
   pause?: () => Promise<void>;
 }
 
-class HttpStatus extends Error {
-  readonly status: number;
-
-  constructor(status: number) {
-    super('http');
-    this.name = 'HttpStatus';
-    this.status = status;
-  }
-}
-
-function coded(error: unknown): CodedError | Error {
-  if (error instanceof CodedError) return error;
-  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-    return error;
-  }
-  if (error instanceof HttpStatus) return new CodedError('http');
-  if (error instanceof Error) throw error;
-  return new CodedError('failed');
-}
-
-function canRetry(error: unknown, budget: AbortSignal): boolean {
-  if (budget.aborted) return false;
-  if (error instanceof HttpStatus) return error.status >= 500;
-  return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
-}
-
-async function once(input: FetchInput, url: string): Promise<Response> {
-  const response = await input.fetchImpl(url, {
-    signal: input.requestSignal(),
-    headers: { accept: 'application/json' },
-  });
-  if (!response.ok) throw new HttpStatus(response.status);
-  return response;
+async function page(input: FetchInput, url: string, attempts: { count: number }): Promise<string> {
+  const response = await fetchOfficial(
+    input.fetchImpl,
+    url,
+    { signal: input.requestSignal(), headers: { accept: 'application/json' } },
+    {
+      sleep: input.pause ?? ((ms) => wait(ms, input.signal)),
+      now: () => Date.now(),
+      onAttempt: () => {
+        attempts.count += 1;
+      },
+    },
+  );
+  return response.text();
 }
 
 function timeoutError(): Error {
   const error = new Error('timeout');
   error.name = 'TimeoutError';
   return error;
-}
-
-/** One extra attempt for a timeout or a 5xx. The budget is not restarted. */
-async function page(input: FetchInput, url: string, attempts: { count: number }): Promise<string> {
-  try {
-    attempts.count += 1;
-    return await (await once(input, url)).text();
-  } catch (error) {
-    if (!canRetry(error, input.signal)) throw coded(error);
-    await (input.pause ?? (() => wait(RETRY_MS, input.signal)))();
-    attempts.count += 1;
-    return (await once(input, url).catch((retry: unknown) => Promise.reject(coded(retry)))).text();
-  }
 }
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {

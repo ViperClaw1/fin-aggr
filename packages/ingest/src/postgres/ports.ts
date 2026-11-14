@@ -3,7 +3,8 @@ import type { Institution as InstitutionRow } from '@fa/contracts';
 import { revalidateDomain } from '../cli';
 import { databaseUrl, withClient } from '../db';
 import type { Sql } from '../decisions';
-import { commentOnIssue, createReviewIssue } from '../github';
+import { upstreamStreak } from '../failure';
+import { commentOnIssue, createReviewIssue, openIssueNumber } from '../github';
 import type { PipelinePorts } from '../pipeline';
 import { SIGNED_URL_SECONDS } from '../policy';
 import { RAW_BUCKET } from '../scrape/rules';
@@ -112,6 +113,8 @@ export function institutionPorts(
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
     revalidate: () => revalidateDomain(env, 'institutions'),
     notifyFailure: (message, title) => notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -137,6 +140,8 @@ export function parYieldPorts(
     revalidate: () => revalidateDomain(env, 'par_yields'),
     notifyFailure: (message, title = 'Ingest treasury-par-yield failed') =>
       notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -165,6 +170,8 @@ export function financialPorts(
     revalidate: () => revalidateDomain(env, 'bank_metrics'),
     notifyFailure: (message, title = 'Ingest fdic-financials failed') =>
       notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -189,6 +196,8 @@ export function watchPorts<Parsed>(
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
     revalidate: () => Promise.reject(new Error('watch does not revalidate')),
     notifyFailure: (message, title = 'Ingest watch failed') => notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -284,10 +293,15 @@ export async function finishJob(
 export async function notifyFailure(
   env: NodeJS.ProcessEnv,
   message: string,
-  title = 'Ingest fdic-institutions failed',
-): Promise<{ number: number } | null> {
+  title = 'Ingest failed',
+): Promise<{ number: number; created: boolean } | null> {
   const token = reviewToken(env);
   if (token === '') return null;
+  const existing = await openIssueNumber(fetch, token, title);
+  if (existing !== null) {
+    await commentOnIssue(fetch, { token, issueNumber: existing, body: message });
+    return { number: existing, created: false };
+  }
   const issue = await createReviewIssue(fetch, { token, title, body: message });
-  return { number: issue.number };
+  return { number: issue.number, created: true };
 }

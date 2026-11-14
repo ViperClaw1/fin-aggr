@@ -1,6 +1,7 @@
 import { revalidateDomain } from '../cli';
 import { databaseUrl, withClient } from '../db';
 import type { Sql } from '../decisions';
+import { upstreamStreak } from '../failure';
 import type { NationalRate } from '../fred/national';
 import type { NcuaRow } from '../ncua/parse';
 import type { PipelinePorts } from '../pipeline';
@@ -53,6 +54,8 @@ export function ncuaPorts(env: NodeJS.ProcessEnv, now: () => string): PipelinePo
     },
     notifyFailure: (message, title = 'Ingest ncua-5300 failed') =>
       notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -78,6 +81,8 @@ export function nationalRatesPorts(
     revalidate: () => revalidateDomain(env, 'national_rates'),
     notifyFailure: (message, title = 'Ingest fdic-national-rates failed') =>
       notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }
 
@@ -100,5 +105,7 @@ export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): Pipelin
     revalidate: () => Promise.reject(new Error('treasury auctions do not revalidate')),
     notifyFailure: (message, title = 'Ingest treasury auctions failed') =>
       notifyFailure(env, message, title),
+    failureStreak: (sourceId) =>
+      withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),
   };
 }

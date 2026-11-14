@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { directShapeProblems, fiscalShapeProblems } from './auctions';
+import { directShapeProblems, fetchAuctionBody, fiscalShapeProblems } from './auctions';
 
 const FISCAL_ROW = {
   cusip: '912797WF0',
@@ -40,5 +40,31 @@ describe('auction field shape', () => {
         ]),
       ),
     ).toEqual([]);
+  });
+
+  it('retries a 503 and returns the next 200 without an issue', async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const snapshot = await fetchAuctionBody({
+      url: 'https://api.fiscaldata.treasury.gov/auctions',
+      requestSignal: () => AbortSignal.timeout(1_000),
+      pace: {
+        now: () => 0,
+        sleep: (ms) => {
+          waits.push(ms);
+          return Promise.resolve();
+        },
+      },
+      fetchImpl: () => {
+        calls += 1;
+        if (calls === 1) return Promise.resolve(new Response('<html>', { status: 503 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ data: [FISCAL_ROW] }), { status: 200 }),
+        );
+      },
+    });
+    expect(calls).toBe(2);
+    expect(waits).toEqual([5_000]);
+    expect(fiscalShapeProblems(snapshot.body)).toEqual([]);
   });
 });

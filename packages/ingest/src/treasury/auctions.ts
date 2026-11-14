@@ -1,3 +1,4 @@
+import { fetchOfficial, type FetchPace } from '../official-fetch';
 import { sha256Hex } from '../pipeline';
 
 /**
@@ -74,12 +75,17 @@ export async function fetchAuctionBody(input: {
   fetchImpl: typeof fetch;
   requestSignal: () => AbortSignal;
   url: string;
+  pace?: FetchPace;
 }): Promise<{ sha256: string; bytes: Uint8Array; body: string; requestCount: number }> {
-  const response = await input.fetchImpl(input.url, {
-    signal: input.requestSignal(),
-    headers: { accept: 'application/json', 'user-agent': TREASURY_USER_AGENT },
-  });
-  if (!response.ok) throw new Error(`treasury http ${String(response.status)}`);
+  const response = await fetchOfficial(
+    input.fetchImpl,
+    input.url,
+    {
+      signal: input.requestSignal(),
+      headers: { accept: 'application/json', 'user-agent': TREASURY_USER_AGENT },
+    },
+    input.pace,
+  );
   const body = await response.text();
   const bytes = new TextEncoder().encode(body);
   return { sha256: sha256Hex(bytes), bytes, body, requestCount: 1 };

@@ -136,7 +136,7 @@ describe('publish or hold', () => {
     expect(gate.finishJob.mock.calls[0]?.[0]).toMatchObject({
       errors: [{ stage: 'fetch', code: 'unknown' }],
     });
-    expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('fetch unknown');
+    expect(gate.notifyFailure.mock.calls[0]?.[0]).toBe('2026-11-06T00:00:00.000Z unknown');
     expect(lines).toEqual(['issue #8 created']);
     expect(JSON.stringify(gate.finishJob.mock.calls)).not.toContain('token');
   });

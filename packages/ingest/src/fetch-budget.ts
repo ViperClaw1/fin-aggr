@@ -40,13 +40,6 @@ export function stageOf(error: unknown): { stage: string; code: string; agency?:
   return failureOf('fetch', codeOf(error), agency);
 }
 
-/** Issue text. Unclassified errors are `unknown`, not a guessed transport failure. */
-export function failureText(failure: { stage: string; code: string; agency?: string }): string {
-  return failure.agency === undefined
-    ? `${failure.stage} ${failure.code}`
-    : `${failure.stage} ${failure.code} ${failure.agency}`;
-}
-
 function failureOf(
   stage: string,
   code: string,

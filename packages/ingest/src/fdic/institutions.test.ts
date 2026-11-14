@@ -175,9 +175,9 @@ describe('FDIC institutions', () => {
         fetchImpl: () => Promise.resolve(new Response('no', { status: 503 })),
         signal: AbortSignal.timeout(1000),
         retrievedAt: RETRIEVED_AT,
-        pageSize: 1,
+        sleep: () => Promise.resolve(),
       }),
-    ).rejects.toThrow('fdic institutions http 503');
+    ).rejects.toThrow('http_503');
   });
 
   it('checks one live row without printing the body', async () => {

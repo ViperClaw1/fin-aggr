@@ -1,16 +1,15 @@
 import { createHash } from 'node:crypto';
 import {
   CodedError,
-  failureText,
   guard,
   jobRecord,
   openFetch,
   stageOf,
   type FetchContext,
 } from './fetch-budget';
+import { recordFailure } from './failure';
 import { openQueuedIssue } from './github';
 import type { DatasetDomain } from './index';
-import { formatIssueCreated } from './policy';
 import { reportRevalidate, revalidateOrStatus } from './revalidate';
 import { countGate, type ValidationReport } from './validate';
 
@@ -80,7 +79,12 @@ export interface PipelinePorts<Parsed> {
   attachIssue(queueId: number, issueUrl: string): Promise<void>;
   finishJob(job: JobRecord): Promise<void>;
   revalidate(): Promise<void>;
-  notifyFailure(message: string, title?: string): Promise<{ number: number } | null>;
+  notifyFailure(
+    message: string,
+    title?: string,
+  ): Promise<{ number: number; created?: boolean } | null>;
+  /** Consecutive upstream failures for this source, including the run just stored. */
+  failureStreak?(sourceId: string): Promise<number>;
 }
 
 export interface RunSummary {
@@ -144,27 +148,22 @@ export async function runSource<Raw, Parsed>(
     return await runBody(source, ports, log, startedAt);
   } catch (error) {
     const failure = stageOf(error);
-    await ports.finishJob({
+    const recorded = await recordFailure(ports, {
       sourceId: source.id,
       domain: source.domain,
       startedAt,
-      endedAt: ports.now(),
-      status: 'failed',
-      rowCount: 0,
-      errors: [failure],
-      bytes: 0,
-      requestCount: 0,
+      failure,
+      log,
     });
-    const issue = await ports.notifyFailure(failureText(failure));
-    if (issue !== null) log(formatIssueCreated(issue.number));
     return {
       status: 'failed',
       published: 0,
       queued: 0,
-      issueNumber: issue?.number ?? null,
+      issueNumber: recorded.issueNumber,
       versionId: null,
       revalidateStatus: null,
       failure,
+      holdReason: recorded.holdReason,
     };
   }
 }
