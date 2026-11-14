@@ -6,7 +6,7 @@ import { commitNationalRates } from './national';
 
 const row: NationalRate = {
   seriesId: 'SNDR',
-  label: 'Savings',
+  label: 'National Rate: Savings',
   date: '2026-10-01',
   rate: rateFromPercent('0.38'),
 };

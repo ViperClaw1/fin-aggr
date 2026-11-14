@@ -8,18 +8,19 @@ import type { ValidationReport } from '../validate';
  * Series ids read from that table on 2026-11-13. The table header says Percent.
  * Rate caps are a different table and are not stored.
  */
+/** FRED series title, read from fred.stlouisfed.org/series/<id> on 2026-11-14. */
 export const NATIONAL_SERIES = [
-  ['SNDR', 'Savings'],
-  ['ICNDR', 'Interest Checking'],
-  ['MMNDR', 'Money Market'],
-  ['NDR1MCD', '1-Month CD'],
-  ['NDR3MCD', '3-Month CD'],
-  ['NDR6MCD', '6-Month CD'],
-  ['NDR12MCD', '12-Month CD'],
-  ['NDR24MCD', '24-Month CD'],
-  ['NDR36MCD', '36-Month CD'],
-  ['NDR48MCD', '48-Month CD'],
-  ['NDR60MCD', '60-Month CD'],
+  ['SNDR', 'National Rate: Savings'],
+  ['ICNDR', 'National Rate: Interest Checking'],
+  ['MMNDR', 'National Rate: Money Market <100M'],
+  ['NDR1MCD', 'National Rate: 1 Month CD <100M'],
+  ['NDR3MCD', 'National Rate: 3 Month CD <100M'],
+  ['NDR6MCD', 'National Rate: 6 Month CD <100M'],
+  ['NDR12MCD', 'National Rate: 12 Month CD <100M'],
+  ['NDR24MCD', 'National Rate: 24 Month CD <100M'],
+  ['NDR36MCD', 'National Rate: 36 Month CD <100M'],
+  ['NDR48MCD', 'National Rate: 48 Month CD <100M'],
+  ['NDR60MCD', 'National Rate: 60 Month CD <100M'],
 ] as const;
 
 export type NationalSeriesId = (typeof NATIONAL_SERIES)[number][0];
@@ -39,7 +40,12 @@ export interface NationalRate {
 
 export interface FredObservationsRaw {
   retrievedAt: string;
-  responses: readonly { seriesId: NationalSeriesId; body: string }[];
+  responses: readonly { seriesId: string; body: string }[];
+}
+
+export interface NationalParse {
+  rows: NationalRate[];
+  problems: string[];
 }
 
 const ENDPOINT = 'https://api.stlouisfed.org/fred/series/observations';
@@ -53,7 +59,7 @@ function observationsUrl(seriesId: string, apiKey: string): string {
     api_key: apiKey,
     file_type: 'json',
     sort_order: 'desc',
-    limit: '1',
+    limit: '3',
   });
   return `${ENDPOINT}?${params.toString()}`;
 }
@@ -62,56 +68,126 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function observationFields(value: unknown): { date: string; value: string } | null {
-  if (!Array.isArray(value) || value.length === 0) return null;
-  const first: unknown = value[0];
-  if (!isRecord(first)) return null;
-  const date = first['date'];
-  const amount = first['value'];
+interface Point {
+  date: string;
+  value: string;
+}
+
+function pointFrom(value: unknown): Point | null {
+  if (!isRecord(value)) return null;
+  const date = value['date'];
+  const amount = value['value'];
   if (typeof date !== 'string' || typeof amount !== 'string') return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   return { date, value: amount };
 }
 
-function latestObservation(body: string): { date: string; value: string } | null {
+/** Up to three observations, newest first when FRED sorted descending. */
+function pointsFrom(body: string): Point[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
   } catch {
-    return null;
+    return [];
   }
-  if (!isRecord(parsed)) return null;
-  return observationFields(parsed['observations']);
+  if (!isRecord(parsed) || !Array.isArray(parsed['observations'])) return [];
+  const points: Point[] = [];
+  for (const item of parsed['observations']) {
+    if (points.length === 3) break;
+    const point = pointFrom(item);
+    if (point !== null) points.push(point);
+  }
+  return points;
 }
 
-function depositRate(percent: string): Rate | null {
-  if (percent.trim() === '' || percent.trim() === '.') return null;
+function depositRate(percent: string): Rate | 'missing' | 'range' {
+  if (percent.trim() === '' || percent.trim() === '.') return 'missing';
   try {
     const rate = rateFromPercent(percent);
     const value = new Decimal(rate);
-    if (value.lt(0) || value.gt(RATE_MAX)) return null;
+    if (value.lt(0) || value.gt(RATE_MAX)) return 'range';
     return rate;
   } catch {
-    return null;
+    return 'range';
   }
 }
 
-export function parseNationalRates(raw: FredObservationsRaw): NationalRate[] {
-  const rows: NationalRate[] = [];
-  let date: string | null = null;
-  for (const response of raw.responses) {
-    const label = NATIONAL_SERIES.find(([id]) => id === response.seriesId)?.[1];
-    if (label === undefined) throw new Error('fred series');
-    const observation = latestObservation(response.body);
-    if (observation === null) return [];
-    date ??= observation.date;
-    if (observation.date !== date) return [];
-    const rate = depositRate(observation.value);
-    if (rate === null) return [];
-    rows.push({ seriesId: response.seriesId, label, date: observation.date, rate });
+function pointsBySeries(
+  responses: FredObservationsRaw['responses'],
+): Map<NationalSeriesId, Point[]> {
+  const byId = new Map<NationalSeriesId, Point[]>();
+  for (const response of responses) {
+    if (!isNationalSeriesId(response.seriesId) || byId.has(response.seriesId)) continue;
+    byId.set(response.seriesId, pointsFrom(response.body));
   }
-  if (rows.length !== NATIONAL_SERIES.length) return [];
+  return byId;
+}
+
+function unknownSeries(responses: FredObservationsRaw['responses']): string[] {
+  const seen = new Set<string>();
+  const problems: string[] = [];
+  for (const response of responses) {
+    if (isNationalSeriesId(response.seriesId) || seen.has(response.seriesId)) continue;
+    seen.add(response.seriesId);
+    problems.push(`fred_series_missing:${response.seriesId}`);
+  }
+  return problems;
+}
+
+/** Latest date shared by the most series. A one-month lag still meets the other ten. */
+function anchorDate(byId: ReadonlyMap<NationalSeriesId, Point[]>): string | null {
+  const counts = new Map<string, number>();
+  for (const [id] of NATIONAL_SERIES) {
+    for (const date of new Set((byId.get(id) ?? []).map((point) => point.date))) {
+      counts.set(date, (counts.get(date) ?? 0) + 1);
+    }
+  }
+  let best: { date: string; count: number } | null = null;
+  for (const [date, count] of counts) {
+    if (best === null || count > best.count || (count === best.count && date > best.date)) {
+      best = { date, count };
+    }
+  }
+  return best?.date ?? null;
+}
+
+function seriesProblem(
+  id: NationalSeriesId,
+  points: readonly Point[],
+  anchor: string | null,
+): string | null {
+  if (points.length === 0) return `fred_series_missing:${id}`;
+  const point = anchor === null ? undefined : points.find((item) => item.date === anchor);
+  if (point === undefined) return `date_mismatch:${id}`;
+  const rate = depositRate(point.value);
+  if (rate === 'missing') return `value_missing:${id}`;
+  if (rate === 'range') return `out_of_range:${id}`;
+  return null;
+}
+
+function rowsOn(byId: ReadonlyMap<NationalSeriesId, Point[]>, anchor: string): NationalRate[] {
+  const rows: NationalRate[] = [];
+  for (const [id, label] of NATIONAL_SERIES) {
+    const point = (byId.get(id) ?? []).find((item) => item.date === anchor);
+    const rate = point === undefined ? 'missing' : depositRate(point.value);
+    if (rate === 'missing' || rate === 'range') return [];
+    rows.push({ seriesId: id, label, date: anchor, rate });
+  }
   return rows;
+}
+
+export function parseNationalRates(raw: FredObservationsRaw): NationalParse {
+  const byId = pointsBySeries(raw.responses);
+  const anchor = anchorDate(byId);
+  const problems = [
+    ...NATIONAL_SERIES.flatMap(([id]) => {
+      const problem = seriesProblem(id, byId.get(id) ?? [], anchor);
+      return problem === null ? [] : [problem];
+    }),
+    ...unknownSeries(raw.responses),
+  ];
+  if (problems.length > 0 || anchor === null) return { rows: [], problems };
+  return { rows: rowsOn(byId, anchor), problems: [] };
 }
 
 function validateNationalRates(
@@ -125,14 +201,8 @@ function validateNationalRates(
 }
 
 function nationalRatesShapeProblems(body: string): string[] {
-  const observation = (() => {
-    try {
-      return latestObservation(body);
-    } catch {
-      return null;
-    }
-  })();
-  if (observation === null) return ['observations'];
+  const observation = pointsFrom(body)[0];
+  if (observation === undefined) return ['observations'];
   if (observation.value.trim() === '') return ['value'];
   return [];
 }
@@ -150,7 +220,7 @@ async function fetchNationalRates(input: {
 }> {
   const key = input.apiKey.trim();
   if (key === '') throw new Error('FRED_API_KEY is missing');
-  const responses: { seriesId: NationalSeriesId; body: string }[] = [];
+  const responses: { seriesId: string; body: string }[] = [];
   for (const [seriesId] of NATIONAL_SERIES) {
     const response = await input.fetchImpl(observationsUrl(seriesId, key), {
       signal: input.requestSignal(),
@@ -175,6 +245,7 @@ export function nationalRatesSource(
   apiKey: string,
 ): Source<FredObservationsRaw, NationalRate> {
   let asOf = now().slice(0, 10);
+  let problems: readonly string[] = [];
   return {
     id: 'fdic-national-rates',
     domain: 'national_rates',
@@ -191,8 +262,15 @@ export function nationalRatesSource(
         apiKey,
       });
     },
-    parse: parseNationalRates,
-    validate: (rows) => validateNationalRates(rows, asOf),
+    parse: (raw) => {
+      const parsed = parseNationalRates(raw);
+      problems = parsed.problems;
+      return parsed.rows;
+    },
+    validate: (rows) => {
+      if (problems.length > 0) return { clean: [], suspicious: [], blocked: problems.join('; ') };
+      return validateNationalRates(rows, asOf);
+    },
   };
 }
 

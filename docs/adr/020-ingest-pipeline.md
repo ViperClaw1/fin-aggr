@@ -208,23 +208,23 @@ Read from the [quarterly data page](https://ncua.gov/analysis/credit-union-corpo
 
 ### FDIC national rates via FRED (2026-11-13)
 
-Read from FRED release 317, table "National Deposit Rates" (`eid=1217866`, [the table](https://fred.stlouisfed.org/release/tables?rid=317&eid=1217866)). The table header says Percent. Series ids were taken from the links on that page on 2026-11-13. Rate caps are a different table and are not stored. This is a deposit-market average, not a product and not a bank metric. It is not an input to Compare. The Monday job is `ready`. The key is `FRED_API_KEY`. The value is not written into the repository. A monthly series with the same hash stays `held` / `unchanged`.
+Read from FRED release 317, table "National Deposit Rates" (`eid=1217866`, [the table](https://fred.stlouisfed.org/release/tables?rid=317&eid=1217866)). The table header says Percent. Series ids were taken from the links on that page on 2026-11-13. Each id was checked again on 2026-11-14 at `https://fred.stlouisfed.org/series/<id>`: the page title is the label stored on the row. Rate caps are a different table and are not stored. This is a deposit-market average, not a product and not a bank metric. It is not an input to Compare. The Monday job is `ready`. The key is `FRED_API_KEY`. The value is not written into the repository. A monthly series with the same hash stays `held` / `unchanged`.
 
-| Series | Table name |
+| Series | FRED title, 2026-11-14 |
 | --- | --- |
-| `SNDR` | Savings |
-| `ICNDR` | Interest Checking |
-| `MMNDR` | Money Market |
-| `NDR1MCD` | 1-Month CD |
-| `NDR3MCD` | 3-Month CD |
-| `NDR6MCD` | 6-Month CD |
-| `NDR12MCD` | 12-Month CD |
-| `NDR24MCD` | 24-Month CD |
-| `NDR36MCD` | 36-Month CD |
-| `NDR48MCD` | 48-Month CD |
-| `NDR60MCD` | 60-Month CD |
+| `SNDR` | National Rate: Savings |
+| `ICNDR` | National Rate: Interest Checking |
+| `MMNDR` | National Rate: Money Market <100M |
+| `NDR1MCD` | National Rate: 1 Month CD <100M |
+| `NDR3MCD` | National Rate: 3 Month CD <100M |
+| `NDR6MCD` | National Rate: 6 Month CD <100M |
+| `NDR12MCD` | National Rate: 12 Month CD <100M |
+| `NDR24MCD` | National Rate: 24 Month CD <100M |
+| `NDR36MCD` | National Rate: 36 Month CD <100M |
+| `NDR48MCD` | National Rate: 48 Month CD <100M |
+| `NDR60MCD` | National Rate: 60 Month CD <100M |
 
-Each observation is one row in `national_deposit_rates` on domain `national_rates`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('national_rates', …)`. The version date is the observation date. Tax, insurance, and the curve stay on their own domains. A percent becomes a `Rate` with `rateFromPercent`. An empty observation (`.` or blank), a rate outside 0–20%, a date after the run day, or two series on different dates holds the whole batch and leaves the previous table in place. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
+The observations request asks for `limit=3`, newest first. The stored date is the latest date shared by every series that returned points. A series that is one month behind still publishes on that shared month. Each observation is one row in `national_deposit_rates` on domain `national_rates`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('national_rates', …)`. The version date is that shared observation date. Tax, insurance, and the curve stay on their own domains. A percent becomes a `Rate` with `rateFromPercent`. A bad series does not wipe the reason down to `empty`. The review reason is the per-series list: `fred_series_missing:<id>`, `value_missing:<id>`, `date_mismatch:<id>`, or `out_of_range:<id>`. The batch stays unpublished and the previous table stays. A date after the run day still blocks the batch as `future`. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
 
 ### Fiscal Data auctions and TreasuryDirect (2026-11-13)
 
