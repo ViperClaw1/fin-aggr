@@ -182,7 +182,7 @@ export const PILOT_SAVINGS_COUNT = pilotBankProducts.filter(
   (row) => row.category === 'savings',
 ).length;
 
-export const pilotSources: readonly SourceRegistryEntry[] = [
+const pilotSources: readonly SourceRegistryEntry[] = [
   {
     id: 'fdic-institutions',
     name: 'FDIC BankFind institutions',
@@ -217,7 +217,7 @@ export const pilotSources: readonly SourceRegistryEntry[] = [
   },
 ];
 
-export const pilotDocuments: readonly DocumentMeta[] = [
+const pilotDocuments: readonly DocumentMeta[] = [
   {
     id: 'bank:fdic:57803:page',
     title: 'Ally Bank view rates',
