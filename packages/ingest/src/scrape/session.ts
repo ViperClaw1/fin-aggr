@@ -1,4 +1,5 @@
 import robotsParser from 'robots-parser';
+import { isHeadersOverflow } from '../network';
 import {
   assertPublicPage,
   blockReason,
@@ -8,6 +9,7 @@ import {
   isOvernight,
   optOutLate,
   SCRAPE_GAP_MS,
+  scrapeRequestHeaders,
   scrapeUserAgent,
   shortQuote,
   type ManualReason,
@@ -29,9 +31,11 @@ export interface PageRequest {
   excluded: boolean;
   optOutRequestedAt?: string;
   optOutAppliedAt?: string;
+  /** Public request headers. Cookie and Authorization are refused. */
+  headers?: Readonly<Record<string, string>>;
 }
 
-type PageResult =
+export type PageResult =
   | { kind: 'ok'; url: string; body: Uint8Array; status: 200 }
   | { kind: 'not_modified'; url: string }
   | { kind: 'missing' }
@@ -105,6 +109,8 @@ export function createScrapeSession(mailbox: string | undefined, deps: ScrapeDep
 
 async function readPage(session: Session, target: PageRequest): Promise<PageResult> {
   if (target.excluded) return excluded(session, target);
+  const headers = scrapeRequestHeaders(target.headers);
+  if (headers === null) return stop(session, target.sourceId, 'blocked');
   let page: PublicPage;
   try {
     page = assertPublicPage(target.url);
@@ -112,7 +118,12 @@ async function readPage(session: Session, target: PageRequest): Promise<PageResu
     return stop(session, target.sourceId, 'blocked');
   }
   if (!isOvernight(session.deps.now(), target.timeZone)) return { kind: 'outside_window' };
-  return follow(session, target.sourceId, page, 0);
+  try {
+    return await follow(session, { sourceId: target.sourceId, headers }, page, 0);
+  } catch (error) {
+    if (error instanceof HeadersOverflow) return stop(session, target.sourceId, 'headers_overflow');
+    throw error;
+  }
 }
 
 function excluded(session: Session, target: PageRequest): PageResult {
@@ -148,17 +159,34 @@ interface Outbound {
   url: string;
   extra: Record<string, string>;
   accept: string;
+  headers: Record<string, string>;
+}
+
+interface PageRead {
+  sourceId: string;
+  headers: Record<string, string>;
 }
 
 async function send(session: Session, input: Outbound): Promise<Fetched> {
   await pause(session, input.domain);
-  const response = await session.deps.fetch(input.url, {
-    method: 'GET',
-    redirect: 'manual',
-    cache: 'no-store',
-    headers: { ...input.extra, accept: input.accept, 'user-agent': session.userAgent },
-    signal: AbortSignal.timeout(30_000),
-  });
+  let response: Response;
+  try {
+    response = await session.deps.fetch(input.url, {
+      method: 'GET',
+      redirect: 'manual',
+      cache: 'no-store',
+      headers: {
+        ...input.headers,
+        ...input.extra,
+        accept: input.accept,
+        'user-agent': session.userAgent,
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (error) {
+    if (isHeadersOverflow(error)) throw new HeadersOverflow();
+    throw error;
+  }
   const body = new Uint8Array(await response.arrayBuffer());
   const tally = session.loads.get(input.domain) ?? { requests: 0, bytes: 0 };
   session.loads.set(input.domain, {
@@ -166,6 +194,12 @@ async function send(session: Session, input: Outbound): Promise<Fetched> {
     bytes: tally.bytes + body.byteLength,
   });
   return { status: response.status, headers: response.headers, body };
+}
+
+class HeadersOverflow extends Error {
+  constructor() {
+    super('UND_ERR_HEADERS_OVERFLOW');
+  }
 }
 
 async function robotsFor(
@@ -181,6 +215,7 @@ async function robotsFor(
     url: robotsUrl,
     extra: {},
     accept: 'text/plain',
+    headers: {},
   });
   const reason = blockReason(fetched.status, headerText(fetched.headers), sampleOf(fetched.body));
   if (reason !== null) {
@@ -188,10 +223,16 @@ async function robotsFor(
     session.robots.set(page.originHost, state);
     return state;
   }
-  if (fetched.status !== 200 && fetched.status !== 404 && fetched.status !== 410) {
+  if (
+    fetched.status !== 200 &&
+    fetched.status !== 400 &&
+    fetched.status !== 404 &&
+    fetched.status !== 410
+  ) {
     throw new Error(`scrape http ${String(fetched.status)}`);
   }
-  const text = fetched.status === 200 ? new TextDecoder().decode(fetched.body) : '';
+  const text =
+    fetched.status === 200 || fetched.status === 400 ? new TextDecoder().decode(fetched.body) : '';
   const parsed = robotsParser(robotsUrl, text);
   const state: RobotsState = {
     kind: 'rules',
@@ -240,28 +281,29 @@ async function interpret(
 
 async function follow(
   session: Session,
-  sourceId: string,
+  read: PageRead,
   page: PublicPage,
   hops: number,
 ): Promise<PageResult> {
-  if (hops === 5) return stop(session, sourceId, 'blocked');
-  const gate = await robotsFor(session, sourceId, page);
+  if (hops === 5) return stop(session, read.sourceId, 'blocked');
+  const gate = await robotsFor(session, read.sourceId, page);
   if (gate.kind === 'manual') return gate.result;
-  if (!gate.allows(page.href)) return stop(session, sourceId, 'robots');
+  if (!gate.allows(page.href)) return stop(session, read.sourceId, 'robots');
   const fetched = await send(session, {
     domain: page.domain,
     url: page.href,
     extra: conditional(session, page.href),
     accept: 'text/html, application/json',
+    headers: read.headers,
   });
-  if (!REDIRECT.has(fetched.status)) return interpret(session, sourceId, page.href, fetched);
+  if (!REDIRECT.has(fetched.status)) return interpret(session, read.sourceId, page.href, fetched);
   const location = fetched.headers.get('location');
-  if (location === null || location === '') return stop(session, sourceId, 'blocked');
+  if (location === null || location === '') return stop(session, read.sourceId, 'blocked');
   try {
     const next = assertPublicPage(new URL(location, page.href).href);
-    return await follow(session, sourceId, next, hops + 1);
+    return await follow(session, read, next, hops + 1);
   } catch {
-    return stop(session, sourceId, 'blocked');
+    return stop(session, read.sourceId, 'blocked');
   }
 }
 

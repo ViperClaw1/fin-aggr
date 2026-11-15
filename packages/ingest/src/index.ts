@@ -12,6 +12,7 @@ export const DATASET_DOMAINS = [
   'par_yields',
   'national_rates',
   'documents',
+  'bank_products',
 ] as const;
 
 export type DatasetDomain = (typeof DATASET_DOMAINS)[number];

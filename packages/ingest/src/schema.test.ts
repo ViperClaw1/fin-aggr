@@ -33,6 +33,22 @@ describe('review decisions', () => {
   });
 });
 
+describe('fact confirmations', () => {
+  const confirmations = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261115120000_fact_confirmations.sql'),
+    'utf8',
+  );
+
+  it('stores verified by human, the login, and the date, and stays private', () => {
+    expect(confirmations).toContain("status = 'verified'");
+    expect(confirmations).toContain("verified_by = 'human'");
+    expect(confirmations).toContain("login ~ '^[A-Za-z0-9-]{1,39}$'");
+    expect(confirmations).toContain('verified_at date not null');
+    expect(confirmations).toContain('enable row level security');
+    expect(confirmations).not.toContain('create policy');
+  });
+});
+
 describe('par yields', () => {
   const yields = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261112130000_par_yields.sql'),
@@ -57,6 +73,16 @@ describe('national deposit rates', () => {
     expect(rates).toContain('rate::text');
     expect(rates).toContain('national_deposit_rates_text');
     expect(rates).not.toContain("publish_domain('reference'");
+  });
+
+  it('keeps the raw FRED observation beside the rounded rate', () => {
+    const quote = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20261115140000_national_rate_quote.sql'),
+      'utf8',
+    );
+    expect(quote).toContain('add column if not exists quote text');
+    expect(quote).toContain('rate::text as rate, quote');
+    expect(quote).toContain('grant select on national_deposit_rates_text');
   });
 });
 

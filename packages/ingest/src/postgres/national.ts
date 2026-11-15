@@ -22,11 +22,13 @@ function rateFromDb(row: Record<string, unknown>): NationalRate {
   const label = row['label'];
   const date = row['observation_date'];
   const rate = row['rate'];
+  const quote = row['quote'];
   if (
     typeof seriesId !== 'string' ||
     typeof label !== 'string' ||
     typeof date !== 'string' ||
     typeof rate !== 'string' ||
+    typeof quote !== 'string' ||
     !isNationalSeriesId(seriesId) ||
     !isRate(rate)
   ) {
@@ -34,7 +36,7 @@ function rateFromDb(row: Record<string, unknown>): NationalRate {
   }
   const expected = NATIONAL_SERIES.find(([id]) => id === seriesId)?.[1];
   if (expected !== label) throw new Error('stored national rate is invalid');
-  return { seriesId, label, date, rate };
+  return { seriesId, label, date, rate, quote };
 }
 
 export function previousNationalRates(sql: Sql): Promise<NationalRate[]> {
@@ -43,7 +45,7 @@ export function previousNationalRates(sql: Sql): Promise<NationalRate[]> {
 
 async function readNationalRates(sql: Sql): Promise<NationalRate[]> {
   const result = await sql.query(
-    `select series_id, label, observation_date::text as observation_date, rate::text as rate
+    `select series_id, label, observation_date::text as observation_date, rate::text as rate, quote
      from national_deposit_rates
      where version_id = (
        select id from dataset_versions where domain = 'national_rates' and is_current
@@ -67,16 +69,17 @@ async function insertRates(
   rows: readonly NationalRate[],
 ): Promise<void> {
   await sql.query(
-    `insert into national_deposit_rates (version_id, series_id, label, observation_date, rate)
-     select $1, u.series_id, u.label, u.observation_date::date, u.rate::rate
-     from unnest($2::text[], $3::text[], $4::text[], $5::text[])
-       as u(series_id, label, observation_date, rate)`,
+    `insert into national_deposit_rates (version_id, series_id, label, observation_date, rate, quote)
+     select $1, u.series_id, u.label, u.observation_date::date, u.rate::rate, u.quote
+     from unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
+       as u(series_id, label, observation_date, rate, quote)`,
     [
       versionId,
       rows.map((row) => row.seriesId),
       rows.map((row) => row.label),
       rows.map((row) => row.date),
       rows.map((row) => row.rate),
+      rows.map((row) => row.quote),
     ],
   );
 }

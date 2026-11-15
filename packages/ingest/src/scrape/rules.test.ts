@@ -39,7 +39,7 @@ describe('public pages', () => {
 describe('scrape identity', () => {
   it('names the project, the site, and the project mailbox', () => {
     expect(scrapeUserAgent('ops@fin-aggr.example')).toBe(
-      'FA (+https://fin-aggr.vercel.app; ops@fin-aggr.example)',
+      'FA (+https://fin-aggr.vercel.app/bot; ops@fin-aggr.example)',
     );
   });
 

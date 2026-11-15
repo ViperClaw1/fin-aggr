@@ -41,6 +41,7 @@ export async function loadCompareData(category: ProductCategory): Promise<Compar
     'institutions',
     'reference',
     category === 'treasury' ? 'treasury' : 'products',
+    ...(category === 'treasury' ? [] : (['bank_products'] as const)),
   );
   const client = makeQueryClient();
   const [products, institutions, dataset, taxTables] = await Promise.all([

@@ -59,6 +59,10 @@ test-results/
 .lighthouseci/
 tools/lhci.runtime.json
 
+# Full bank pages saved while writing an adapter. Trimmed fixtures stay in tests.
+packages/ingest/pages/
+/amex.html
+
 # supabase CLI local state
 supabase/.branches
 supabase/.temp

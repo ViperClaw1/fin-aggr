@@ -28,11 +28,20 @@ describe('freshnessNow', () => {
   it('real data counts from the clock', () => {
     expect(freshnessNow(info('2026-09-30', '2026-11-01', true), clock)).toEqual(clock());
   });
-  it('a mock fact uses its domain date while a real fact uses the clock', () => {
+  it('a mock fact uses its domain date while the demo still has mock domains', () => {
     const dataset = info('2026-09-30', '2026-11-01', true);
     expect(freshnessNow(dataset, clock, { isMock: true, domain: 'documents' }).toISOString()).toBe(
       '2026-09-30T00:00:00.000Z',
     );
+    expect(freshnessNow(dataset, clock, { isMock: false, domain: 'products' }).toISOString()).toBe(
+      '2026-11-01T00:00:00.000Z',
+    );
+  });
+  it('a real fact uses the clock once every domain is real', () => {
+    const domains = Object.fromEntries(
+      DATASET_DOMAINS.map((domain) => [domain, { asOf: asIsoDate('2026-11-01'), isMock: false }]),
+    ) as DatasetInfo['domains'];
+    const dataset: DatasetInfo = { asOf: asIsoDate('2026-11-01'), isMock: false, domains };
     expect(freshnessNow(dataset, clock, { isMock: false, domain: 'products' })).toEqual(clock());
   });
 });

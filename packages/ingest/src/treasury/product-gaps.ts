@@ -12,6 +12,7 @@ const MISSING_PRODUCT_FIELDS = [
 ] as const;
 
 export interface TreasuryProductGap {
+  id: `treasury:${(typeof MISSING_PRODUCT_FIELDS)[number]}`;
   field: (typeof MISSING_PRODUCT_FIELDS)[number];
   productField: 'tiers' | 'earlyWithdrawal' | 'eligibility' | 'taxTreatment';
   citation: string;
@@ -22,6 +23,7 @@ export interface TreasuryProductGap {
 
 const GAPS: readonly TreasuryProductGap[] = [
   {
+    id: 'treasury:tier',
     field: 'tier',
     productField: 'tiers',
     citation: '31 CFR 356.12(a)',
@@ -32,6 +34,7 @@ const GAPS: readonly TreasuryProductGap[] = [
     verification: 'unverified',
   },
   {
+    id: 'treasury:early_withdrawal',
     field: 'early_withdrawal',
     productField: 'earlyWithdrawal',
     citation: 'TreasuryDirect, Selling a Treasury Marketable Security',
@@ -42,6 +45,7 @@ const GAPS: readonly TreasuryProductGap[] = [
     verification: 'unverified',
   },
   {
+    id: 'treasury:eligibility',
     field: 'eligibility',
     productField: 'eligibility',
     citation: '31 CFR 363.10',
@@ -52,6 +56,7 @@ const GAPS: readonly TreasuryProductGap[] = [
     verification: 'unverified',
   },
   {
+    id: 'treasury:tax_treatment',
     field: 'tax_treatment',
     productField: 'taxTreatment',
     citation: '31 CFR 356.32(a)',

@@ -2,7 +2,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { Profile } from '@fa/contracts';
 import { rankProducts } from '@fa/engine';
-import { DEFAULT_SEED, generateFixtures } from '@fa/fixtures';
+import { DEFAULT_SEED, generateFixtures, PILOT_CD_COUNT } from '@fa/fixtures';
 import { expectNoA11yViolations } from './axe';
 import { fillSingleNy } from './compare-profile';
 
@@ -38,10 +38,12 @@ test('after hydration no script with the mock gateway or fixtures is loaded', as
   expect(bodies.filter((b) => b.includes(FIXTURE_MARKER))).toHaveLength(0);
 });
 
+const CD_ROWS = 60 + PILOT_CD_COUNT;
+
 test('lists all 60 CDs, best APY first, with sources', async ({ page }) => {
   await page.goto('/compare/cd');
   const rows = page.getByRole('table').getByRole('row');
-  await expect(rows).toHaveCount(61); // header + 60
+  await expect(rows).toHaveCount(CD_ROWS + 1); // header + demo CDs + pilot CDs
   await expect(rows.nth(1).locator('[data-citation]').first()).toBeVisible();
 });
 
@@ -49,7 +51,7 @@ test('a filter in the URL hides rows and keeps them mounted', async ({ page }) =
   await page.goto('/compare/cd?term=12');
   const rows = page.getByRole('table').getByRole('row');
   await expect(rows.nth(1)).toContainText('12-Month CD');
-  expect(await rows.count()).toBeLessThan(61);
+  expect(await rows.count()).toBeLessThan(CD_ROWS + 1);
 });
 
 test('compare renders without serious or critical axe violations', async ({ page }) => {
@@ -114,8 +116,10 @@ test('with a profile the table ranks after tax, net values marked as assumptions
   // age reaches the table through useDeferredValue, so the row order can lag that banner.
   // the same order as the engine on the same data: fixtures from the seed the build used
   const f = generateFixtures(Number(process.env.NEXT_PUBLIC_FA_SEED ?? DEFAULT_SEED));
-  const cds = f.products.filter((p) => p.category === 'cd');
-  const bank = new Map(f.institutions.map((i) => [i.id, i.name]));
+  const cds = [...f.products, ...f.bankProducts.products].filter((p) => p.category === 'cd');
+  const bank = new Map(
+    [...f.institutions, ...f.bankProducts.institutions].map((i) => [i.id, i.name]),
+  );
   const byId = new Map(cds.map((p) => [p.id, p]));
   const profile = Profile.parse({
     version: 1,
@@ -166,7 +170,7 @@ test('the filter form writes the URL, Reset clears it', async ({ page }) => {
   await expect(page).toHaveURL(/search=Granite/);
   await form.getByRole('button', { name: 'Reset filters' }).click();
   await expect(page).not.toHaveURL(/term=|search=/);
-  await expect(table(page).locator('tbody tr:visible')).toHaveCount(60);
+  await expect(table(page).locator('tbody tr:visible')).toHaveCount(CD_ROWS);
 });
 
 test('compare with the filter form has no serious or critical axe violations', async ({ page }) => {

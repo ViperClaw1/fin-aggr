@@ -75,8 +75,8 @@ export async function demoGate(
 
   const token = await demoGateToken(secret);
   if (request.cookies.get(COOKIE)?.value === token) return NextResponse.next();
-  // The route checks Authorization itself. A JSON body is not a password form.
-  if (request.nextUrl.pathname === '/api/revalidate') return NextResponse.next();
+  // Revalidate checks Authorization itself. /bot is the public crawler page.
+  if (isUngatedPath(request.nextUrl.pathname)) return NextResponse.next();
 
   if (request.method === 'POST' && isPasswordForm(request)) {
     let field: FormDataEntryValue | null = null;
@@ -103,6 +103,10 @@ export async function demoGate(
   return gatePage(false);
 }
 
+function isUngatedPath(pathname: string): boolean {
+  return pathname === '/api/revalidate' || pathname === '/bot';
+}
+
 function isPasswordForm(request: NextRequest): boolean {
   const type = request.headers.get('content-type') ?? '';
   return type.includes('application/x-www-form-urlencoded') || type.includes('multipart/form-data');
@@ -114,6 +118,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: [
-    '/((?!api/revalidate|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!api/revalidate|bot|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

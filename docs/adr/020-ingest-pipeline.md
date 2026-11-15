@@ -62,7 +62,8 @@ Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency`
 Scraping rules, enforced by `createScrapeSession` (step 8.1), not only by this text:
 
 - Public pages only. `https`, no userinfo, no non-default port, no login or account path. No cookies and no acceptance of terms.
-- `robots.txt` of the page origin is read once per host before a path on that host (`robots-parser`). A disallowed path, or a robots response that is itself a block, puts that institution into manual mode. The rate-limit key is the registrable domain, not the host: `www.bank.com` and `bank.com` share one gap. Crawl-delay is not that gap.
+- `robots.txt` of the page origin is read once per host before a path on that host (`robots-parser`). A disallowed path, or a robots response that is itself a block, puts that institution into manual mode. HTTP 400 is not a block: the body is parsed as robots text, so a disallow in it still stops the path, and a body that states no rule allows it. The rate-limit key is the registrable domain, not the host: `www.bank.com` and `bank.com` share one gap. Crawl-delay is not that gap.
+- An adapter may add public request headers such as `Origin` and `Referer`. The session still sets `Accept` and the User-Agent. A `Cookie` or `Authorization` header is refused before the request, as `manual` / `blocked`.
 - At most one request per 10 seconds per registrable domain (the long end of the 5–10 second range, fixed). One session for the whole `bank-rates` run, and only while the local hour in the bank's time zone is 22, 23, or 0–5. Send `If-None-Match` and `If-Modified-Since` when the previous response stored them.
 - The User-Agent is `FA (+https://fin-aggr.vercel.app; <mailbox>)`. The mailbox is `FA_SCRAPE_MAILBOX`, a project address, not a personal one. A bank run with no mailbox fails before the first request. The address itself is still chosen by the owner.
 - A captcha, or HTTP 401, 403, or 429, stops the adapter, logs `source <id> manual <reason>`, and sets `sources.status` to `manual` when `SUPABASE_DB_URL` is set. The protection is not bypassed and the request is not retried with a different address.
@@ -224,7 +225,7 @@ Read from FRED release 317, table "National Deposit Rates" (`eid=1217866`, [the 
 | `NDR48MCD` | National Rate: 48 Month CD <100M |
 | `NDR60MCD` | National Rate: 60 Month CD <100M |
 
-The observations request asks for `limit=3`, newest first. The stored date is the latest date shared by every series that returned points. A series that is one month behind still publishes on that shared month. Each observation is one row in `national_deposit_rates` on domain `national_rates`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('national_rates', …)`. The version date is that shared observation date. Tax, insurance, and the curve stay on their own domains. A percent becomes a `Rate` with `rateFromPercent`. A bad series does not wipe the reason down to `empty`. The review reason is the per-series list: `fred_series_missing:<id>`, `value_missing:<id>`, `date_mismatch:<id>`, or `out_of_range:<id>`. The batch stays unpublished and the previous table stays. A date after the run day still blocks the batch as `future`. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
+The observations request asks for `limit=3`, newest first. The stored date is the latest date shared by every series that returned points. A series that is one month behind still publishes on that shared month. Each observation is one row in `national_deposit_rates` on domain `national_rates`. Every publish inserts a new `dataset_versions` row with `is_mock` false and calls `publish_domain('national_rates', …)`. The version date is that shared observation date. Tax, insurance, and the curve stay on their own domains. A percent becomes a `Rate` only after half-up rounding to 6 decimal places of the percent (`decimal.js`). FRED stores more places than that: `NDR60MCD` on 2026-10-01 is `1.41484783817982041`, and the chart shows 1.41485. `Rate` allows 8 decimal places of the fraction, which is 6 places of the percent after the point moves two places left. Rounding first is what makes `1.41484783817982041` the rate `0.01414848` and `1.364812009554608805` the rate `0.01364812`. The raw observation string is stored as `quote` and is not replaced by the rounded text. A blank or `.` is `value_missing:<id>`. A value that is not a percent is `parse_error:<id>:<code>:<raw>`, with the parser code (`invalid_format` or `too_many_decimals`). A parsed rate outside 0–0.2, including a percent `rateFromPercent` rejects as `out_of_range`, is `out_of_range:<id>:<raw>`. The raw text is part of the review reason. A bad series does not wipe the reason down to `empty`. The review reason is the per-series list: `fred_series_missing:<id>`, `value_missing:<id>`, `date_mismatch:<id>`, `parse_error:<id>:<code>:<raw>`, or `out_of_range:<id>:<raw>`. The batch stays unpublished and the previous table stays. A date after the run day still blocks the batch as `future`. The nightly check requests `SNDR` only and does not print the value. `/methodology` states the source and the monthly cadence as a DRAFT.
 
 ### Fiscal Data auctions and TreasuryDirect (2026-11-13)
 
@@ -258,13 +259,50 @@ Neither response has a balance-tier schedule, an early-withdrawal penalty, an el
 | `eligibility` | `eligibility` | 31 CFR 363.10: a TreasuryDirect account is an online account maintained solely in the account holder's name for eligible book-entry Treasury securities. The page does not state a rule the profile can evaluate. |
 | `tax_treatment` | `taxTreatment` | 31 CFR 356.32(a): securities issued under that part are subject to the Internal Revenue Code of 1986. Under 31 U.S.C. 3124 they are exempt from taxation by a State or political subdivision of a State, except for estate or inheritance taxes and the other exceptions in that section. TreasuryDirect, Treasury Bills: federal tax is due on interest earned, and there is no state or local tax. The enum value is not chosen until a person confirms the quote. |
 
-No treasury product is published until that confirmation. `publishTreasuryProducts` throws. A new auction updates the snapshot and the one open review for that source (same row, comment on the same issue). The run stays `held` with `reason=missing_fields:tier,early_withdrawal,eligibility,tax_treatment`. An unchanged hash stays `held` with `reason=unchanged` and does not open another issue. A missing official column fails the run.
+No treasury product is published until that confirmation. The confirmation is `pnpm ingest:confirm <fact-id>` with fact id `treasury:tier`, `treasury:early_withdrawal`, `treasury:eligibility`, or `treasury:tax_treatment`. The row in `fact_confirmations` stores `verified`, `by: human`, the GitHub login (`FA_REVIEWER` or `gh`), and the UTC date. The quote in source stays `unverified`, and the command does not publish a product. `publishTreasuryProducts` throws. A new auction updates the snapshot and the one open review for that source (same row, comment on the same issue). The run stays `held` with `reason=missing_fields:tier,early_withdrawal,eligibility,tax_treatment`. An unchanged hash stays `held` with `reason=unchanged` and does not open another issue. A missing official column fails the run.
 
 ### Insurance limit and 2026 tax brackets (2026-11-13)
 
-The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They are not copied into fixtures or written as `verified` / `by: human`. `commitInsuranceLimits` can update `insurance_limits` on the current reference version, without calling `publish_domain` and without changing `par_yields`, and it refuses a row that is not `verified` by a human. That call is not scheduled.
+The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They are not copied into fixtures. A person confirms one quote with `pnpm ingest:confirm <fact-id>` (`insurance:fdic` or `insurance:ncua`). That writes `fact_confirmations`: `verified`, `by: human`, the GitHub login, and the UTC date. It does not call `commitInsuranceLimits`. `commitInsuranceLimits` can update `insurance_limits` on the current reference version, without calling `publish_domain` and without changing `par_yields`, and it refuses a row that is not `verified` by a human. That call is not scheduled.
 
 `publishFederalBrackets` throws. Rev. Proc. 2025-32 stays a one-checker draft. `TAX_YEAR` is unchanged. State brackets are not started.
+
+### Bank HTML rate tables (2026-11-15)
+
+Recorded before ACCESSbank (Omaha, NE, rates page `/for-you/accounts/interest-rates`) is connected. That bank is not in the registry and has no adapter. The rules live in `classifyTableRow`.
+
+A single month cell (`12 Month`, `12-Month`) is `termMonths`. A span (`6–8 Month`, `6-8 Months`, `6 to 8 months`) is not one term. `termMonths` stays null. The reading keeps `low`, `high`, and the cell text, and the row is `term_range:<low>-<high>`. The same rate on every month of the span is not a reason to emit one product per month: the cell did not list those terms separately. A span whose ends are equal (`6–6 Month`) is that one month.
+
+`new money` and `requirements met` are conditions. The row goes to review with the condition text (`condition:` plus the clipped quote). It is not a clean product. The text is kept.
+
+An empty or blank "as of" is not a date. `statedAsOf` is null and the flag is `bank date not stated`. `retrievedAt` stays the fetch time on the snapshot. It is not copied into `asOf` or `validFrom`. No calendar date is filled in from the clock.
+
+If the bank does not open accounts online in every state, every row is `state_eligibility` until a person enters the state rule from the bank's own page. The headquarters state is not that list. A bank that does open accounts online nationwide does not get this hold. Other eligibility is still confirmed by a person the first time, as above.
+
+### American Express National Bank (2026-11-15)
+
+Institution `fdic:27471`, source `bank:fdic:27471`, zone `America/Denver` (headquarters Utah). The adapter kind is JSON. The rates page script calls `https://functions.americanexpress.com/ReadBankingInterestRates.v1` with no authorization. On 2026-11-15 a GET without `Origin` returned 403 `Forbidden`. A GET with `Origin: https://www.americanexpress.com` and `Referer` of the public CD page returned 200 and `interestRateList`. The adapter sends those two headers and no cookie.
+
+`robots.txt` of `functions.americanexpress.com` was read the same day, separately from `www.americanexpress.com`. The host returned HTTP 400 and `Function robots.txt has invalid address for pattern`. That body is not a robots policy. The session parses it and allows the path. One `get` per run goes through `createScrapeSession`: the project User-Agent, the 10 second gap, and the overnight window in `America/Denver`. The client is undici with `maxHeaderSize` 65536. Node's default of 16 KB is too small for a header block this host can send. The response read that day was under 16 KB.
+
+`undici` 8.12.3 is the client package. 8.12.4 was published 2026-11-05, inside two weeks of this decision, so it is not pinned (ADR-014). Node 24 does not export an `Agent` on `node:undici`.
+
+| JSON | Our field |
+| --- | --- |
+| `rateCode` `CD` | `category` `cd` |
+| `rateCode` `SAV` | `category` `savings`. `termMonths` is null. A `term` on a savings row is ignored. |
+| `term` `12M` | `termMonths` 12. Any other CD term shape is `term`. |
+| `type` | Bank product id, stored as `fdic:27471:<type>`. |
+| `effectiveDate` | `asOf`. `systemDate` is not `asOf`. A date more than 180 days before the retrieval day is `stale` and is not an offer. A date after the retrieval day is `asof_future`. |
+| `apy` | JSON number. `String(apy)` must match `^\d+(\.\d{1,6})?$`, then `rateFromPercent` moves the decimal point on that string. No division, no `parseFloat`, no decimal.js. `String(4.5)` is `4.5` and the rate is `0.045`. A text with more than six decimal places, or an exponent, is `apy_format` and is not rounded into a rate. |
+| `rate` `0.0` or `apy` 0 | The term is not offered. The row is skipped. A 0% rate is never published. |
+| `type` `37xx` or a description that starts with `IRA` | Excluded in the pilot. |
+
+`rate` is the interest-rate string. It is not the APY and it is not parsed as a `Rate`, except the exact `0.0` skip.
+
+Minimum deposit, balance tiers, early-withdrawal penalty, and eligibility are not in the JSON. They are taken from the product page and the disclosures at the first connection and confirmed by a person. They are not assumed. Compounding and tax treatment are also absent and stay unset. `publishAmexProducts` throws. The source is not on the schedule and is not in the pilot id list. A broken body (`interestRateList` missing) parses as `broken` and publishes nothing.
+
+The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), the 10-month and 12-month CDs, the IRA 6-month CD (`type` 3706), and the High Yield Savings row. Expected rates in the test are the hand values `0.045`, `0.0375`, and `0.032`.
 
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.
@@ -273,6 +311,11 @@ The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They a
 - Filing review issues on this public repository: rejected. The diff and the snapshot link would be public.
 - Rotating proxies so a bank's bot check does not fire: rejected. A block is a stop, not a prompt to change address.
 - Treat Crawl-delay as our rate limit: rejected. The 5–10 second gap is ours. `robots.txt` only grants or denies the path.
+- Map a term span such as `6–8 Month` to its low end, its high end, or its midpoint: rejected. Each of those is a term the cell did not state. One product per month in the span would invent terms the cell did not list.
+- Use `retrievedAt` as the bank's "as of" when the page leaves the date blank: rejected. That publishes a date the bank did not state.
+- Treat the headquarters state as the eligibility list when the bank is not nationwide online: rejected. The list has to come from the bank's page.
+- Turn an American Express JSON `apy` into a rate with `apy / 100` or decimal.js: rejected. `String(apy)` plus `rateFromPercent` does not do float arithmetic. A value that does not stringify inside six decimal places is reviewed, not rounded.
+- Publish a 0% row, or an IRA row, from the American Express pilot: rejected. `apy` 0 means the term is not offered. IRA products stay out of the pilot.
 
 ## Consequences
 - Step 1 lands the dependency rules and the package skeleton. Connectors start at step 6, after the pipeline (step 4) and the schedule (step 5).

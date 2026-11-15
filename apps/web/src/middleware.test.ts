@@ -63,6 +63,15 @@ describe('demoGate', () => {
     );
     expect(response.status).toBe(200);
     expect(config.matcher[0]).toContain('api/revalidate');
+    expect(config.matcher[0]).toContain('bot');
+  });
+
+  it('lets the public crawler page through while the password is set', async () => {
+    const response = await demoGate(
+      new NextRequest('http://127.0.0.1:3000/bot', { method: 'GET' }),
+      PASSWORD,
+    );
+    expect(response.status).toBe(200);
   });
 
   it('answers 401 for a JSON post that is not the password form', async () => {

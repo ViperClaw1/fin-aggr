@@ -1,4 +1,4 @@
-import { rateFromPercent, type Rate } from '@fa/contracts';
+import { MoneyParseError, rateFromPercent, type Rate } from '@fa/contracts';
 import { Decimal } from 'decimal.js';
 import { sha256Hex, type Source } from '../pipeline';
 import { fetchOfficial } from '../official-fetch';
@@ -37,6 +37,8 @@ export interface NationalRate {
   label: string;
   date: string;
   rate: Rate;
+  /** FRED observation text, before half-up rounding. */
+  quote: string;
 }
 
 export interface FredObservationsRaw {
@@ -101,16 +103,46 @@ function pointsFrom(body: string): Point[] {
   return points;
 }
 
-function depositRate(percent: string): Rate | 'missing' | 'range' {
-  if (percent.trim() === '' || percent.trim() === '.') return 'missing';
+const PERCENT_PLACES = 6;
+
+type Rated =
+  | { kind: 'rate'; rate: Rate }
+  | { kind: 'missing' }
+  | { kind: 'range' }
+  | { kind: 'parse'; code: string };
+
+/** Half-up to 6 decimal places of the percent, so the fraction fits in 8 places. */
+function roundedPercent(raw: string): string {
+  return new Decimal(raw)
+    .toDecimalPlaces(PERCENT_PLACES, Decimal.ROUND_HALF_UP)
+    .toFixed(PERCENT_PLACES);
+}
+
+function depositRate(percent: string): Rated {
+  const raw = percent.trim();
+  if (raw === '' || raw === '.') return { kind: 'missing' };
+  let rounded: string;
   try {
-    const rate = rateFromPercent(percent);
-    const value = new Decimal(rate);
-    if (value.lt(0) || value.gt(RATE_MAX)) return 'range';
-    return rate;
+    rounded = roundedPercent(raw);
   } catch {
-    return 'range';
+    return { kind: 'parse', code: 'invalid_format' };
   }
+  try {
+    const rate = rateFromPercent(rounded);
+    if (new Decimal(rate).lt(0) || new Decimal(rate).gt(RATE_MAX)) return { kind: 'range' };
+    return { kind: 'rate', rate };
+  } catch (error) {
+    if (error instanceof MoneyParseError && error.code === 'out_of_range') return { kind: 'range' };
+    const code = error instanceof MoneyParseError ? error.code : 'invalid_format';
+    return { kind: 'parse', code };
+  }
+}
+
+function rateProblem(id: NationalSeriesId, raw: string, rated: Rated): string | null {
+  if (rated.kind === 'missing') return `value_missing:${id}`;
+  if (rated.kind === 'range') return `out_of_range:${id}:${raw}`;
+  if (rated.kind === 'parse') return `parse_error:${id}:${rated.code}:${raw}`;
+  return null;
 }
 
 function pointsBySeries(
@@ -160,19 +192,18 @@ function seriesProblem(
   if (points.length === 0) return `fred_series_missing:${id}`;
   const point = anchor === null ? undefined : points.find((item) => item.date === anchor);
   if (point === undefined) return `date_mismatch:${id}`;
-  const rate = depositRate(point.value);
-  if (rate === 'missing') return `value_missing:${id}`;
-  if (rate === 'range') return `out_of_range:${id}`;
-  return null;
+  const rated = depositRate(point.value);
+  return rateProblem(id, point.value, rated);
 }
 
 function rowsOn(byId: ReadonlyMap<NationalSeriesId, Point[]>, anchor: string): NationalRate[] {
   const rows: NationalRate[] = [];
   for (const [id, label] of NATIONAL_SERIES) {
     const point = (byId.get(id) ?? []).find((item) => item.date === anchor);
-    const rate = point === undefined ? 'missing' : depositRate(point.value);
-    if (rate === 'missing' || rate === 'range') return [];
-    rows.push({ seriesId: id, label, date: anchor, rate });
+    if (point === undefined) return [];
+    const rated = depositRate(point.value);
+    if (rated.kind !== 'rate') return [];
+    rows.push({ seriesId: id, label, date: anchor, rate: rated.rate, quote: point.value });
   }
   return rows;
 }

@@ -34,6 +34,9 @@ describe('network retry', () => {
 
   it('does not treat an abort or an http failure as a network error', () => {
     expect(isNetworkError(Object.assign(new Error('aborted'), { code: 'ABORT_ERR' }))).toBe(false);
+    expect(
+      isNetworkError(Object.assign(new Error('headers'), { code: 'UND_ERR_HEADERS_OVERFLOW' })),
+    ).toBe(false);
     expect(isNetworkError(new Error('revalidate failed: 503'))).toBe(false);
     expect(isNetworkError(null)).toBe(false);
   });

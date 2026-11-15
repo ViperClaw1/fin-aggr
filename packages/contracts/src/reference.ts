@@ -78,6 +78,7 @@ export const DATASET_DOMAINS = [
   'par_yields',
   'national_rates',
   'documents',
+  'bank_products',
 ] as const;
 export type DatasetDomain = (typeof DATASET_DOMAINS)[number];
 
@@ -93,6 +94,7 @@ const DatasetDomains = z.strictObject({
   par_yields: DatasetDomainInfo,
   national_rates: DatasetDomainInfo,
   documents: DatasetDomainInfo,
+  bank_products: DatasetDomainInfo,
 });
 
 /**

@@ -30,6 +30,7 @@ describe('FRED national rates', () => {
       label: 'National Rate: Savings',
       date: '2026-10-01',
       rate: '0.0038',
+      quote: '0.38',
     });
   });
 
@@ -84,7 +85,31 @@ describe('FRED national rates', () => {
       'value_missing:ICNDR',
     );
     expect(parseNationalRates(raw((id) => (id === 'MMNDR' ? '25' : '0.07'))).problems).toContain(
-      'out_of_range:MMNDR',
+      'out_of_range:MMNDR:25',
     );
+  });
+
+  it('rounds a long FRED percent half-up to six places and keeps the raw text', () => {
+    const long = parseNationalRates(
+      raw((id) => (id === 'NDR60MCD' ? '1.41484783817982041' : '0.38')),
+    );
+    expect(long.problems).toEqual([]);
+    expect(long.rows.find((row) => row.seriesId === 'NDR60MCD')).toMatchObject({
+      rate: '0.01414848',
+      quote: '1.41484783817982041',
+    });
+    const tail = parseNationalRates(
+      raw((id) => (id === 'NDR60MCD' ? '1.364812009554608805' : '0.38')),
+    );
+    expect(tail.rows.find((row) => row.seriesId === 'NDR60MCD')).toMatchObject({
+      rate: '0.01364812',
+      quote: '1.364812009554608805',
+    });
+  });
+
+  it('names a parse failure with its code and the raw text', () => {
+    expect(
+      parseNationalRates(raw((id) => (id === 'NDR60MCD' ? 'abc' : '0.07'))).problems,
+    ).toContain('parse_error:NDR60MCD:invalid_format:abc');
   });
 });

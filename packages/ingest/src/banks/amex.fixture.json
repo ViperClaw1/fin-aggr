@@ -1,0 +1,49 @@
+{
+  "systemDate": "2026-11-15",
+  "interestRateList": [
+    {
+      "term": "3M",
+      "rate": "0.0",
+      "apy": 0.0,
+      "type": "3503",
+      "rateCode": "CD",
+      "description": "3-Month Certificate of Deposit ",
+      "effectiveDate": "2026-11-11"
+    },
+    {
+      "term": "10M",
+      "rate": "4.40195",
+      "apy": 4.5,
+      "type": "3510",
+      "rateCode": "CD",
+      "description": "10-Month Certificate of Deposit ",
+      "effectiveDate": "2026-11-11"
+    },
+    {
+      "term": "12M",
+      "rate": "3.68158",
+      "apy": 3.75,
+      "type": "3512",
+      "rateCode": "CD",
+      "description": "12-Month Certificate of Deposit",
+      "effectiveDate": "2026-11-11"
+    },
+    {
+      "term": "6M",
+      "rate": "1.48889",
+      "apy": 1.5,
+      "type": "3706",
+      "rateCode": "CD",
+      "description": "IRA 6-Month Certificate of Deposit",
+      "effectiveDate": "2026-11-11"
+    },
+    {
+      "rate": "3.15",
+      "apy": 3.2,
+      "type": "3200",
+      "rateCode": "SAV",
+      "description": "High Yield Savings Account",
+      "effectiveDate": "2026-11-11"
+    }
+  ]
+}

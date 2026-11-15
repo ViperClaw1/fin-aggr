@@ -9,6 +9,7 @@ import { join } from 'node:path';
 const AMOUNT = /\$[0-9]{1,3}(?:,[0-9]{3})+/;
 
 interface InsuranceLimitQuote {
+  id: 'insurance:fdic' | 'insurance:ncua';
   regulator: 'FDIC' | 'NCUA';
   section: string;
   sourceUrl: string;
@@ -19,12 +20,14 @@ interface InsuranceLimitQuote {
 
 const SOURCES = [
   {
+    id: 'insurance:fdic',
     regulator: 'FDIC',
     file: 'section-330-1.html',
     sourceUrl:
       'https://www.ecfr.gov/current/title-12/chapter-III/subchapter-B/part-330/section-330.1',
   },
   {
+    id: 'insurance:ncua',
     regulator: 'NCUA',
     file: 'section-745-1.html',
     sourceUrl:
@@ -57,6 +60,7 @@ export function insuranceLimitQuotes(): InsuranceLimitQuote[] {
   return SOURCES.map((source) => {
     const html = readFileSync(join(import.meta.dirname, source.file), 'utf8');
     return {
+      id: source.id,
       regulator: source.regulator,
       sourceUrl: source.sourceUrl,
       verification: 'unverified',

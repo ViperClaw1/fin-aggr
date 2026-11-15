@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/methodology', label: 'Methodology' },
   { href: '/disclosure', label: 'Advertiser disclosure' },
   { href: '/privacy', label: 'Privacy' },
+  { href: '/bot', label: 'Crawler' },
 ] as const;
 
 export async function SiteFooter() {

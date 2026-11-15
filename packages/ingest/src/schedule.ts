@@ -188,7 +188,7 @@ export async function runScheduled(
       now: () => new Date().toISOString(),
       sleep: delay,
       log,
-      onManual: (sourceId) => markSourceManualFromEnv(env, sourceId),
+      onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
     });
     try {
       await runOneAtATime([...banks.values()].map((job) => () => job(env, session)));

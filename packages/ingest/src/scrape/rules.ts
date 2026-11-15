@@ -5,7 +5,7 @@
  * falls inside it for US time zones from Hawaii through Eastern.
  */
 
-const PROJECT_URL = 'https://fin-aggr.vercel.app';
+const PROJECT_URL = 'https://fin-aggr.vercel.app/bot';
 
 /** One request per registrable domain. The long end of the 5–10s range, fixed so a run does not roll a die. */
 export const SCRAPE_GAP_MS = 10_000;
@@ -43,7 +43,7 @@ const PRIVATE_QUERY = new Set(['passwd', 'password', 'session', 'token']);
 const CAPTCHA =
   /recaptcha|hcaptcha|g-recaptcha|h-captcha|\/cdn-cgi\/challenge|cf-challenge|cf-mitigated/i;
 
-export type ManualReason = 'robots' | 'captcha' | 'blocked';
+export type ManualReason = 'robots' | 'captcha' | 'blocked' | 'headers_overflow' | 'adapter';
 
 export interface PublicPage {
   href: string;
@@ -179,4 +179,31 @@ export function formatManual(sourceId: string, reason: ManualReason): string {
 
 export function formatExcluded(sourceId: string, late: boolean): string {
   return late ? `source ${sourceId} excluded late` : `source ${sourceId} excluded`;
+}
+
+const BLOCKED_REQUEST_HEADER = new Set(['authorization', 'cookie', 'proxy-authorization']);
+
+/**
+ * Headers a bank adapter may add. The session still sets Accept and User-Agent.
+ * A cookie or an authorization header is a credential, so the request is refused.
+ */
+export function scrapeRequestHeaders(
+  headers: Readonly<Record<string, string>> | undefined,
+): Record<string, string> | null {
+  if (headers === undefined) return {};
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const key = name.toLowerCase();
+    if (BLOCKED_REQUEST_HEADER.has(key)) return null;
+    if (
+      key === 'accept' ||
+      key === 'user-agent' ||
+      key === 'if-none-match' ||
+      key === 'if-modified-since'
+    ) {
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
 }

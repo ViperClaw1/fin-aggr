@@ -21,6 +21,7 @@ import {
 import { runSource, type RunSummary } from './pipeline';
 import { federalRegisterSource } from './register/watch';
 import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
+import { registerPilotBanks } from './scrape/banks/register';
 import { registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
 import { directGap, fiscalGap, runAuctionGap } from './treasury/gap';
@@ -39,6 +40,7 @@ export function registerConnectors(): void {
   registerJob('ecfr-745', (env) => runEcfr(env, '745'));
   registerJob('ecfr-328', (env) => runEcfr(env, '328'));
   registerJob('federal-register', (env) => runFederalRegister(env));
+  registerPilotBanks();
 }
 
 function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): void {

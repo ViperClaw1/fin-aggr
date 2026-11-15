@@ -95,7 +95,7 @@ type FactFilter = ReturnType<typeof FactQuery.parse>;
 
 const institutionsMatching = (f: FixtureSet, q: InstitutionFilter): Institution[] => {
   const needle = q.q?.toLowerCase();
-  return f.institutions.filter(
+  return [...f.institutions, ...f.bankProducts.institutions].filter(
     (i) =>
       (q.kind === undefined || i.kind === q.kind) &&
       (needle === undefined || i.name.toLowerCase().includes(needle)),
@@ -103,7 +103,7 @@ const institutionsMatching = (f: FixtureSet, q: InstitutionFilter): Institution[
 };
 
 const productsMatching = (f: FixtureSet, q: ProductFilter): Product[] =>
-  f.products.filter(
+  [...f.products, ...f.bankProducts.products].filter(
     (p) =>
       p.category === q.category &&
       (q.institutionId === undefined || p.institutionId === q.institutionId),
@@ -148,6 +148,21 @@ function createResponder(options: MockGatewayOptions): Respond {
   };
 }
 
+function mockDataset(f: FixtureSet) {
+  const domains = {
+    institutions: { asOf: f.asOf, isMock: true },
+    bank_metrics: { asOf: f.asOf, isMock: true },
+    products: { asOf: f.asOf, isMock: true },
+    treasury: { asOf: f.asOf, isMock: true },
+    reference: { asOf: f.asOf, isMock: true },
+    par_yields: { asOf: f.asOf, isMock: true },
+    national_rates: { asOf: f.asOf, isMock: true },
+    documents: { asOf: f.asOf, isMock: true },
+    bank_products: { asOf: f.bankProducts.asOf, isMock: false },
+  };
+  return { ...datasetRollup(domains), domains };
+}
+
 export function createMockGateway(options: MockGatewayOptions): DataGateway {
   const respond = createResponder(options);
   return {
@@ -162,7 +177,9 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
         'getInstitution',
         [id],
         Institution,
-        (f) => f.institutions.find((i) => i.id === id) ?? notFound(`Institution ${id}`),
+        (f) =>
+          [...f.institutions, ...f.bankProducts.institutions].find((i) => i.id === id) ??
+          notFound(`Institution ${id}`),
       ),
     getBankMetrics: (id, asOf) =>
       respond('getBankMetrics', [id, asOf], BankMetrics, (f) => {
@@ -183,7 +200,9 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
         'getProduct',
         [id],
         Product,
-        (f) => f.products.find((p) => p.id === id) ?? notFound(`Product ${id}`),
+        (f) =>
+          [...f.products, ...f.bankProducts.products].find((p) => p.id === id) ??
+          notFound(`Product ${id}`),
       ),
     getDocument: (id) =>
       respond(
@@ -211,19 +230,6 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
       respond('listSponsored', [placement], listOf(SponsoredItem), (f) =>
         f.sponsored.filter((s) => s.placement === placement),
       ),
-    getDatasetInfo: () =>
-      respond('getDatasetInfo', [], DatasetInfo, (f) => {
-        const domains = {
-          institutions: { asOf: f.asOf, isMock: true },
-          bank_metrics: { asOf: f.asOf, isMock: true },
-          products: { asOf: f.asOf, isMock: true },
-          treasury: { asOf: f.asOf, isMock: true },
-          reference: { asOf: f.asOf, isMock: true },
-          par_yields: { asOf: f.asOf, isMock: true },
-          national_rates: { asOf: f.asOf, isMock: true },
-          documents: { asOf: f.asOf, isMock: true },
-        };
-        return { ...datasetRollup(domains), domains };
-      }),
+    getDatasetInfo: () => respond('getDatasetInfo', [], DatasetInfo, mockDataset),
   };
 }

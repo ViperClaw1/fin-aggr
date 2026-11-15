@@ -29,7 +29,8 @@ const profile = Profile.parse({
 describe('defaultOrder', () => {
   it('without a profile, ranks by top APY, highest first', () => {
     const rows = defaultOrder(cds, null);
-    expect(rows).toHaveLength(60);
+    const pilot = cds.filter((product) => !product.provenance.isMock).length;
+    expect(rows).toHaveLength(60 + pilot);
     for (let i = 1; i < rows.length; i++) {
       const prev = headlineApy(rows[i - 1]!.product);
       expect(compareRate(prev, headlineApy(rows[i]!.product))).toBeGreaterThanOrEqual(0);

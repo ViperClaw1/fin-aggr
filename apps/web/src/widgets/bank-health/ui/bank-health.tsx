@@ -11,7 +11,7 @@ import {
 } from '@fa/contracts';
 import Link from 'next/link';
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { FactValue, freshnessNow } from '@/entities/fact';
+import { FactValue, freshnessNow, productDatasetDomain } from '@/entities/fact';
 import { headlineApy } from '@/entities/product';
 import { useOpenCitation, type OpenCitation } from '@/features/open-citation';
 import { BulletChart, percentExtent } from '@/shared/ui/charts';
@@ -57,7 +57,7 @@ export function BankHealth({ institution, metrics, products, dataset }: BankDeta
         nowFor={(product) =>
           freshnessNow(dataset, undefined, {
             isMock: product.provenance.isMock,
-            domain: product.category === 'treasury' ? 'treasury' : 'products',
+            domain: productDatasetDomain(product),
           })
         }
         open={open}

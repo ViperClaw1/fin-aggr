@@ -12,10 +12,12 @@
   "dependencies": {
     "@fa/contracts": "workspace:*",
     "@supabase/supabase-js": "2.118.0",
+    "cheerio": "1.2.0",
     "decimal.js": "10.6.0",
     "fflate": "0.8.3",
     "pg": "8.23.1",
-    "robots-parser": "3.0.1"
+    "robots-parser": "3.0.1",
+    "undici": "8.12.3"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

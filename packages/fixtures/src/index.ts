@@ -17,10 +17,18 @@ import { documentPublishers, generateDocuments, generateFacts } from './document
 import { generateInstitutions, TREASURY_STOREFRONT_PREFIX } from './institutions';
 import { createRng } from './prng';
 import { generateProducts } from './products';
+import { pilotBankDomain } from './pilot-banks';
 import { generateTaxTables, insuranceRules, sources } from './reference';
 import { sponsored } from './sponsored';
 
 export { TREASURY_STOREFRONT_PREFIX };
+export {
+  pilotBankDomain,
+  pilotBankProducts,
+  pilotInstitutions,
+  PILOT_CD_COUNT,
+  PILOT_SAVINGS_COUNT,
+} from './pilot-banks';
 
 export const DEFAULT_SEED = 20261025;
 const RETRIEVAL_STREAM = 0x5eed;
@@ -37,6 +45,8 @@ export interface FixtureSet {
   insuranceRules: InsuranceRules;
   sources: SourceRegistryEntry[];
   sponsored: SponsoredItem[];
+  /** Scraped pilot rates. Not part of the generated mock catalog. */
+  bankProducts: typeof pilotBankDomain;
 }
 
 export function generateFixtures(seed: number): FixtureSet {
@@ -62,7 +72,8 @@ export function generateFixtures(seed: number): FixtureSet {
     bankMetrics: generateBankMetrics(rng, institutions, retrieval),
     taxTables: generateTaxTables(rng),
     insuranceRules: insuranceRules(),
-    sources: sources(),
+    sources: [...sources(), ...pilotBankDomain.sources],
     sponsored: sponsored(),
+    bankProducts: pilotBankDomain,
   };
 }

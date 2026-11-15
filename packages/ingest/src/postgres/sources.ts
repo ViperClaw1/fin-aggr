@@ -3,11 +3,11 @@ import type { Sql } from '../decisions';
 import { requireReviewer } from '../policy';
 import { isBankSourceId, optOutLate } from '../scrape/rules';
 
-/** Captcha or a block. The previous published rows stay. */
-async function markSourceManual(sql: Sql, sourceId: string): Promise<void> {
+/** Captcha, a block, or a broken adapter. The previous published rows stay. */
+async function markSourceManual(sql: Sql, sourceId: string, reason: string): Promise<void> {
   const result = await sql.query(
-    `update sources set status = 'manual' where id = $1 returning id`,
-    [sourceId],
+    `update sources set status = 'manual', notes = $2 where id = $1 returning id`,
+    [sourceId, reason],
   );
   if (result.rows.length === 0) throw new Error(`unknown source ${sourceId}`);
 }
@@ -16,10 +16,11 @@ async function markSourceManual(sql: Sql, sourceId: string): Promise<void> {
 export async function markSourceManualFromEnv(
   env: NodeJS.ProcessEnv,
   sourceId: string,
+  reason: string,
 ): Promise<void> {
   const url = env['SUPABASE_DB_URL']?.trim() ?? '';
   if (url === '') return;
-  await withClient(databaseUrl(env), (sql) => markSourceManual(sql, sourceId));
+  await withClient(databaseUrl(env), (sql) => markSourceManual(sql, sourceId, reason));
 }
 
 export interface OptOut {

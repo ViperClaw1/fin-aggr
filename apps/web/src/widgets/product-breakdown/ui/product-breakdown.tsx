@@ -7,7 +7,7 @@ import { formatUsd, type Assumption } from '@fa/contracts';
 import type { NetYieldResult } from '@fa/engine';
 import Link from 'next/link';
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { freshnessNow } from '@/entities/fact';
+import { freshnessNow, productDatasetDomain } from '@/entities/fact';
 import { SafetyBadge } from '@/entities/institution';
 import { defaultAssumptions, useCompleteProfile, useProfileDraft } from '@/entities/profile';
 import { CompatibilityBadge } from '@/entities/rule';
@@ -80,7 +80,7 @@ function View({ data, handlers }: { data: ProductData; handlers: Handlers | null
   ]);
   const now = freshnessNow(dataset, undefined, {
     isMock: product.provenance.isMock,
-    domain: product.category === 'treasury' ? 'treasury' : 'products',
+    domain: productDatasetDomain(product),
   });
   return (
     <article className="flex min-w-0 flex-col gap-8">

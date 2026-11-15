@@ -1,6 +1,6 @@
 import { IsoDate } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
-import { sourceDomain, verificationText } from './citation';
+import { sourceDomain, sourceLabel, verificationText } from './citation';
 
 describe('sourceDomain', () => {
   it('keeps the host without www, path or query', () => {
@@ -9,6 +9,15 @@ describe('sourceDomain', () => {
 
   it('keeps subdomains other than www', () => {
     expect(sourceDomain('https://docs.example.org/a.pdf')).toBe('docs.example.org');
+  });
+
+  it('names a scraped bank rate as the bank website', () => {
+    expect(
+      sourceLabel({
+        sourceId: 'bank:fdic:58177',
+        sourceUrl: 'https://www.salliemae.com/savings/certificates-of-deposit',
+      }),
+    ).toBe('bank website');
   });
 });
 

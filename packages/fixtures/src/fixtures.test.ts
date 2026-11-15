@@ -9,7 +9,7 @@ const byId = <T extends { id: string }>(items: readonly T[]): Map<string, T> =>
   new Map(items.map((i) => [i.id, i]));
 const institutions = byId(f.institutions);
 const products = byId(f.products);
-const documents = byId(f.documents);
+const documents = byId([...f.documents, ...f.bankProducts.documents]);
 const isStorefront = (id: string): boolean => id.startsWith(TREASURY_STOREFRONT_PREFIX);
 
 /** Every Provenance object anywhere in a value. */
@@ -110,10 +110,19 @@ describe('AC-5: mocks are never presented as data', () => {
   it('everything is isMock except reference constants, which stay unverified', () => {
     const all = provenances(f);
     expect(all.length).toBeGreaterThan(300);
-    for (const p of all) {
-      expect(p.verification.status).toBe('unverified');
+    const official = all.filter((p) => !p.isMock && p.sourceId === 'fdic-institutions');
+    const rest = all.filter((p) => p.isMock || p.sourceId !== 'fdic-institutions');
+    expect(official.length).toBeGreaterThan(0);
+    for (const p of official) {
+      expect(p.verification).toMatchObject({ status: 'verified', by: 'official_api' });
     }
-    expect(all.filter((p) => !p.isMock).map((p) => p.sourceId)).toEqual([
+    for (const p of rest) expect(p.verification.status).toBe('unverified');
+    const real = [...new Set(all.filter((p) => !p.isMock).map((p) => p.sourceId))].sort();
+    expect(real).toEqual([
+      'bank:fdic:27471',
+      'bank:fdic:57803',
+      'bank:fdic:58177',
+      'fdic-institutions',
       'insurance-limit-reference',
     ]);
   });
@@ -168,7 +177,9 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
+    // ea477c50: pilot bank rates sit beside the mock catalog. Product ids use hyphens
+    // because a colon cannot be a Windows path segment on the product route.
     // 459d396c: call-report outliers are null, not a boolean, and have no percentile
-    expect(fnv1a(JSON.stringify(f))).toBe('459d396c');
+    expect(fnv1a(JSON.stringify(f))).toBe('ea477c50');
   });
 });

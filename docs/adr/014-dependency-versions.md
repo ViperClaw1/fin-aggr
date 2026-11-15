@@ -52,7 +52,7 @@ Checked with `pnpm view` on 2026-11-01. `@lhci/cli` 0.15.1 was published 2025-06
 
 Accepted with [ADR-019](019-supabase-dataset.md) and [ADR-020](020-ingest-pipeline.md). Exact versions, no `^`/`~`. Checked with `npm view` on 2026-11-04, and again on 2026-11-05 before install. A release newer than two weeks is not pinned. On 2026-11-05 the pins below were unchanged: `@supabase/supabase-js` 2.119.0 (2026-11-04), `supabase` 2.122.0 (2026-10-23) and 3.0.0 (2026-11-02) are still inside two weeks. `pg` 8.23.1, `@types/pg` 8.23.1, `robots-parser` 3.0.1 and `cheerio` 1.2.0 are still the current releases that clear the rule.
 
-Installed on 2026-11-05: `@supabase/supabase-js` in `@fa/ingest`, `supabase` CLI as a root devDependency. `robots-parser` 3.0.1 installed 2026-11-11 for step 8.1. `cheerio` still waits until static HTML is the adapter path.
+Installed on 2026-11-05: `@supabase/supabase-js` in `@fa/ingest`, `supabase` CLI as a root devDependency. `robots-parser` 3.0.1 installed 2026-11-11 for step 8.1. `cheerio` 1.2.0 installed 2026-11-15 for the HTML bank adapters.
 
 Installed on 2026-11-06 with step 2: `pg` 8.23.1 and `@types/pg` 8.23.1 as root dependencies. The seed and rollback scripts are the only importers.
 
@@ -65,11 +65,12 @@ Installed on 2026-11-06 with step 2: `pg` 8.23.1 and `@types/pg` 8.23.1 as root 
 | robots-parser | 3.0.1 | 2023-02-21 | `packages/ingest`, step 8. Latest release; ships its own types |
 | cheerio | 1.2.0 | 2026-01-23 | `packages/ingest`, step 8, and only if static HTML is enough |
 | fflate | 0.8.3 | 2026-05-16 | `packages/ingest`. NCUA quarters are PKZIP. `node:zlib` inflates gzip, not PKZIP. `npm view` on 2026-11-13: 0.8.3 is the current release and is older than two weeks. |
+| undici | 8.12.3 | 2026-10-19 | `packages/ingest`. American Express rate fetch sets `maxHeaderSize` 65536 (ADR-020). Node 24 has no `node:undici` export. `npm view` on 2026-11-15: 8.12.4 was published 2026-11-05, inside two weeks, so 8.12.3 is the pin. |
 
 Not pinned:
 - `@supabase/supabase-js` 2.119.0 and `supabase` 3.0.0 were published 2026-11-04. `supabase` 2.122.1 was published 2026-11-02.
 - `postgres` 4.0.0 was published 2026-10-29. The previous line is 3.4.9 (2026-04-05). One driver is enough: `pg`, whose current release already clears two weeks.
-- Playwright and pdf.js stay on the versions already accepted above. `cheerio` still waits until static HTML is the adapter path.
+- Playwright and pdf.js stay on the versions already accepted above. `cheerio` 1.2.0 is installed for static HTML adapters.
 
 ## Amendment (E6, ADR-018, 2026-10-30): installed
 

@@ -1,4 +1,5 @@
 // Compare page UI details: the category tabs and the APY cell. The flows live in compare.spec.ts.
+import { PILOT_CD_COUNT } from '@fa/fixtures';
 import { expect, test, type Page } from '@playwright/test';
 
 const table = (page: Page) => page.getByRole('table', { name: 'Certificates of deposit' });
@@ -34,7 +35,7 @@ test('the APY cell shows the rate; the keyboard opens its source and Escape clos
 
 test('a filter hides rows and leaves them mounted', async ({ page }) => {
   await page.goto('/compare/cd?term=12');
-  await expect(page.locator('table tbody tr')).toHaveCount(60);
+  await expect(page.locator('table tbody tr')).toHaveCount(60 + PILOT_CD_COUNT);
   await expect(page.locator('table tbody tr[hidden]')).not.toHaveCount(0);
   await expect(page.locator('table tbody tr:visible td:nth-child(2)').first()).toHaveText('12 mo');
 });

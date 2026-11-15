@@ -13,6 +13,7 @@ describe('dataset domains', () => {
       'par_yields',
       'national_rates',
       'documents',
+      'bank_products',
     ]);
   });
 

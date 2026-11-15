@@ -3,7 +3,7 @@
 import type { Id, Provenance } from '@fa/contracts';
 import { Disclosure } from '@/shared/ui/disclosure';
 import { absoluteDate, FreshnessLabel } from '@/shared/ui/freshness';
-import { sourceDomain, verificationText } from '../model/citation';
+import { sourceLabel, verificationText } from '../model/citation';
 
 interface CitationRef {
   documentId: Id;
@@ -28,7 +28,7 @@ export function SourceCitation({
   now,
 }: SourceCitationProps) {
   if (variant === 'line') return <CitationLine provenance={p} onOpen={onOpen} />;
-  const domain = sourceDomain(p.sourceUrl);
+  const domain = sourceLabel(p);
   const doc = p.document;
   const where = doc === undefined ? domain : `${domain}, p. ${String(doc.page)}`;
   const box =
@@ -64,7 +64,7 @@ export function SourceCitation({
       {p.isMock ? <span className="font-medium">Demo data</span> : null}
       {now === undefined ? (
         <time dateTime={p.retrievedAt} className="text-muted">
-          Retrieved {absoluteDate(p.retrievedAt)}
+          {p.sourceId.startsWith('bank:') ? 'as of' : 'Retrieved'} {absoluteDate(p.retrievedAt)}
         </time>
       ) : (
         <FreshnessLabel at={p.retrievedAt} now={now} />
@@ -85,7 +85,7 @@ function CitationLine({
   provenance: Provenance;
   onOpen?: SourceCitationProps['onOpen'];
 }) {
-  const domain = sourceDomain(p.sourceUrl);
+  const domain = sourceLabel(p);
   const doc = p.document;
   const where =
     doc !== undefined && onOpen !== undefined ? (
@@ -109,7 +109,9 @@ function CitationLine({
     <div className="truncate text-xs text-muted" data-citation={p.sourceId}>
       Source: {where} · <span>{verificationText(p.verification)}</span>
       {p.isMock ? ' · Demo data' : null} ·{' '}
-      <time dateTime={p.retrievedAt}>Retrieved {absoluteDate(p.retrievedAt)}</time>
+      <time dateTime={p.retrievedAt}>
+        {p.sourceId.startsWith('bank:') ? 'as of' : 'Retrieved'} {absoluteDate(p.retrievedAt)}
+      </time>
     </div>
   );
 }

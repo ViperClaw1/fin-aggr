@@ -9,6 +9,7 @@ const row: NationalRate = {
   label: 'National Rate: Savings',
   date: '2026-10-01',
   rate: rateFromPercent('0.38'),
+  quote: '0.38',
 };
 
 describe('national rates publish', () => {

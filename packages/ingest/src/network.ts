@@ -16,8 +16,19 @@ function codeOf(error: object): string | null {
   return typeof error.code === 'string' ? error.code : null;
 }
 
-/** A transport failure. HTTP status codes and aborts stay with the caller. */
+/** A response-header block this large is a stop, not a transport blip. Do not retry it. */
+export function isHeadersOverflow(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  if (codeOf(error) === 'UND_ERR_HEADERS_OVERFLOW') return true;
+  if ('cause' in error && error.cause !== undefined && error.cause !== error) {
+    return isHeadersOverflow(error.cause);
+  }
+  return false;
+}
+
+/** A transport failure. HTTP status codes, aborts, and a header overflow stay with the caller. */
 export function isNetworkError(error: unknown): boolean {
+  if (isHeadersOverflow(error)) return false;
   if (typeof error !== 'object' || error === null) return false;
   const code = codeOf(error);
   if (code !== null && NETWORK_CODES.has(code)) return true;

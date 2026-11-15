@@ -8,6 +8,7 @@ const root = join(import.meta.dirname, '../../../..');
 describe('insurance limit quotes', () => {
   it('reads the standard limit sentence from the saved sections', () => {
     const quotes = insuranceLimitQuotes();
+    expect(quotes.map((quote) => quote.id)).toEqual(['insurance:fdic', 'insurance:ncua']);
     expect(quotes.map((quote) => quote.regulator)).toEqual(['FDIC', 'NCUA']);
     expect(quotes.map((quote) => quote.section)).toEqual(['330.1(o)', '745.1(e)']);
     expect(quotes.map((quote) => quote.amountText)).toEqual(['$250,000', '$250,000']);

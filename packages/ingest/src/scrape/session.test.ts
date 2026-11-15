@@ -84,7 +84,7 @@ describe('scrape session', () => {
       'https://www.example.com/rates',
     ]);
     expect(script.calls[0]?.headers.get('user-agent')).toBe(
-      'FA (+https://fin-aggr.vercel.app; ops@fin-aggr.example)',
+      'FA (+https://fin-aggr.vercel.app/bot; ops@fin-aggr.example)',
     );
     expect(script.calls[1]?.headers.get('if-none-match')).toBeNull();
     client.flushLoad();
@@ -199,6 +199,82 @@ describe('scrape session', () => {
     ).resolves.toEqual({ kind: 'excluded', late: true });
     expect(lines).toEqual(['source bank:a excluded late']);
     expect(script.calls).toEqual([]);
+  });
+
+  it('parses a robots 400 that states no rule, then fetches the page', async () => {
+    const script = scripted((call) => {
+      if (call.url.endsWith('/robots.txt')) {
+        return new Response('Function robots.txt has invalid address for pattern', { status: 400 });
+      }
+      return new Response('{}', { status: 200 });
+    });
+    const { client } = session(script.fetch);
+    await expect(client.get(page())).resolves.toMatchObject({ kind: 'ok' });
+    expect(script.calls.map((call) => call.url)).toEqual([
+      'https://www.example.com/robots.txt',
+      'https://www.example.com/rates',
+    ]);
+  });
+
+  it('still stops when a robots 400 disallows the path', async () => {
+    const script = scripted(
+      () => new Response('User-agent: *\nDisallow: /rates\n', { status: 400 }),
+    );
+    const { client } = session(script.fetch);
+    await expect(client.get(page())).resolves.toEqual({ kind: 'manual', reason: 'robots' });
+    expect(script.calls).toHaveLength(1);
+  });
+
+  it('forwards origin and referer and keeps the project user agent', async () => {
+    const script = scripted((call) => {
+      if (call.url.endsWith('/robots.txt')) return new Response(ALLOW, { status: 200 });
+      return new Response('{}', { status: 200 });
+    });
+    const { client } = session(script.fetch);
+    await client.get(
+      page({
+        headers: {
+          Origin: 'https://www.example.com',
+          Referer: 'https://www.example.com/rates',
+        },
+      }),
+    );
+    expect(script.calls[1]?.headers.get('origin')).toBe('https://www.example.com');
+    expect(script.calls[1]?.headers.get('referer')).toBe('https://www.example.com/rates');
+    expect(script.calls[1]?.headers.get('user-agent')).toBe(
+      'FA (+https://fin-aggr.vercel.app/bot; ops@fin-aggr.example)',
+    );
+    expect(script.calls[0]?.headers.get('origin')).toBeNull();
+  });
+
+  it('refuses a cookie before any request', async () => {
+    const script = scripted(() => {
+      throw new Error('fetched');
+    });
+    const { client } = session(script.fetch);
+    await expect(client.get(page({ headers: { cookie: 'a=b' } }))).resolves.toEqual({
+      kind: 'manual',
+      reason: 'blocked',
+    });
+    expect(script.calls).toEqual([]);
+  });
+
+  it('stops on a header overflow and does not try the request again', async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = () => {
+      calls += 1;
+      return Promise.reject(
+        Object.assign(new Error('headers'), { code: 'UND_ERR_HEADERS_OVERFLOW' }),
+      );
+    };
+    const lines: string[] = [];
+    const { client } = session(fetchImpl, clock(NIGHT), (line) => lines.push(line));
+    await expect(client.get(page())).resolves.toEqual({
+      kind: 'manual',
+      reason: 'headers_overflow',
+    });
+    expect(calls).toBe(1);
+    expect(lines.some((line) => line.includes('manual headers_overflow'))).toBe(true);
   });
 
   it('clips a fact to a short quote', () => {

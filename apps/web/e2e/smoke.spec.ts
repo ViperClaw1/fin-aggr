@@ -106,6 +106,8 @@ test('robots.txt disallows crawling; the manifest and OG images are served', asy
 test('the header switch turns the dark theme on and off; it has no axe violations', async ({
   page,
 }) => {
+  // The CD catalog includes the pilot rows, so the full-page scan needs longer than 30s.
+  test.setTimeout(60_000);
   await page.goto('/compare/cd');
   const html = page.locator('html');
   await expect(html).not.toHaveAttribute('data-theme', 'dark');

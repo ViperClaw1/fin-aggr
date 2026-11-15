@@ -7,7 +7,7 @@
 // (ADR-008); the profile never leaves it (ADR-004).
 import type { ProductCategory } from '@fa/contracts';
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { freshnessNow } from '@/entities/fact';
+import { freshnessNow, productDatasetDomain } from '@/entities/fact';
 import { headlineApy } from '@/entities/product';
 import {
   PROFILE_FORM_FIELDS,
@@ -239,7 +239,7 @@ function Table(props: Props & UrlState) {
   const nowFor = (product: Pick<CompareProduct, 'category' | 'provenance'>) =>
     freshnessNow(dataset, undefined, {
       isMock: product.provenance.isMock,
-      domain: product.category === 'treasury' ? 'treasury' : 'products',
+      domain: productDatasetDomain(product),
     });
   return (
     <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">

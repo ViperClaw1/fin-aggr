@@ -6,6 +6,12 @@ import { missingFieldsReason, publishTreasuryProducts, treasuryProductGaps } fro
 describe('treasury product gaps', () => {
   it('keeps one unverified quote for each missing product field', () => {
     const gaps = treasuryProductGaps();
+    expect(gaps.map((gap) => gap.id)).toEqual([
+      'treasury:tier',
+      'treasury:early_withdrawal',
+      'treasury:eligibility',
+      'treasury:tax_treatment',
+    ]);
     expect(gaps.map((gap) => gap.field)).toEqual([
       'tier',
       'early_withdrawal',
