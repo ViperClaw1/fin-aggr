@@ -112,6 +112,14 @@ describe('schedule catalog', () => {
     expect(scheduleById('tax-tables')?.cron).toBeNull();
     expect(scheduleById('missing')).toBeUndefined();
   });
+
+  it('retries bank rates across the hours a late runner can still use', () => {
+    expect(scheduleById('bank-rates')?.cron).toBe('0 3,4,5,6,7,8,9 * * *');
+    const text = workflowText('ingest-bank-rates.yml');
+    expect(text).not.toContain('ignore_window');
+    expect(text).toContain('Eastern 03:00–11:00');
+    expect(text).toContain('Hawaii 08:00–16:00');
+  });
 });
 
 describe('scheduled run', () => {

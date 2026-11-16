@@ -6,7 +6,7 @@ import {
   commitBankProducts,
   previousBankProducts,
 } from '../../postgres/bank-products';
-import { saveInstitutionSnapshot } from '../../postgres/ports';
+import { finishJob, saveInstitutionSnapshot, sourceRequestedSince } from '../../postgres/ports';
 import { markSourceManualFromEnv } from '../../postgres/sources';
 import { upsertBankSources } from '../../postgres/banks';
 import { registerBank } from '../../schedule';
@@ -39,6 +39,16 @@ function portsFor(env: NodeJS.ProcessEnv, spec: BankSpec): BankPorts {
     },
     commit: (input) => withClient(url, (sql) => commitBankProducts(sql, input)),
     markManual: (reason) => markSourceManualFromEnv(env, spec.sourceId, reason),
+    requestedSince: (windowStart) =>
+      withClient(url, (sql) => sourceRequestedSince(sql, spec.sourceId, windowStart)),
+    finishJob: (job) =>
+      withClient(url, (sql) =>
+        finishJob(sql, {
+          sourceId: spec.sourceId,
+          domain: 'bank_products',
+          ...job,
+        }),
+      ),
   };
 }
 
@@ -72,7 +82,8 @@ async function runHtmlBank(
   read: (text: string) => ReturnType<typeof readAlly>,
 ): Promise<void> {
   const excluded = await ensureBank(env, spec);
-  const retrievedDay = dayOf(new Date().toISOString());
+  const now = () => new Date().toISOString();
+  const retrievedDay = dayOf(now());
   await runBankPage({
     client,
     request: { sourceId: spec.sourceId, url: spec.url, timeZone: spec.timeZone, excluded },
@@ -81,6 +92,7 @@ async function runHtmlBank(
     read,
     ports: portsFor(env, spec),
     log: writeStdout,
+    now,
   });
 }
 
@@ -129,13 +141,14 @@ export function registerPilotBanks(): void {
       timeZone: amexAdapter.timeZone,
     };
     const excluded = await ensureBank(env, spec);
+    const now = () => new Date().toISOString();
     const session = createAmexSession(env['FA_SCRAPE_MAILBOX'], {
-      now: () => new Date().toISOString(),
+      now,
       sleep: delay,
       log: writeStdout,
       onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
     });
-    const retrievedDay = dayOf(new Date().toISOString());
+    const retrievedDay = dayOf(now());
     try {
       await runBankPage({
         client: session,
@@ -151,6 +164,7 @@ export function registerPilotBanks(): void {
         read: (text) => readAmex(text, retrievedDay),
         ports: portsFor(env, spec),
         log: writeStdout,
+        now,
       });
     } finally {
       session.flushLoad();

@@ -2,7 +2,7 @@ import { assertPublicPage, isBankSourceId } from './rules';
 
 /**
  * One IANA zone per state, the zone of the larger part where a state is split.
- * The 08:00 UTC job is already inside 22:00–06:00 for every zone in this table.
+ * Overnight for that zone is 22:00–06:00. The bank job tries 03:00–09:00 UTC.
  */
 const STATE_ZONE: Record<string, string> = {
   AL: 'America/Chicago',

@@ -1,9 +1,17 @@
-# Bank rates, one source at a time. Starts 08:00 UTC and stops after 120 minutes (plan step 5).
+# Bank rates, one bank at a time. Attempts at 03:00–09:00 UTC, timeout 120 minutes (ADR-020).
+# GitHub starts scheduled jobs hours late, so one 08:00 UTC slot lands after 06:00 Eastern.
+# A bank already requested in this overnight window is skipped inside the job.
+# Manual workflow_dispatch does not skip the overnight window (ADR-020).
+# A manual run is inside that window only while the bank's local hour is 22–05.
+# Standard time, from 22:00 local until 06:00 local:
+# Eastern 03:00–11:00, Central 04:00–12:00, Mountain 05:00–13:00,
+# Pacific 06:00–14:00, Alaska 07:00–15:00, Hawaii 08:00–16:00 UTC.
+# Daylight time is one hour earlier, except Hawaii and Arizona (America/Phoenix stays 05:00–13:00).
 name: Ingest bank rates
 
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 3,4,5,6,7,8,9 * * *'
   workflow_dispatch:
 
 permissions:

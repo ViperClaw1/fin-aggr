@@ -57,7 +57,15 @@ Raw snapshots in `raw`: a snapshot that a version still in the 30-day window poi
 
 GitHub-hosted runner addresses are often blocked as bots. Accepted at step 8.1: a block switches that institution to manual mode. Proxy rotation stays rejected. A worker with a static IP is not added.
 
-Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency` per source, `timeout-minutes`, one retry on a network error. The cadence table is in `docs/plan-stage-2.md` (step 5). The scrape stays on those runners: a block is manual mode, not a move to a static-IP worker. A move off Actions for lack of minutes stays a later decision. Tax tables are a manual yearly job. A new tax year is loaded as `unverified` and is not published until two people have checked it. `TAX_YEAR` changes in one commit after that.
+Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency` per source (`cancel-in-progress: false`), `timeout-minutes`, one retry on a network error. The cadence table is in `docs/plan-stage-2.md` (step 5).
+
+Hosted runners start a scheduled workflow hours after the cron. On 2026-11-16 the 07:00 workflow started at 14:29 UTC, and `bank-rates` at 08:00 started at 15:14 UTC (10:14 Eastern). That is after 06:00 Eastern, so the run returned without requesting a bank and without a log line. `bank-rates` is therefore `0 3,4,5,6,7,8,9 * * *` (UTC), timeout 120 minutes, banks one at a time. 03:00 UTC is 22:00 Eastern in standard time. A start about seven hours late is still before 06:00 local for the zone whose window opens on that hour, and one late early slot can still sit inside the window for every US zone. The attempts share the `ingest-bank-rates` lock, so they do not run together. 03:00, 04:00, and 05:00 already belong to other workflows; that overlap stays, because the groups are different.
+
+A bank is requested at most once per overnight window. The guard is a `job_runs` row for that source with `request_count > 0` and `started_at` at or after 22:00 in the bank's zone. A later attempt logs `source <id> held reason=already_fetched` and inserts a row with `request_count` 0. Outside the window the log is `source <id> held reason=outside_window`, also with a row, and the bank is not requested. A skip row does not count as a request. Neither path exits without that line.
+
+There is no `workflow_dispatch` input that skips the window. The window is this rule. A manual run requests a bank only while that bank's local hour is 22, 23, or 0–5. In standard time the window is UTC 03:00 until 11:00 Eastern, 04:00 until 12:00 Central, 05:00 until 13:00 Mountain (Arizona the same, all year), 06:00 until 14:00 Pacific, 07:00 until 15:00 Alaska, and 08:00 until 16:00 Hawaii. The end instant is 06:00 local and is outside the window. Daylight time moves each range one hour earlier, except Hawaii and Arizona. The pilot banks are `America/Denver`: 05:00 until 13:00 UTC in standard time, 04:00 until 12:00 UTC in daylight time.
+
+The scrape stays on those runners: a block is manual mode, not a move to a static-IP worker. A move off Actions for lack of minutes stays a later decision. Tax tables are a manual yearly job. A new tax year is loaded as `unverified` and is not published until two people have checked it. `TAX_YEAR` changes in one commit after that.
 
 Scraping rules, enforced by `createScrapeSession` (step 8.1), not only by this text:
 
@@ -316,6 +324,8 @@ The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), 
 - Treat the headquarters state as the eligibility list when the bank is not nationwide online: rejected. The list has to come from the bank's page.
 - Turn an American Express JSON `apy` into a rate with `apy / 100` or decimal.js: rejected. `String(apy)` plus `rateFromPercent` does not do float arithmetic. A value that does not stringify inside six decimal places is reviewed, not rounded.
 - Publish a 0% row, or an IRA row, from the American Express pilot: rejected. `apy` 0 means the term is not offered. IRA products stay out of the pilot.
+- One `bank-rates` cron at 08:00 UTC: rejected. A hosted runner starts hours after the cron. On 2026-11-16 the 08:00 run started at 15:14 UTC (10:14 Eastern), after 06:00, and returned without a request and without a log.
+- A `workflow_dispatch` input that skips the overnight window: rejected. The window is a scrape rule, not a switch. A manual run is inside the window only during the UTC hours in the schedule section.
 
 ## Consequences
 - Step 1 lands the dependency rules and the package skeleton. Connectors start at step 6, after the pipeline (step 4) and the schedule (step 5).

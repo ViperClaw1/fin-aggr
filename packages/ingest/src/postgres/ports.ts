@@ -268,6 +268,21 @@ export async function attachIssue(sql: Sql, queueId: number, issueUrl: string): 
   await sql.query(`update review_queue set issue_url = $2 where id = $1`, [queueId, issueUrl]);
 }
 
+/** True when this source already contacted the bank in the current overnight window. */
+export async function sourceRequestedSince(
+  sql: Sql,
+  sourceId: string,
+  windowStart: string,
+): Promise<boolean> {
+  const result = await sql.query(
+    `select 1 as hit from job_runs
+      where source_id = $1 and started_at >= $2::timestamptz and request_count > 0
+      limit 1`,
+    [sourceId, windowStart],
+  );
+  return result.rows.length > 0;
+}
+
 export async function finishJob(
   sql: Sql,
   job: Parameters<PipelinePorts<InstitutionRow>['finishJob']>[0],

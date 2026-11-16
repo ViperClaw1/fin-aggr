@@ -1,8 +1,8 @@
 /**
  * Scrape limits from ADR-020 step 8.1.
  * The gap is ours. Crawl-delay in robots.txt does not change it.
- * Overnight is 22:00–06:00 in the bank's time zone, so the 08:00 UTC job
- * falls inside it for US time zones from Hawaii through Eastern.
+ * Overnight is 22:00–06:00 in the bank's time zone. The bank job tries
+ * 03:00–09:00 UTC so a runner that starts hours late is still inside that window.
  */
 
 const PROJECT_URL = 'https://fin-aggr.vercel.app/bot';
@@ -113,24 +113,109 @@ export function assertPublicPage(input: string): PublicPage {
   return { href: url.href, originHost: url.hostname.toLowerCase(), domain };
 }
 
-/** Local hour in `[22, 24)` or `[0, 6)`. */
-export function isOvernight(nowIso: string, timeZone: string): boolean {
+interface ZoneClock {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+}
+
+function zonePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
+  return parts.find((part) => part.type === type)?.value ?? '';
+}
+
+/** Wall-clock fields in the bank zone. Invalid clock or zone throws. */
+function zoneClock(nowIso: string, timeZone: string): ZoneClock {
   const date = new Date(nowIso);
   if (Number.isNaN(date.getTime())) throw new Error('scrape time is invalid');
-  let hourText = '';
+  let parts: Intl.DateTimeFormatPart[];
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
+    parts = new Intl.DateTimeFormat('en-US', {
       timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
       hourCycle: 'h23',
     }).formatToParts(date);
-    hourText = parts.find((part) => part.type === 'hour')?.value ?? '';
   } catch {
     throw new Error('scrape time zone is invalid');
   }
-  if (!/^\d{2}$/.test(hourText)) throw new Error('scrape time zone is invalid');
-  const hour = Number(hourText);
+  const year = zonePart(parts, 'year');
+  const month = zonePart(parts, 'month');
+  const day = zonePart(parts, 'day');
+  const hour = zonePart(parts, 'hour');
+  if (
+    !/^\d{4}$/.test(year) ||
+    !/^\d{2}$/.test(month) ||
+    !/^\d{2}$/.test(day) ||
+    !/^\d{2}$/.test(hour)
+  ) {
+    throw new Error('scrape time zone is invalid');
+  }
+  return { year: Number(year), month: Number(month), day: Number(day), hour: Number(hour) };
+}
+
+/** Local hour in `[22, 24)` or `[0, 6)`. */
+export function isOvernight(nowIso: string, timeZone: string): boolean {
+  const { hour } = zoneClock(nowIso, timeZone);
   return hour >= 22 || hour < 6;
+}
+
+/** Milliseconds between a UTC instant and the same numbers read as UTC in the zone. */
+function zoneOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const read = (type: Intl.DateTimeFormatPartTypes): number => {
+    const text = zonePart(parts, type);
+    if (!/^\d+$/.test(text)) throw new Error('scrape time zone is invalid');
+    return Number(text);
+  };
+  const wall = Date.UTC(
+    read('year'),
+    read('month') - 1,
+    read('day'),
+    read('hour'),
+    read('minute'),
+    read('second'),
+  );
+  return wall - instant.getTime();
+}
+
+function utcAtHour22(day: ZoneClock, timeZone: string): Date {
+  const guess = new Date(Date.UTC(day.year, day.month - 1, day.day, 22));
+  const corrected = new Date(guess.getTime() - zoneOffsetMs(guess, timeZone));
+  return new Date(guess.getTime() - zoneOffsetMs(corrected, timeZone));
+}
+
+function dayBefore(year: number, month: number, day: number): ZoneClock {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: 22,
+  };
+}
+
+/**
+ * UTC instant when the current overnight window opened (22:00 in the bank zone).
+ * Null when `nowIso` is outside 22:00–06:00 there. 06:00 local is already outside.
+ */
+export function overnightWindowStart(nowIso: string, timeZone: string): string | null {
+  if (!isOvernight(nowIso, timeZone)) return null;
+  const clock = zoneClock(nowIso, timeZone);
+  const day = clock.hour >= 22 ? clock : dayBefore(clock.year, clock.month, clock.day);
+  return utcAtHour22(day, timeZone).toISOString();
 }
 
 /** Applied more than 24 hours after the bank asked. Earlier than the request is an error. */

@@ -14,10 +14,10 @@ export async function upsertBankSources(
   if (entries.length === 0) return;
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     select u.id, u.name, u.url, 'issuer_document', $4, 'scrape', '0 8 * * *'
+     select u.id, u.name, u.url, 'issuer_document', $4, 'scrape', '0 3,4,5,6,7,8,9 * * *'
      from unnest($1::text[], $2::text[], $3::text[]) as u(id, name, url)
      on conflict (id) do update
-       set name = excluded.name, url = excluded.url
+       set name = excluded.name, url = excluded.url, schedule = excluded.schedule
        where sources.excluded = false and sources.status = 'active'`,
     [
       entries.map((entry) => entry.sourceId),

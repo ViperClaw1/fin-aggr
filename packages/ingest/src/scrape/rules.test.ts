@@ -3,6 +3,7 @@ import {
   assertPublicPage,
   blockReason,
   isOvernight,
+  overnightWindowStart,
   optOutLate,
   scrapeUserAgent,
   shortQuote,
@@ -60,6 +61,26 @@ describe('overnight window', () => {
   it('rejects a bad clock or time zone', () => {
     expect(() => isOvernight('yesterday', 'America/New_York')).toThrow(/time/i);
     expect(() => isOvernight(NIGHT, 'Not/A_Zone')).toThrow(/time zone/i);
+  });
+
+  it('opens the window at 22:00 in that zone', () => {
+    expect(overnightWindowStart('2026-11-11T03:30:00.000Z', 'America/New_York')).toBe(
+      '2026-11-11T03:00:00.000Z',
+    );
+    expect(overnightWindowStart('2026-11-11T08:00:00.000Z', 'America/New_York')).toBe(
+      '2026-11-11T03:00:00.000Z',
+    );
+    expect(overnightWindowStart('2026-11-11T08:00:00.000Z', 'America/Denver')).toBe(
+      '2026-11-11T05:00:00.000Z',
+    );
+    expect(overnightWindowStart('2026-11-11T08:00:00.000Z', 'Pacific/Honolulu')).toBe(
+      '2026-11-11T08:00:00.000Z',
+    );
+    expect(overnightWindowStart('2026-07-15T06:30:00.000Z', 'America/New_York')).toBe(
+      '2026-07-15T02:00:00.000Z',
+    );
+    expect(overnightWindowStart('2026-11-11T11:00:00.000Z', 'America/New_York')).toBeNull();
+    expect(overnightWindowStart('2026-11-11T15:00:00.000Z', 'America/New_York')).toBeNull();
   });
 });
 

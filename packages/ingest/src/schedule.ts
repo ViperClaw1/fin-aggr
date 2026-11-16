@@ -20,7 +20,9 @@ export interface ScheduleEntry {
 /**
  * Cadence table from plan step 5.
  * 05:00 UTC is the daily rules pull: it misses db-contract (03:00), review age (04:00), and the 07:00 pull.
- * Monday 11:00 UTC starts after the 08:00–10:00 bank window.
+ * Bank rates attempt every hour 03:00–09:00 UTC. A hosted runner starts hours late; 03:00 UTC is 22:00
+ * Eastern in standard time, and a start about seven hours late is still before 06:00 local for the zone
+ * whose window opens on that hour. Monday 11:00 UTC is after the last bank attempt starts.
  */
 export const SCHEDULE: readonly ScheduleEntry[] = [
   {
@@ -58,7 +60,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'bank-rates',
     cadence: 'bank-rates',
-    cron: '0 8 * * *',
+    cron: '0 3,4,5,6,7,8,9 * * *',
     workflow: 'ingest-bank-rates.yml',
     timeoutMinutes: 120,
   },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Sql } from '../decisions';
 import { upsertBankSources } from '../postgres/banks';
+import { scheduleById } from '../schedule';
 import {
   DEPOSIT_LIMIT,
   PILOT_LIMIT,
@@ -148,5 +149,7 @@ describe('bank source rows', () => {
     expect(texts[0]).toContain("'scrape'");
     expect(texts[0]).toContain('sources.excluded = false');
     expect(texts[0]).toContain('issuer_document');
+    expect(texts[0]).toContain(scheduleById('bank-rates')?.cron ?? '');
+    expect(texts[0]).toContain('schedule = excluded.schedule');
   });
 });
