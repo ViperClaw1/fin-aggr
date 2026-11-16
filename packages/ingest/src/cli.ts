@@ -3,13 +3,14 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { commandOf } from './args';
-import { closeReviewIssue, issueNumberFromUrl } from './github';
+import { closeReviewIssue, issueNumberFromUrl, reopenReviewIssue } from './github';
 import { databaseUrl, withClient } from './db';
 import {
   approveReview,
   listOpen,
   openReview,
   rejectReview,
+  reopenReview,
   type OpenReview,
   type Sql,
 } from './decisions';
@@ -43,10 +44,14 @@ export function formatReviewRow(row: OpenReview): string {
 
 export function formatDecision(
   id: number,
-  decision: 'approved' | 'rejected',
+  decision: 'approved' | 'rejected' | 'reopened',
   login: string,
 ): string {
   return `review ${String(id)} ${decision} by ${login}`;
+}
+
+export function issueNotSynced(action: 'closed' | 'reopened'): string {
+  return `REVIEW_REPO_TOKEN is missing; the issue was not ${action}`;
 }
 
 async function signedUrl(path: string, env: NodeJS.ProcessEnv): Promise<string> {
@@ -102,7 +107,12 @@ async function openRow(sql: Sql, id: number): Promise<OpenReview> {
 export async function runCommand(
   env: NodeJS.ProcessEnv,
   argv: readonly string[],
-  io: { log: (line: string) => void; ghLogin: () => Promise<string>; now: () => string },
+  io: {
+    log: (line: string) => void;
+    warn: (line: string) => void;
+    ghLogin: () => Promise<string>;
+    now: () => string;
+  },
 ): Promise<void> {
   const command = commandOf(argv);
   await withClient(databaseUrl(env), async (sql) => {
@@ -116,6 +126,10 @@ export async function runCommand(
       return;
     }
     const login = await reviewerFrom(env, io.ghLogin);
+    if (command.kind === 'reopen') {
+      await reopenCommand(sql, command, login, { ...io, env });
+      return;
+    }
     const row = await openRow(sql, command.id);
     if (command.kind === 'reject') {
       const reason = command.reason ?? '';
@@ -126,7 +140,15 @@ export async function runCommand(
         reason,
       });
       io.log(formatDecision(command.id, 'rejected', login));
-      await closePrivateIssue(env, row.issue_url, `rejected by ${login}: ${reason.trim()}`);
+      await syncPrivateIssue(
+        env,
+        {
+          issueUrl: row.issue_url,
+          body: `rejected by ${login}: ${reason.trim()}`,
+          action: 'closed',
+        },
+        io.warn,
+      );
       return;
     }
     const publish = publishers.get(row.source_id);
@@ -141,21 +163,61 @@ export async function runCommand(
     });
     await revalidateDomain(env, row.domain);
     io.log(formatDecision(command.id, 'approved', login));
-    await closePrivateIssue(env, row.issue_url, `approved by ${login}`);
+    await syncPrivateIssue(
+      env,
+      { issueUrl: row.issue_url, body: `approved by ${login}`, action: 'closed' },
+      io.warn,
+    );
   });
 }
 
-async function closePrivateIssue(
-  env: NodeJS.ProcessEnv,
-  issueUrl: string | null,
-  body: string,
+async function reopenCommand(
+  sql: Sql,
+  command: { id: number; reason: string | undefined },
+  login: string,
+  io: {
+    env: NodeJS.ProcessEnv;
+    log: (line: string) => void;
+    warn: (line: string) => void;
+    now: () => string;
+  },
 ): Promise<void> {
-  if (issueUrl === null) return;
-  const issueNumber = issueNumberFromUrl(issueUrl);
+  const reason = command.reason ?? '';
+  const reopened = await reopenReview(sql, {
+    id: command.id,
+    login,
+    reopenedAt: io.now(),
+    reason,
+  });
+  io.log(formatDecision(command.id, 'reopened', login));
+  await syncPrivateIssue(
+    io.env,
+    {
+      issueUrl: reopened.issueUrl,
+      body: `reopened by ${login}: ${reason.trim()}`,
+      action: 'reopened',
+    },
+    io.warn,
+  );
+}
+
+/** Closes or reopens the private issue. A missing token warns and does not fail the decision. */
+export async function syncPrivateIssue(
+  env: NodeJS.ProcessEnv,
+  input: { issueUrl: string | null; body: string; action: 'closed' | 'reopened' },
+  warn: (line: string) => void,
+): Promise<void> {
+  if (input.issueUrl === null) return;
+  const issueNumber = issueNumberFromUrl(input.issueUrl);
   if (issueNumber === null) return;
   const token = env['REVIEW_REPO_TOKEN']?.trim() ?? '';
-  if (token === '') throw new Error('REVIEW_REPO_TOKEN is missing');
-  await closeReviewIssue(fetch, { token, issueNumber, body });
+  if (token === '') {
+    warn(issueNotSynced(input.action));
+    return;
+  }
+  const request = { token, issueNumber, body: input.body };
+  if (input.action === 'closed') await closeReviewIssue(fetch, request);
+  else await reopenReviewIssue(fetch, request);
 }
 
 function isDirect(): boolean {
@@ -168,6 +230,9 @@ if (isDirect()) {
   runCommand(process.env, process.argv.slice(2), {
     log: (line) => {
       process.stdout.write(`${line}\n`);
+    },
+    warn: (line) => {
+      process.stderr.write(`${line}\n`);
     },
     ghLogin: async () => (await execFileAsync('gh', ['api', 'user', '--jq', '.login'])).stdout,
     now: () => new Date().toISOString(),

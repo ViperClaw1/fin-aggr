@@ -33,6 +33,20 @@ describe('review decisions', () => {
   });
 });
 
+describe('review reopen', () => {
+  const reopen = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261116214000_review_reopen.sql'),
+    'utf8',
+  );
+
+  it('keeps the previous decision in an audit table anon cannot read', () => {
+    expect(reopen).toContain('create table if not exists review_audit');
+    expect(reopen).toContain("action in ('approved', 'rejected', 'reopened')");
+    expect(reopen).toContain('alter table review_audit enable row level security');
+    expect(reopen).not.toContain('create policy');
+  });
+});
+
 describe('fact confirmations', () => {
   const confirmations = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261115120000_fact_confirmations.sql'),

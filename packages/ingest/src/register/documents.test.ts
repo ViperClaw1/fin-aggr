@@ -5,9 +5,12 @@ import { checkRegisterShape } from './live';
 import {
   REGISTER_AGENCIES,
   documentsUrl,
+  formatRegisterIssue,
+  isLikelyRelevant,
   parseRegisterDocuments,
   readRegisterPage,
   registerEnvelopeProblems,
+  type RegisterNotice,
 } from './documents';
 
 const recorded = readFileSync(join(import.meta.dirname, 'documents.snapshot.json'), 'utf8');
@@ -23,6 +26,7 @@ describe('Federal Register documents', () => {
         publicationDate: '2026-11-04',
         title: 'Large-Bank Deposit Insurance Determination Modernization',
         url: 'https://www.federalregister.gov/documents/2026/11/04/2026-22495/large-bank-deposit-insurance-determination-modernization',
+        cfrReferences: [],
       },
     ]);
     expect(Object.keys(notices[0] ?? {})).toEqual([
@@ -30,6 +34,7 @@ describe('Federal Register documents', () => {
       'publicationDate',
       'title',
       'url',
+      'cfrReferences',
     ]);
     expect(registerEnvelopeProblems(JSON.parse(recorded) as unknown)).toEqual([]);
   });
@@ -113,5 +118,54 @@ describe('Federal Register documents', () => {
       Promise.resolve(new Response('no', { status: 503 })),
     );
     expect(down).toBe('federal register shape http 503');
+  });
+
+  it('keeps CFR references and ignores a broken one', () => {
+    const notices = parseRegisterDocuments({
+      results: [
+        {
+          document_number: '2026-1',
+          publication_date: '2026-11-04',
+          title: 'Advertising',
+          html_url: 'https://www.federalregister.gov/documents/2026/11/04/2026-1/advertising',
+          cfr_references: [{ title: 12, part: '328' }, { title: 'no' }, { part: 1 }],
+        },
+      ],
+    });
+    expect(notices[0]?.cfrReferences).toEqual([{ title: 12, part: 328 }]);
+  });
+});
+
+function notice(title: string, cfr: RegisterNotice['cfrReferences'] = []): RegisterNotice {
+  return {
+    documentNumber: '2026-1',
+    publicationDate: '2026-11-04',
+    title,
+    url: 'https://www.federalregister.gov/documents/2026/11/04/2026-1/doc',
+    cfrReferences: cfr,
+  };
+}
+
+describe('likely relevant Federal Register documents', () => {
+  it('flags a watched part in the title or in cfr_references, and 1099-INT', () => {
+    expect(isLikelyRelevant(notice('12 CFR Parts 200 and 330'))).toBe(true);
+    expect(isLikelyRelevant(notice('12 CFR 1030.4'))).toBe(true);
+    expect(isLikelyRelevant(notice('12 C.F.R. § 745.1'))).toBe(true);
+    expect(isLikelyRelevant(notice('Other', [{ title: 12, part: 328 }]))).toBe(true);
+    expect(isLikelyRelevant(notice('Comments on Form 1099-INT'))).toBe(true);
+    expect(isLikelyRelevant(notice('Information reporting of interest payments'))).toBe(true);
+    expect(
+      isLikelyRelevant(notice('Large-Bank Deposit Insurance Determination Modernization')),
+    ).toBe(false);
+    expect(isLikelyRelevant(notice('Other', [{ title: 26, part: 330 }]))).toBe(false);
+  });
+
+  it('lists likely relevant documents first and prefixes that phrase', () => {
+    const body = formatRegisterIssue([notice('Ordinary notice'), notice('12 CFR Part 745')]);
+    const lines = body.split('\n');
+    expect(lines[0]).toBe('Documents:');
+    expect(lines[1]).toMatch(/^likely relevant /);
+    expect(lines[1]).toContain('12 CFR Part 745');
+    expect(lines[2]).not.toContain('likely relevant');
   });
 });

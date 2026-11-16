@@ -6,6 +6,7 @@ import type { WatchSource } from '../watch';
 import {
   REGISTER_AGENCIES,
   documentsUrl,
+  formatRegisterIssue,
   readRegisterPage,
   type RegisterNotice,
 } from './documents';
@@ -64,13 +65,6 @@ function newRegisterNotices(previous: Uint8Array, next: RegisterWatchRaw): Regis
   return noticesOf(next).filter((notice) => !seen.has(notice.documentNumber));
 }
 
-function registerIssueBody(notices: readonly RegisterNotice[]): string {
-  const lines = notices.map(
-    (notice) => `${notice.documentNumber} ${notice.publicationDate} ${notice.title} ${notice.url}`,
-  );
-  return ['Documents:', ...lines].join('\n');
-}
-
 function union(previous: Uint8Array | null, next: RegisterWatchRaw): string {
   const prior = previous === null ? [] : [...seenNumbers(previous)];
   return encode([...new Set([...prior, ...numbers(noticesOf(next))])].sort());
@@ -93,6 +87,6 @@ export function federalRegisterSource(
     validate: emptyReport,
     changed: (previous, next) => newRegisterNotices(previous, next).length > 0,
     persist: (previous, next) => fingerprintOf(union(previous, next)),
-    issueBody: (previous, next) => registerIssueBody(newRegisterNotices(previous, next)),
+    issueBody: (previous, next) => formatRegisterIssue(newRegisterNotices(previous, next)),
   };
 }

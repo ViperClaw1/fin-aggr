@@ -34,6 +34,7 @@
     "ingest:confirm": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/confirm.ts",
     "ingest:confirm-bank": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/bank-confirm.ts",
     "ingest:reject": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reject",
+    "ingest:reopen": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reopen",
     "ingest:overdue": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/overdue.ts",
     "ingest:exclude": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/exclude.ts",
     "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/live.ts"

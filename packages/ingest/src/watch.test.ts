@@ -152,6 +152,7 @@ describe('watch mode', () => {
     const body = String(ports.openIssue.mock.calls[0]?.[0].body);
     expect(body).toContain('2026-22495');
     expect(body).toContain('https://www.federalregister.gov/');
+    expect(body).not.toContain('likely relevant');
     expect(formatWatchLine('federal-register', 'changed')).not.toContain('Large-Bank');
     expect(ports.commit.mock.calls[0]?.[0].publish).toBeNull();
   });

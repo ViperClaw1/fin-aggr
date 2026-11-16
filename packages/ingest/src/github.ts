@@ -126,6 +126,28 @@ export async function commentOnIssue(
   if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
 }
 
+/** Comment, then open a closed private issue again. */
+export async function reopenReviewIssue(
+  fetchImpl: typeof fetch,
+  input: { token: string; issueNumber: number; body: string },
+): Promise<void> {
+  await commentOnIssue(fetchImpl, input);
+  const response = await fetchImpl(
+    `https://api.github.com/repos/${REVIEW_REPO}/issues/${String(input.issueNumber)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${input.token}`,
+        accept: 'application/vnd.github+json',
+        'x-github-api-version': '2022-11-28',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ state: 'open' }),
+    },
+  );
+  if (!response.ok) throw new Error(`GitHub issue failed: ${String(response.status)}`);
+}
+
 /** Comment with the decision, then close the private issue. */
 export async function closeReviewIssue(
   fetchImpl: typeof fetch,

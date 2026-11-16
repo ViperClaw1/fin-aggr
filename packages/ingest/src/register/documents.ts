@@ -17,12 +17,26 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** `2026-22495`, or a correction prefix such as the live `C1-2025-19864`. */
 const DOCUMENT_NUMBER = /^(?:[A-Z]\d-)?\d{4}-\d+$/;
 
+export interface CfrReference {
+  title: number;
+  part: number;
+}
+
 export interface RegisterNotice {
   documentNumber: string;
   publicationDate: string;
   title: string;
   url: string;
+  cfrReferences: readonly CfrReference[];
 }
+
+/** Parts the daily watch is for, plus IRS interest reporting. */
+const WATCHED_CFR_PARTS = new Set([328, 330, 745, 1030]);
+
+const WATCHED_PART = /\b(?:328|330|745|1030)\b/;
+const FORM_1099_INT = /\b1099[-\s]?INT\b/i;
+const IRS_INTEREST = /\binterest\b/i;
+const IRS_REPORTING = /\b(?:1099|information reporting)\b/i;
 
 export function documentsUrl(agency: RegisterAgency, perPage: number): string {
   const params = new URLSearchParams();
@@ -81,7 +95,66 @@ function noticeFrom(item: Record<string, unknown>): RegisterNotice {
   ) {
     throw new CodedError('fr_invalid_number');
   }
-  return { documentNumber, publicationDate, title: title.trim(), url };
+  return {
+    documentNumber,
+    publicationDate,
+    title: title.trim(),
+    url,
+    cfrReferences: cfrReferences(item),
+  };
+}
+
+function cfrReferences(item: Record<string, unknown>): CfrReference[] {
+  const raw = item['cfr_references'];
+  if (!Array.isArray(raw)) return [];
+  const refs: CfrReference[] = [];
+  for (const entry of raw) {
+    if (!isRecord(entry)) continue;
+    const title = wholeNumber(entry['title']);
+    const part = wholeNumber(entry['part']);
+    if (title === null || part === null) continue;
+    refs.push({ title, part });
+  }
+  return refs;
+}
+
+function wholeNumber(value: unknown): number | null {
+  const text = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
+  if (!/^[1-9]\d{0,4}$/.test(text)) return null;
+  return Number(text);
+}
+
+function titleCitesWatchedPart(title: string): boolean {
+  const mention = /\b12\s*C\.?\s*F\.?\s*R\.?\s*([^;\n]*)/gi;
+  for (const match of title.matchAll(mention)) {
+    if (WATCHED_PART.test(match[1] ?? '')) return true;
+  }
+  return false;
+}
+
+/** True when the title or a CFR reference is one of the parts this watch exists for. */
+export function isLikelyRelevant(notice: RegisterNotice): boolean {
+  if (notice.cfrReferences.some((ref) => ref.title === 12 && WATCHED_CFR_PARTS.has(ref.part))) {
+    return true;
+  }
+  if (titleCitesWatchedPart(notice.title)) return true;
+  if (FORM_1099_INT.test(notice.title)) return true;
+  return IRS_INTEREST.test(notice.title) && IRS_REPORTING.test(notice.title);
+}
+
+function registerLine(notice: RegisterNotice): string {
+  const flag = isLikelyRelevant(notice) ? 'likely relevant ' : '';
+  return `${flag}${notice.documentNumber} ${notice.publicationDate} ${notice.title} ${notice.url}`;
+}
+
+/** Likely-relevant documents are listed first and prefixed so they stand out. */
+export function formatRegisterIssue(notices: readonly RegisterNotice[]): string {
+  const ordered = notices.map((notice, index) => ({ notice, index }));
+  ordered.sort((a, b) => {
+    const rank = Number(isLikelyRelevant(b.notice)) - Number(isLikelyRelevant(a.notice));
+    return rank === 0 ? a.index - b.index : rank;
+  });
+  return ['Documents:', ...ordered.map(({ notice }) => registerLine(notice))].join('\n');
 }
 
 /**

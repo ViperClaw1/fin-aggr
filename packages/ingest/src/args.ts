@@ -1,7 +1,8 @@
 export type ReviewCommand =
   | { kind: 'review'; id: number | null }
   | { kind: 'approve'; id: number }
-  | { kind: 'reject'; id: number; reason: string | undefined };
+  | { kind: 'reject'; id: number; reason: string | undefined }
+  | { kind: 'reopen'; id: number; reason: string | undefined };
 
 function reviewId(text: string | undefined, required: boolean): number | null {
   if (text === undefined || text === '') {
@@ -20,11 +21,14 @@ function reasonOf(argv: readonly string[]): string | undefined {
   return argv[index + 1];
 }
 
-/** `review [id]`, `approve <id>`, `reject <id> --reason <text>`. */
+/** `review [id]`, `approve <id>`, `reject <id> --reason <text>`, `reopen <id> --reason <text>`. */
 export function commandOf(argv: readonly string[]): ReviewCommand {
   const [kind, idText, ...rest] = argv;
   if (kind === 'review') return { kind, id: reviewId(idText, false) };
   if (kind === 'approve') return { kind, id: reviewId(idText, true) ?? 0 };
   if (kind === 'reject') return { kind, id: reviewId(idText, true) ?? 0, reason: reasonOf(rest) };
-  throw new Error('usage: review [id] | approve <id> | reject <id> --reason <text>');
+  if (kind === 'reopen') return { kind, id: reviewId(idText, true) ?? 0, reason: reasonOf(rest) };
+  throw new Error(
+    'usage: review [id] | approve <id> | reject <id> --reason <text> | reopen <id> --reason <text>',
+  );
 }

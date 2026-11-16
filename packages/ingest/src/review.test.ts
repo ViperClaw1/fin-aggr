@@ -1,9 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { formatDecision } from './cli';
-import { approveReview, enqueueReview, rejectReview, supersededBy, type Sql } from './decisions';
-import { closeReviewIssue, createReviewIssue } from './github';
+import { commandOf } from './args';
+import { formatDecision, issueNotSynced, syncPrivateIssue } from './cli';
+import {
+  approveReview,
+  enqueueReview,
+  rejectReview,
+  reopenReview,
+  supersededBy,
+  type Sql,
+} from './decisions';
+import { closeReviewIssue, createReviewIssue, reopenReviewIssue } from './github';
 import { mentionOverdue } from './overdue';
 import { formatIssueCreated, requireReviewer } from './policy';
 
@@ -42,6 +50,82 @@ describe('review decisions', () => {
     expect(sql.calls[0]).toBe('begin');
     expect(sql.calls.at(-1)).toBe('rollback');
     expect(sql.calls).not.toContain('commit');
+  });
+
+  it('reopens a rejected row and keeps both the decision and the reason', async () => {
+    const sql = scripted((text) => {
+      if (text.includes('where id = $1') && text.includes('decided_by')) {
+        return [
+          {
+            id: 4,
+            source_id: 'fdic-national-rates',
+            status: 'rejected',
+            decided_by: 'ViperClaw1',
+            decided_at: '2026-11-06T00:00:00.000Z',
+            decision_reason: 'parser returned empty',
+            issue_url: 'https://github.com/ViperClaw1/fin-aggr-review/issues/9',
+          },
+        ];
+      }
+      if (text.includes("status = 'open'")) return [];
+      return [{ id: 4 }];
+    });
+    const reopened = await reopenReview(sql, {
+      id: 4,
+      login: 'ViperClaw1',
+      reopenedAt: '2026-11-16T00:00:00.000Z',
+      reason: 'mistaken',
+    });
+    expect(reopened.issueUrl).toBe('https://github.com/ViperClaw1/fin-aggr-review/issues/9');
+    expect(sql.calls[0]).toBe('begin');
+    expect(sql.calls.filter((call) => call.startsWith('insert into review_audit'))).toHaveLength(2);
+    expect(sql.calls.some((call) => call.startsWith('update review_queue'))).toBe(true);
+    expect(sql.calls.at(-1)).toBe('commit');
+  });
+
+  it('refuses to reopen without a reason or while another row is open', async () => {
+    const sql = scripted((text) => {
+      if (text.includes('decided_by')) {
+        return [
+          {
+            id: 4,
+            source_id: 'fdic-national-rates',
+            status: 'approved',
+            decided_by: 'ViperClaw1',
+            decided_at: '2026-11-06T00:00:00.000Z',
+            decision_reason: null,
+            issue_url: null,
+          },
+        ];
+      }
+      return [{ id: 8 }];
+    });
+    await expect(
+      reopenReview(sql, {
+        id: 4,
+        login: 'ViperClaw1',
+        reopenedAt: '2026-11-16T00:00:00.000Z',
+        reason: '  ',
+      }),
+    ).rejects.toThrow(/reason/i);
+    expect(sql.calls).toEqual([]);
+    await expect(
+      reopenReview(sql, {
+        id: 4,
+        login: 'ViperClaw1',
+        reopenedAt: '2026-11-16T00:00:00.000Z',
+        reason: 'mistaken',
+      }),
+    ).rejects.toThrow(/open/);
+    expect(sql.calls.at(-1)).toBe('rollback');
+  });
+
+  it('parses a reopen command', () => {
+    expect(commandOf(['reopen', '4', '--reason', 'mistaken'])).toEqual({
+      kind: 'reopen',
+      id: 4,
+      reason: 'mistaken',
+    });
   });
 
   it('requires a reject reason before writing', async () => {
@@ -126,6 +210,34 @@ describe('private issue', () => {
     expect(calls[0]?.body).toContain('rejected by ViperClaw1: parser returned empty');
     expect(calls[1]?.method).toBe('PATCH');
     expect(JSON.parse(calls[1]?.body ?? '{}')).toMatchObject({ state: 'closed' });
+    calls.length = 0;
+    await reopenReviewIssue(fetchImpl, {
+      token: 'secret-token',
+      issueNumber: 9,
+      body: 'reopened by ViperClaw1: mistaken',
+    });
+    expect(calls[0]?.body).toContain('reopened by ViperClaw1: mistaken');
+    expect(JSON.parse(calls[1]?.body ?? '{}')).toEqual({ state: 'open' });
+  });
+
+  it('warns instead of failing when the review token is missing', async () => {
+    const warnings: string[] = [];
+    await syncPrivateIssue(
+      {},
+      {
+        issueUrl: 'https://github.com/ViperClaw1/fin-aggr-review/issues/9',
+        body: 'rejected by ViperClaw1: empty',
+        action: 'closed',
+      },
+      (line) => warnings.push(line),
+    );
+    expect(warnings).toEqual([issueNotSynced('closed')]);
+    expect(issueNotSynced('closed')).toBe('REVIEW_REPO_TOKEN is missing; the issue was not closed');
+    warnings.length = 0;
+    await syncPrivateIssue({}, { issueUrl: null, body: 'reopened', action: 'reopened' }, (line) =>
+      warnings.push(line),
+    );
+    expect(warnings).toEqual([]);
   });
 
   it('omits the response body from a failure', async () => {

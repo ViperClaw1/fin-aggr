@@ -125,9 +125,9 @@ export async function approveReview(
   });
 }
 
-function rejectReason(reason: string | undefined): string {
+function requiredReason(reason: string | undefined, label: string): string {
   const text = reason?.trim() ?? '';
-  if (text === '') throw new Error('A reject reason is required');
+  if (text === '') throw new Error(`A ${label} reason is required`);
   return text;
 }
 
@@ -136,7 +136,7 @@ export async function rejectReview(
   input: { id: number; login: string; decidedAt: string; reason: string },
 ): Promise<void> {
   const login = requireReviewer(input.login);
-  const reason = rejectReason(input.reason);
+  const reason = requiredReason(input.reason, 'reject');
   const updated = await sql.query(
     `update review_queue
        set status = 'rejected', decided_by = $2, decided_at = $3, decision_reason = $4
@@ -145,6 +145,100 @@ export async function rejectReview(
     [input.id, login, input.decidedAt, reason],
   );
   if (updated.rows[0] === undefined) throw new Error(`review ${String(input.id)} is not open`);
+}
+
+function timeField(row: Record<string, unknown>, key: string): string {
+  const value = row[key];
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string' && value !== '') return value;
+  throw new Error(`review row is missing ${key}`);
+}
+
+function optionalReason(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text === '' ? null : text;
+}
+
+async function writeAudit(
+  sql: Sql,
+  input: {
+    reviewId: number;
+    action: 'approved' | 'rejected' | 'reopened';
+    actor: string;
+    actedAt: string;
+    reason: string | null;
+  },
+): Promise<void> {
+  await sql.query(
+    `insert into review_audit (review_id, action, actor, acted_at, reason)
+     values ($1, $2, $3, $4, $5)`,
+    [input.reviewId, input.action, input.actor, input.actedAt, input.reason],
+  );
+}
+
+/**
+ * Puts an approved or rejected row back to open. The previous decision and this
+ * reopen are both kept in review_audit. A published version is left in place.
+ */
+export async function reopenReview(
+  sql: Sql,
+  input: { id: number; login: string; reopenedAt: string; reason: string },
+): Promise<{ issueUrl: string | null }> {
+  const login = requireReviewer(input.login);
+  const reason = requiredReason(input.reason, 'reopen');
+  return withTransaction(sql, async (tx) => {
+    const found = await tx.query(
+      `select id, source_id, status, decided_by, decided_at, decision_reason, issue_url
+       from review_queue
+       where id = $1`,
+      [input.id],
+    );
+    const row = found.rows[0];
+    if (row === undefined) throw new Error(`review ${String(input.id)} is missing`);
+    const status = textField(row, 'status');
+    if (status !== 'approved' && status !== 'rejected') {
+      throw new Error(`review ${String(input.id)} is not an approved or rejected decision`);
+    }
+    const sourceId = textField(row, 'source_id');
+    const blocking = await tx.query(
+      `select id from review_queue
+       where source_id = $1 and status = 'open'`,
+      [sourceId],
+    );
+    const other = blocking.rows[0];
+    if (other !== undefined) {
+      throw new Error(
+        `review ${String(input.id)} cannot reopen while review ${String(numberField(other, 'id'))} is open`,
+      );
+    }
+    const actor = requireReviewer(textField(row, 'decided_by'));
+    await writeAudit(tx, {
+      reviewId: input.id,
+      action: status,
+      actor,
+      actedAt: timeField(row, 'decided_at'),
+      reason: optionalReason(row['decision_reason']),
+    });
+    await writeAudit(tx, {
+      reviewId: input.id,
+      action: 'reopened',
+      actor: login,
+      actedAt: input.reopenedAt,
+      reason,
+    });
+    const updated = await tx.query(
+      `update review_queue
+         set status = 'open', decided_by = null, decided_at = null, decision_reason = null
+       where id = $1 and status in ('approved', 'rejected')
+       returning id`,
+      [input.id],
+    );
+    if (updated.rows[0] === undefined)
+      throw new Error(`review ${String(input.id)} was not reopened`);
+    const url = row['issue_url'];
+    return { issueUrl: typeof url === 'string' ? url : null };
+  });
 }
 
 export interface OverdueRow {
