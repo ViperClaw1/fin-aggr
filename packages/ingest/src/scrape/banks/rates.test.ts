@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   centsFromInteger,
   Product,
@@ -6,7 +8,7 @@ import {
 } from '@fa/contracts';
 import { describe, expect, it } from 'vitest';
 import { extractAllyRates } from './57803';
-import { amexAdapter } from './27471';
+import { amexAdapter, readAmex } from './27471';
 import { PILOT_IDS } from './pilot';
 import { rateIsStale, readBankPage, reviewBankProducts } from './review';
 import { extractSallieRates } from './58177';
@@ -26,17 +28,26 @@ const ALLY = `
   <p>Early withdrawal penalty will apply</p>
 </section>`;
 
-const SALLIE = `
-<div class="cmp-rate-cards">
-  <div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">15-month CD</div><p class="cmp-rate-label">4.65%</p></div>
-  <div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">60-month CD</div><p class="cmp-rate-label">5.00%</p></div>
-  <div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">12-month CD</div><p class="cmp-rate-label">4.60%</p></div>
-  <div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">18-month CD</div><p class="cmp-rate-label">4.65%</p></div>
-  <div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">36-month CD</div><p class="cmp-rate-label">4.75%</p></div>
-</div>
+const SALLIE_FACTS = `
 <p>The minimum deposit and balance is $2,500, and your returns are guaranteed.</p>
-<p>compounded interest gets credited to your CD monthly.</p>
-<p>accurate as of 11/16/2026</p>`;
+<p>The compounded interest gets credited to your CD monthly.</p>
+<p>Certificates of Deposit may change after maturity, applies to personal accounts only, and are accurate as of 11/16/2026.</p>
+<p>If your CD has a maturity of twelve (12) months or less, the penalty we impose will equal ninety (90) days’ simple interest on the amount withdrawn subject to penalty.</p>
+<p>If your CD has a maturity greater than twelve (12) months, the penalty we impose will equal one hundred eighty (180) days’ simple interest on the amount withdrawn subject to penalty.</p>`;
+
+const SALLIE = `
+<table>
+  <caption>Certificate of Deposit (CD) rates table showing available terms and corresponding APYs.</caption>
+  <tr><th>Terms</th><th>APY</th></tr>
+  <tr><td>6 months</td><td>3.20% APY</td></tr>
+  <tr><td>12 months</td><td>4.60% APY</td></tr>
+  <tr><td>13 months</td><td>4.50% APY</td></tr>
+</table>
+${SALLIE_FACTS}`;
+
+const SALLIE_CARDS = `
+<div class="cmp-rate-card-wrapper"><div class="cmp-tag-v2">12-month CD</div><p class="cmp-rate-label">4.60%</p></div>
+${SALLIE_FACTS}`;
 
 describe('pilot bank pages', () => {
   it('uses the three owner certificates', () => {
@@ -64,24 +75,69 @@ describe('pilot bank pages', () => {
     expect(centsFromInteger('0')).toBe(0);
   });
 
-  it('reads each Sallie Mae term, the shared minimum, and the penalty by term', () => {
+  it('reads each Sallie Mae table row, the shared minimum, and the penalty sentence for that term', () => {
     const rows = extractSallieRates(SALLIE);
     expect(rows.map((row) => [row.termMonths, row.apyPercent, row.penaltyDays])).toEqual([
-      [15, '4.65', 180],
-      [60, '5.00', 180],
+      [6, '3.20', 90],
       [12, '4.60', 90],
-      [18, '4.65', 180],
-      [36, '4.75', 180],
+      [13, '4.50', 180],
     ]);
     expect(rows[0]).toMatchObject({
       asOf: '2026-11-16',
       minDollars: '2500',
       compounding: 'monthly',
     });
-    // independent calc: $2,500 is 250000 cents; 4.65% is 0.0465; 5.00% is 0.05
+    expect(rows[0]?.quote).toContain('(90)');
+    expect(rows[2]?.quote).toContain('(180)');
+    // independent calc: $2,500 is 250000 cents; 4.60% is 0.046; 3.20% is 0.032
     expect(centsFromInteger('250000')).toBe(250000);
-    expect(rateFromPercent('4.65')).toBe('0.0465');
-    expect(rateFromPercent('5.00')).toBe('0.05');
+    expect(rateFromPercent('4.60')).toBe('0.046');
+    expect(rateFromPercent('3.20')).toBe('0.032');
+  });
+
+  it('does not read Sallie Mae flip cards when the rate table is absent', () => {
+    expect(extractSallieRates(SALLIE_CARDS)).toEqual([]);
+  });
+
+  it('does not invent a Sallie Mae penalty when the page has no day count', () => {
+    const html = SALLIE.replace(/ninety \(90\) days’ simple interest/g, 'a penalty');
+    expect(extractSallieRates(html)).toEqual([]);
+  });
+
+  it('reads Amex CD penalties from the page quotes and the APY from the JSON', () => {
+    const fixture = readFileSync(
+      join(import.meta.dirname, '../../banks/amex.fixture.json'),
+      'utf8',
+    );
+    const extracted = readAmex(fixture, '2026-11-15');
+    const cds = extracted.products.filter((row) => row.category === 'cd');
+    expect(cds.map((row) => [row.termMonths, row.earlyWithdrawal.value])).toEqual([
+      [10, { kind: 'days_of_interest', days: 90 }],
+      [12, { kind: 'days_of_interest', days: 270 }],
+    ]);
+    expect(cds[0]?.earlyWithdrawal.provenance.document?.quote).toContain('90 days');
+    expect(cds[1]?.earlyWithdrawal.provenance.document?.quote).toContain('270 days');
+    expect(extracted.products.some((row) => row.category === 'savings')).toBe(true);
+    const sixty = readAmex(
+      JSON.stringify({
+        interestRateList: [
+          {
+            term: '60M',
+            rate: '4.0',
+            apy: 4,
+            type: '3560',
+            rateCode: 'CD',
+            description: '60-Month Certificate of Deposit',
+            effectiveDate: '2026-11-11',
+          },
+        ],
+      }),
+      '2026-11-15',
+    );
+    expect(sixty.products[0]?.earlyWithdrawal.value).toEqual({
+      kind: 'days_of_interest',
+      days: 540,
+    });
   });
 });
 

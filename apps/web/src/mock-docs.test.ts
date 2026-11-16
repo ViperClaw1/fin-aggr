@@ -73,10 +73,11 @@ afterAll(() => {
 });
 
 describe('synthetic documents', () => {
+  // Two PDF builds. The default 10s hook timeout loses to the rest of the suite.
   beforeAll(() => {
     defaultLog = build(built, null);
     build(again, String(DEFAULT_SEED));
-  });
+  }, 120_000);
 
   it('uses the same default seed as the app and the generator', () => {
     expect(readEnv({}).seed).toBe(DEFAULT_SEED);

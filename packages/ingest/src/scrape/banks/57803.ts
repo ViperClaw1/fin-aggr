@@ -2,7 +2,13 @@ import * as cheerio from 'cheerio';
 import type { HtmlOffer } from './offer';
 import { htmlOfferToProduct, UNSTATED_ELIGIBILITY, type BankExtract } from './normalize';
 
-/** Ally Bank. Certificate from FDIC institutions, name "Ally Bank", 2026-11-13. */
+/**
+ * Ally Bank. Certificate from FDIC institutions, name "Ally Bank", 2026-11-13.
+ * On 2026-11-16 `robots.txt` (`User-agent: *`) allowed `/bank/`. `view-rates/`,
+ * `/bank/cd-rates/`, and `/bank/high-yield-cd/` were fetched with the project
+ * User-Agent. None of them lists a term beside a day-count penalty in the raw
+ * HTML, so a CD on those pages is not a product.
+ */
 export const allyAdapter = {
   cert: '57803',
   institutionId: 'fdic:57803',
