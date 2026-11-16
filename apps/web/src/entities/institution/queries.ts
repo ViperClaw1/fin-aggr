@@ -1,1 +1,6 @@
-export { bankMetricsQuery, institutionQuery, institutionsQuery } from './api/queries';
+export {
+  bankMetricsQuery,
+  institutionById,
+  institutionQuery,
+  institutionsQuery,
+} from './api/queries';

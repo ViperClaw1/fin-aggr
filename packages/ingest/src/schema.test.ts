@@ -103,6 +103,21 @@ describe('curve and national domains', () => {
   });
 });
 
+describe('demo institutions on the products version', () => {
+  const copy = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261116203000_demo_institutions_on_products.sql'),
+    'utf8',
+  );
+
+  it('copies the latest mock institutions version onto the current products version', () => {
+    expect(copy).toContain("source.domain = 'institutions'");
+    expect(copy).toContain('source.is_mock');
+    expect(copy).toContain("products_version.domain = 'products'");
+    expect(copy).toContain('products_version.is_current');
+    expect(copy).toContain('not exists');
+  });
+});
+
 describe('institution regulator', () => {
   const regulator = readFileSync(
     join(process.cwd(), 'supabase/migrations/20261113120000_institution_regulator_ust.sql'),

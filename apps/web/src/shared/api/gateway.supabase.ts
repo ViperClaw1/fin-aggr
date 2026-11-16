@@ -56,6 +56,9 @@ function parsed<T>(schema: Schema<T>, value: unknown, label = 'row'): T {
   return result.data;
 }
 
+const INSTITUTION_COLUMNS =
+  'id, name, regulator, kind, partner_institution_ids, hq_state, website, provenance';
+
 function offsetOf(cursor: string | undefined): number {
   if (cursor === undefined) return 0;
   if (!/^\d+$/.test(cursor)) {
@@ -86,12 +89,35 @@ async function many(
 async function one(
   query: PromiseLike<{ data: unknown; error: DbError | null }>,
 ): Promise<Record<string, unknown>> {
+  const row = await maybe(query);
+  if (row === null) throw new GatewayError('not_found', 'row missing', false);
+  return row;
+}
+
+async function maybe(
+  query: PromiseLike<{ data: unknown; error: DbError | null }>,
+): Promise<Record<string, unknown> | null> {
   const { data, error } = await query;
   if (error) raise(error);
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    throw new GatewayError('not_found', 'row missing', false);
-  }
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
   return data as Record<string, unknown>;
+}
+
+/** Current version of one domain. RLS already hides versions that are not current. */
+async function currentVersionId(domain: string): Promise<unknown> {
+  const row = await one(
+    supabase().from('dataset_versions').select('id').eq('domain', domain).limit(1).single(),
+  );
+  return row['id'];
+}
+
+function institutionQuery(versionId: unknown, id: string) {
+  return supabase()
+    .from('institutions')
+    .select(INSTITUTION_COLUMNS)
+    .eq('version_id', versionId)
+    .eq('id', id)
+    .maybeSingle();
 }
 
 function db(): SupabaseClient {
@@ -167,9 +193,13 @@ export function createSupabaseGateway(): DataGateway {
     listInstitutions: async (raw) => {
       const q = parsed(InstitutionQuery, raw, 'institutions');
       const start = offsetOf(q.cursor);
+      // The directory is the institutions version. Fixture issuers live on the products version
+      // and are reached only by getInstitution, so Ironwood does not sit in the FDIC list.
+      const versionId = await currentVersionId('institutions');
       let query = supabase()
         .from('institutions')
-        .select('id, name, regulator, kind, partner_institution_ids, hq_state, website, provenance')
+        .select(INSTITUTION_COLUMNS)
+        .eq('version_id', versionId)
         .order('id')
         .range(start, start + q.limit - 1);
       if (q.kind !== undefined) query = query.eq('kind', q.kind);
@@ -179,15 +209,10 @@ export function createSupabaseGateway(): DataGateway {
       return parsed(Page(Institution), page(items, start, q.limit), 'institutions');
     },
     getInstitution: async (id) => {
-      const row = await one(
-        supabase()
-          .from('institutions')
-          .select(
-            'id, name, regulator, kind, partner_institution_ids, hq_state, website, provenance',
-          )
-          .eq('id', id)
-          .single(),
-      );
+      const registry = await maybe(institutionQuery(await currentVersionId('institutions'), id));
+      const row =
+        registry ?? (await maybe(institutionQuery(await currentVersionId('products'), id)));
+      if (row === null) throw new GatewayError('not_found', `Institution ${id}`, false);
       return parsed(Institution, institutionFrom(row), 'institution');
     },
     getBankMetrics: async (id, asOf) => {

@@ -2,7 +2,7 @@ import { GatewayError, IsoDate, type DataGateway } from '@fa/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { createMockGateway, type MockGatewayOptions } from '@/shared/api/gateway.mock';
 import { makeQueryClient } from '@/shared/lib/query-client';
-import { bankMetricsQuery, institutionQuery, institutionsQuery } from './queries';
+import { bankMetricsQuery, institutionById, institutionQuery, institutionsQuery } from './queries';
 
 const holder = vi.hoisted(() => ({ gateway: undefined as DataGateway | undefined }));
 vi.mock('@/shared/api', () => ({ getGateway: () => holder.gateway }));
@@ -29,6 +29,11 @@ describe('institution queries', () => {
     const id = page.items[0]!.id;
     expect((await client().query(institutionQuery(id))).id).toBe(id);
     expect((await client().query(bankMetricsQuery(id))).institutionId).toBe(id);
+  });
+  it('a missing institution is null and is not retried', async () => {
+    const spy = install('getInstitution');
+    expect(await institutionById(client(), 'fdic:missing')).toBeNull();
+    expect(spy).toHaveBeenCalledTimes(1);
   });
   it('not_found arrives as a GatewayError and is not retried', async () => {
     const spy = install('getInstitution');

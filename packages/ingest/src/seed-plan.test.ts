@@ -10,5 +10,6 @@ describe('seed plan domains', () => {
     const seeded = [...block.matchAll(/'([a-z_]+)'/g)].map((match) => match[1]);
     expect(seeded).toEqual([...DATASET_DOMAINS]);
     expect(source).toContain('values ($1, $2, true, false)');
+    expect(source).toContain('insertInstitutions(client, ids.products, set.institutions)');
   });
 });

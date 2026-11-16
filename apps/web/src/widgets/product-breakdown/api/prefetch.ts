@@ -12,7 +12,7 @@ import {
 } from '@fa/contracts';
 import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { datasetInfoQuery, factsQuery } from '@/entities/fact/queries';
-import { institutionQuery, institutionsQuery } from '@/entities/institution/queries';
+import { institutionById, institutionQuery } from '@/entities/institution/queries';
 import { productQuery, productsQuery } from '@/entities/product/queries';
 import { taxTablesQuery } from '@/entities/reference/queries';
 import { TAX_YEAR } from '@/shared/config';
@@ -54,21 +54,22 @@ export async function loadProductData(id: Id): Promise<ProductData | null> {
   const client = makeQueryClient();
   try {
     const product = await client.query(productQuery(id));
-    const [institution, facts, institutions, dataset, taxTables] = await Promise.all([
+    const [institution, facts, dataset, taxTables] = await Promise.all([
       client.query(institutionQuery(product.institutionId)),
       client.query(factsQuery({ productId: id })),
-      client.query(institutionsQuery({ limit: 100 })),
       client.query(datasetInfoQuery()),
       client.query(taxTablesQuery(TAX_YEAR)),
     ]);
-    const byId = new Map(institutions.items.map((item) => [item.id, item.name]));
+    const partners = await Promise.all(
+      institution.partnerInstitutionIds.map(async (partnerId) => {
+        const partner = await institutionById(client, partnerId);
+        return partner === null ? [] : [{ id: partnerId, name: partner.name }];
+      }),
+    );
     return {
       product,
       institution: { id: institution.id, name: institution.name, kind: institution.kind },
-      partners: institution.partnerInstitutionIds.flatMap((partnerId) => {
-        const name = byId.get(partnerId);
-        return name === undefined ? [] : [{ id: partnerId, name }];
-      }),
+      partners: partners.flat(),
       facts,
       dataset,
       taxTables,

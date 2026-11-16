@@ -1,5 +1,12 @@
-import { normalizeInstitutionQuery, type DataGateway, type Id, type IsoDate } from '@fa/contracts';
-import { queryOptions } from '@tanstack/react-query';
+import {
+  GatewayError,
+  normalizeInstitutionQuery,
+  type DataGateway,
+  type Id,
+  type Institution,
+  type IsoDate,
+} from '@fa/contracts';
+import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { getGateway } from '@/shared/api';
 import { STALE_TIME } from '@/shared/lib/query-client';
 
@@ -19,6 +26,16 @@ export const institutionQuery = (id: Id) =>
     queryFn: () => getGateway().getInstitution(id),
     staleTime: STALE_TIME.institutions,
   });
+
+/** null when the gateway has no institution with this id. A missing id is not retried. */
+export async function institutionById(client: QueryClient, id: Id): Promise<Institution | null> {
+  try {
+    return await client.query(institutionQuery(id));
+  } catch (error) {
+    if (error instanceof GatewayError && error.code === 'not_found') return null;
+    throw error;
+  }
+}
 
 export const bankMetricsQuery = (id: Id, asOf?: IsoDate) =>
   queryOptions({

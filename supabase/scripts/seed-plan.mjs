@@ -265,6 +265,9 @@ export async function loadFixtures(client, set) {
   const ids = await insertVersions(client, set.asOf);
   await insertSources(client, set.sources);
   await insertInstitutions(client, ids.institutions, set.institutions);
+  // Same fixture issuers, on the products version. An FDIC publish replaces only the
+  // institutions version, and demo products still resolve through this copy.
+  await insertInstitutions(client, ids.products, set.institutions);
   await insertMetrics(client, ids.bank_metrics, set.bankMetrics);
   await insertProducts(client, ids, set.products);
   await insertDocuments(client, ids.documents, set.documents);

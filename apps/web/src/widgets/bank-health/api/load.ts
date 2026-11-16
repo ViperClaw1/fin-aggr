@@ -14,6 +14,7 @@ import { CACHE_REVALIDATE, cacheFor } from '@/shared/api/cache-policy';
 import { datasetInfoQuery } from '@/entities/fact/queries';
 import {
   bankMetricsQuery,
+  institutionById,
   institutionQuery,
   institutionsQuery,
 } from '@/entities/institution/queries';
@@ -45,8 +46,13 @@ export async function loadBank(id: Id): Promise<BankDetail | null> {
   const client = makeQueryClient();
   try {
     const institution = await client.query(institutionQuery(id));
-    const [institutions, dataset, metrics, groups] = await Promise.all([
-      client.query(institutionsQuery({ limit: 100 })),
+    const [partners, dataset, metrics, groups] = await Promise.all([
+      Promise.all(
+        institution.partnerInstitutionIds.map(async (partnerId) => {
+          const partner = await institutionById(client, partnerId);
+          return partner === null ? [] : [{ id: partnerId, name: partner.name }];
+        }),
+      ),
       client.query(datasetInfoQuery()),
       client.query(bankMetricsQuery(id)).catch((error: unknown) => {
         if (error instanceof GatewayError && error.code === 'not_found') return null;
@@ -54,7 +60,6 @@ export async function loadBank(id: Id): Promise<BankDetail | null> {
       }),
       Promise.all(STAGE1_CATEGORIES.map((category) => productsOf(client, category, id))),
     ]);
-    const names = new Map(institutions.items.map((item) => [item.id, item.name]));
     return {
       institution: {
         id: institution.id,
@@ -63,10 +68,7 @@ export async function loadBank(id: Id): Promise<BankDetail | null> {
         regulator: institution.regulator,
         website: institution.website,
       },
-      partners: institution.partnerInstitutionIds.flatMap((partnerId) => {
-        const name = names.get(partnerId);
-        return name === undefined ? [] : [{ id: partnerId, name }];
-      }),
+      partners: partners.flat(),
       metrics,
       products: groups.flat(),
       dataset,

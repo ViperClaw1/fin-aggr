@@ -40,6 +40,12 @@ test('after hydration no script with the mock gateway or fixtures is loaded', as
 
 const CD_ROWS = 60 + PILOT_CD_COUNT;
 
+test('no CD row is labeled Unknown bank', async ({ page }) => {
+  await page.goto('/compare/cd');
+  await expect(page.getByRole('table', { name: 'Certificates of deposit' })).toBeVisible();
+  await expect(page.getByText('Unknown bank')).toHaveCount(0);
+});
+
 test('lists all 60 CDs, best APY first, with sources', async ({ page }) => {
   await page.goto('/compare/cd');
   const rows = page.getByRole('table').getByRole('row');
