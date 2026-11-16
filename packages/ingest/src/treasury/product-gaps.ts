@@ -1,11 +1,15 @@
 /**
  * Product fields the auction feeds do not carry.
- * Quotes are copied from the pages read on 2026-11-14. They stay unverified
- * until a person confirms them. They are not a published Product.
+ * Quotes are the eCFR versioner text read on 2026-11-16, except the
+ * early-withdrawal and tax quotes, which are unchanged from 2026-11-14.
+ * They stay unverified until a person confirms them. They are not a published Product.
+ * 31 CFR 363.11 is stored whole: clipping it to 400 characters would drop the
+ * address sentence or the depository-account sentence. It is not a Provenance quote.
  */
 
 const MISSING_PRODUCT_FIELDS = [
   'tier',
+  'min_opening',
   'early_withdrawal',
   'eligibility',
   'tax_treatment',
@@ -14,7 +18,7 @@ const MISSING_PRODUCT_FIELDS = [
 export interface TreasuryProductGap {
   id: `treasury:${(typeof MISSING_PRODUCT_FIELDS)[number]}`;
   field: (typeof MISSING_PRODUCT_FIELDS)[number];
-  productField: 'tiers' | 'earlyWithdrawal' | 'eligibility' | 'taxTreatment';
+  productField: 'tiers' | 'minOpening' | 'earlyWithdrawal' | 'eligibility' | 'taxTreatment';
   citation: string;
   sourceUrl: string;
   quote: string;
@@ -26,6 +30,17 @@ const GAPS: readonly TreasuryProductGap[] = [
     id: 'treasury:tier',
     field: 'tier',
     productField: 'tiers',
+    citation: '31 CFR 356.20(d)(1)',
+    sourceUrl:
+      'https://www.ecfr.gov/current/title-31/subtitle-B/chapter-II/subchapter-A/part-356/subpart-C/section-356.20',
+    quote:
+      'Single-price auctions. Both noncompetitive and competitive bidders receive the price equivalent to the high yield, high discount rate, or high discount margin at which bids were awarded. For inflation-protected securities, the price for awarded securities is the price equivalent to the high real yield.',
+    verification: 'unverified',
+  },
+  {
+    id: 'treasury:min_opening',
+    field: 'min_opening',
+    productField: 'minOpening',
     citation: '31 CFR 356.12(a)',
     sourceUrl:
       'https://www.ecfr.gov/current/title-31/subtitle-B/chapter-II/subchapter-A/part-356/subpart-B/section-356.12',
@@ -48,11 +63,11 @@ const GAPS: readonly TreasuryProductGap[] = [
     id: 'treasury:eligibility',
     field: 'eligibility',
     productField: 'eligibility',
-    citation: '31 CFR 363.10',
+    citation: '31 CFR 363.11',
     sourceUrl:
-      'https://www.ecfr.gov/current/title-31/subtitle-B/chapter-II/subchapter-B/part-363/subpart-B/section-363.10',
+      'https://www.ecfr.gov/current/title-31/subtitle-B/chapter-II/subchapter-B/part-363/subpart-B/section-363.11',
     quote:
-      'A TreasuryDirect account is an online account maintained by us solely in your name in which you may hold and conduct transactions in eligible book-entry Treasury securities.',
+      'Only an individual or an entity is eligible to open a TreasuryDirect account. In order to open a TreasuryDirect account, an individual or entity account manager must have a valid social security number (SSN), be 18 years of age or over, and be legally competent. An entity must have a valid SSN or employer identification number. The account owner must have a United States address of record and have an account at a United States depository financial institution that will accept debits and credits using the Automated Clearing House method of payment.',
     verification: 'unverified',
   },
   {

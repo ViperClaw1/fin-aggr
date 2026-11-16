@@ -3,8 +3,9 @@ import { sha256Hex } from '../pipeline';
 
 /**
  * Fiscal Data auctions and TreasuryDirect auctioned securities.
- * Read 2026-11-13. Neither response has a balance tier, an early-withdrawal
- * penalty, an eligibility rule, or a tax treatment, so no Product is built.
+ * Read 2026-11-13. Neither response has a balance tier, a bidder minimum, an
+ * early-withdrawal penalty, an eligibility rule, or a tax treatment, so no
+ * Product is built.
  */
 
 const FISCAL =

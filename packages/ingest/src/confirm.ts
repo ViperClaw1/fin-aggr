@@ -17,11 +17,50 @@ export interface ConfirmCommand {
   factId: string;
 }
 
+export interface ConfirmableFact {
+  id: string;
+  citation: string;
+  sourceUrl: string;
+  quote: string;
+}
+
 function confirmableIds(): Set<string> {
   return new Set([
     ...insuranceLimitQuotes().map((quote) => quote.id),
     ...treasuryProductGaps().map((gap) => gap.id),
   ]);
+}
+
+/** The text a person has to see before the confirmation row is written. */
+export function confirmableFact(factId: string): ConfirmableFact {
+  const insurance = insuranceLimitQuotes().find((quote) => quote.id === factId);
+  if (insurance !== undefined) {
+    return {
+      id: insurance.id,
+      citation: `12 CFR ${insurance.section}`,
+      sourceUrl: insurance.sourceUrl,
+      quote: insurance.quote,
+    };
+  }
+  const gap = treasuryProductGaps().find((item) => item.id === factId);
+  if (gap !== undefined) {
+    return {
+      id: gap.id,
+      citation: gap.citation,
+      sourceUrl: gap.sourceUrl,
+      quote: gap.quote,
+    };
+  }
+  throw new Error(`unknown fact ${factId}`);
+}
+
+export function formatFactPreview(fact: ConfirmableFact): string {
+  return [
+    `fact ${fact.id}`,
+    `citation: ${fact.citation}`,
+    `url: ${fact.sourceUrl}`,
+    `quote: ${fact.quote}`,
+  ].join('\n');
 }
 
 /** `ingest:confirm <fact-id>`. */
@@ -58,6 +97,7 @@ export async function confirmFact(
   const command = confirmCommand([input.factId]);
   const login = requireReviewer(input.login);
   const verifiedAt = confirmationDate(input.verifiedAt);
+  log(formatFactPreview(confirmableFact(command.factId)));
   const inserted = await sql.query(
     `insert into fact_confirmations (fact_id, status, verified_by, login, verified_at)
      values ($1, 'verified', 'human', $2, $3)

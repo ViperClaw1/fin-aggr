@@ -258,20 +258,39 @@ Fiscal Data `auctions_query` (`sort=-auction_date`, `page[size]=1`), labels from
 
 TreasuryDirect `GET /TA_WS/securities/auctioned?format=json&pagesize=1`, names from the JSON object read 2026-11-13: `cusip`, `securityType`, `securityTerm`, `issueDate`, `maturityDate`, `highRate`, `investmentRate`, `interestRate`, `frequencyOfInterestPayments`, `minimumToIssueAmount`.
 
-Neither response has a balance-tier schedule, an early-withdrawal penalty, an eligibility rule, or a tax treatment. Those `Product` fields are not filled in. The quotes that describe the gap, read 2026-11-14, stay `unverified` in `packages/ingest/src/treasury/product-gaps.ts` and are not a published product:
+Neither response has a balance-tier schedule, a bidder minimum, an early-withdrawal penalty, an eligibility rule, or a tax treatment. Those `Product` fields are not filled in. The quotes stay `unverified` in `packages/ingest/src/treasury/product-gaps.ts` and are not a published product. Early withdrawal and tax treatment are the 2026-11-14 quotes. The owner has accepted the tax citation, 31 CFR 356.32(a), and will confirm early withdrawal. Both source flags stay `unverified` until `pnpm ingest:confirm` writes the row. Eligibility and the award price were read again on 2026-11-16 from the eCFR versioner XML (`full/2026-10-15/title-31.xml`). 31 CFR 363.11 was the same paragraph at issue date 2024-06-04.
 
-| Held field | Product field | Quote |
-| --- | --- | --- |
-| `tier` | `tiers` | 31 CFR 356.12(a): a bid states a par amount at or above the minimum in the auction announcement, in the stated multiple. TreasuryDirect (Buying a Treasury Marketable Security): minimum bid $100, increments of $100, non-competitive maximum $10 million. That is one minimum, not a balance-tier schedule. |
-| `early_withdrawal` | `earlyWithdrawal` | TreasuryDirect, Selling a Treasury Marketable Security: hold to maturity or sell before maturity through a bank, broker, or dealer. A security bought in TreasuryDirect must be held 45 days before it can be sold or transferred. That is not a days-of-interest, months-of-interest, or percent-of-principal penalty. |
-| `eligibility` | `eligibility` | 31 CFR 363.10: a TreasuryDirect account is an online account maintained solely in the account holder's name for eligible book-entry Treasury securities. The page does not state a rule the profile can evaluate. |
-| `tax_treatment` | `taxTreatment` | 31 CFR 356.32(a): securities issued under that part are subject to the Internal Revenue Code of 1986. Under 31 U.S.C. 3124 they are exempt from taxation by a State or political subdivision of a State, except for estate or inheritance taxes and the other exceptions in that section. TreasuryDirect, Treasury Bills: federal tax is due on interest earned, and there is no state or local tax. The enum value is not chosen until a person confirms the quote. |
+`tiers` is 31 CFR 356.20(d)(1), amendment date 2026-10-15. The stored quote is that paragraph:
 
-No treasury product is published until that confirmation. The confirmation is `pnpm ingest:confirm <fact-id>` with fact id `treasury:tier`, `treasury:early_withdrawal`, `treasury:eligibility`, or `treasury:tax_treatment`. The row in `fact_confirmations` stores `verified`, `by: human`, the GitHub login (`FA_REVIEWER` or `gh`), and the UTC date. The quote in source stays `unverified`, and the command does not publish a product. `publishTreasuryProducts` throws. A new auction updates the snapshot and the one open review for that source (same row, comment on the same issue). The run stays `held` with `reason=missing_fields:tier,early_withdrawal,eligibility,tax_treatment`. An unchanged hash stays `held` with `reason=unchanged` and does not open another issue. A missing official column fails the run.
+> Single-price auctions. Both noncompetitive and competitive bidders receive the price equivalent to the high yield, high discount rate, or high discount margin at which bids were awarded. For inflation-protected securities, the price for awarded securities is the price equivalent to the high real yield.
+
+31 CFR 356.2, in the same file, defines the term:
+
+> Single-price auction means an auction in which all successful bidders pay the same price regardless of the yields, discount rates, or discount margins they each bid.
+
+Paragraph 356.20(d)(2) still describes multiple-price awards. The stored quote is (d)(1) only. It is one award price, not a balance-tier schedule.
+
+`minOpening` is 31 CFR 356.12(a), fact id `treasury:min_opening`. The stored quote is:
+
+> All bids must state the par amount of securities bid for and must equal or exceed the minimum to bid amount stated in the auction announcement. Bids in larger amounts must be in the multiple stated in the auction announcement.
+
+The section states no dollar amount. The dollar figure is the minimum to bid in the auction announcement. The sentence in 356.21, "Treasury bills may be issued with a minimum to bid of $100", is a proration example and is not stored.
+
+`eligibility` is 31 CFR 363.11. The stored quote is the section paragraph:
+
+> Only an individual or an entity is eligible to open a TreasuryDirect account. In order to open a TreasuryDirect account, an individual or entity account manager must have a valid social security number (SSN), be 18 years of age or over, and be legally competent. An entity must have a valid SSN or employer identification number. The account owner must have a United States address of record and have an account at a United States depository financial institution that will accept debits and credits using the Automated Clearing House method of payment.
+
+That paragraph is 553 characters. It is stored whole. A 400-character clip would drop the United States address or the depository-account sentence. It is not copied into `Provenance.quote`. The scrape rule that clips a quote to 400 characters is unchanged.
+
+`earlyWithdrawal` is unchanged: TreasuryDirect, Selling a Treasury Marketable Security. Hold to maturity, or sell before maturity through a bank, broker, or dealer. A security bought in TreasuryDirect must be held 45 days before it can be sold or transferred. That is not a days-of-interest, months-of-interest, or percent-of-principal penalty.
+
+`taxTreatment` is unchanged: 31 CFR 356.32(a). Securities issued under that part are subject to the Internal Revenue Code of 1986. Under 31 U.S.C. 3124 they are exempt from taxation by a State or political subdivision of a State, except for estate or inheritance taxes and the other exceptions in that section. The enum value is not chosen until a person confirms the quote.
+
+No treasury product is published until that confirmation. The confirmation is `pnpm ingest:confirm <fact-id>` with fact id `treasury:tier`, `treasury:min_opening`, `treasury:early_withdrawal`, `treasury:eligibility`, or `treasury:tax_treatment`. Before the insert, the command prints the fact id, the citation, the URL, and the quote. A login that is not a GitHub login prints nothing and writes nothing. The row in `fact_confirmations` stores `verified`, `by: human`, the GitHub login (`FA_REVIEWER` or `gh`), and the UTC date. The quote in source stays `unverified`, and the command does not publish a product. `publishTreasuryProducts` throws. A new auction updates the snapshot and the one open review for that source (same row, comment on the same issue). The run stays `held` with `reason=missing_fields:tier,min_opening,early_withdrawal,eligibility,tax_treatment`. An unchanged hash stays `held` with `reason=unchanged` and does not open another issue. A missing official column fails the run.
 
 ### Insurance limit and 2026 tax brackets (2026-11-13)
 
-The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They are not copied into fixtures. A person confirms one quote with `pnpm ingest:confirm <fact-id>` (`insurance:fdic` or `insurance:ncua`). That writes `fact_confirmations`: `verified`, `by: human`, the GitHub login, and the UTC date. It does not call `commitInsuranceLimits`. `commitInsuranceLimits` can update `insurance_limits` on the current reference version, without calling `publish_domain` and without changing `par_yields`, and it refuses a row that is not `verified` by a human. That call is not scheduled.
+The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They are not copied into fixtures. A person confirms one quote with `pnpm ingest:confirm <fact-id>` (`insurance:fdic` or `insurance:ncua`). Before the insert, the command prints the citation, the URL, and the quote. The insert writes `fact_confirmations`: `verified`, `by: human`, the GitHub login, and the UTC date. It does not call `commitInsuranceLimits`. `commitInsuranceLimits` can update `insurance_limits` on the current reference version, without calling `publish_domain` and without changing `par_yields`, and it refuses a row that is not `verified` by a human. That call is not scheduled.
 
 `publishFederalBrackets` throws. Rev. Proc. 2025-32 stays a one-checker draft. `TAX_YEAR` is unchanged. State brackets are not started.
 
@@ -336,6 +355,9 @@ The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), 
 - Map a term span such as `6–8 Month` to its low end, its high end, or its midpoint: rejected. Each of those is a term the cell did not state. One product per month in the span would invent terms the cell did not list.
 - Use `retrievedAt` as the bank's "as of" when the page leaves the date blank: rejected. That publishes a date the bank did not state.
 - Treat the headquarters state as the eligibility list when the bank is not nationwide online: rejected. The list has to come from the bank's page.
+- Treat 31 CFR 356.12(a) as a balance-tier schedule: rejected. It states one minimum to bid. The minimum is `minOpening`. The single award price is 31 CFR 356.20(d)(1).
+- Read 31 CFR 356.20(d)(1) as every Treasury auction: rejected. Paragraph (d)(2) still describes multiple-price awards. The stored quote is (d)(1) only.
+- Store the "$100" example in 31 CFR 356.21 as the minimum deposit: rejected. That sentence says bills may be issued with that minimum. 356.12(a) puts the amount in the auction announcement and states no dollar figure.
 - Turn an American Express JSON `apy` into a rate with `apy / 100` or decimal.js: rejected. `String(apy)` plus `rateFromPercent` does not do float arithmetic. A value that does not stringify inside six decimal places is reviewed, not rounded.
 - Publish a 0% row, or an IRA row, from the American Express pilot: rejected. `apy` 0 means the term is not offered. IRA products stay out of the pilot.
 - One `bank-rates` cron at 08:00 UTC: rejected. A hosted runner starts hours after the cron. On 2026-11-16 the 08:00 run started at 15:14 UTC (10:14 Eastern), after 06:00, and returned without a request and without a log.
