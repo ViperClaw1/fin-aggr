@@ -1,16 +1,17 @@
 # DataGateway contract against supabase start (ADR-019 step 3).
-# Pull requests run it only with the `db` label. The nightly run does not need the label.
+# Pull requests run it only with the `db` label. Nightly and manual runs do not need the label.
 name: DB contract
 
 on:
   schedule:
     - cron: '0 3 * * *'
+  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
 
 jobs:
   contract:
-    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'db')
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'db')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
