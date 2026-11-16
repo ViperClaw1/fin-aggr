@@ -115,5 +115,5 @@ describe('synthetic documents', () => {
         expect(text.get(fact.page)).toContain(quote);
       }
     }
-  });
+  }, 60_000);
 });

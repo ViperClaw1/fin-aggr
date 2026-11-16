@@ -90,6 +90,7 @@ describe('schedule catalog', () => {
       'ncua-5300',
       'fdic-national-rates',
       'bank-pdf-hashes',
+      'amex-cd-page',
       'tax-tables',
     ]);
     expect(new Set(ids).size).toBe(ids.length);
@@ -105,6 +106,7 @@ describe('schedule catalog', () => {
       'fdic-financials',
       'ncua-5300',
       'fdic-national-rates',
+      'amex-cd-page',
     ]);
   });
 
@@ -301,7 +303,7 @@ describe('schedule workflows', () => {
     expect(text).toContain('FRED_API_KEY');
     expect(text).toContain('FA_SCRAPE_MAILBOX');
     expect(text).toContain(
-      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ncua-5300","fdic-national-rates","treasury-fiscal-data","treasurydirect","ecfr-330","ecfr-745","ecfr-328","federal-register"]')`,
+      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ncua-5300","fdic-national-rates","treasury-fiscal-data","treasurydirect","ecfr-330","ecfr-745","ecfr-328","federal-register","amex-cd-page"]')`,
     );
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');

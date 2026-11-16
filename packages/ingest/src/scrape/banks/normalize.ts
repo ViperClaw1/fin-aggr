@@ -110,6 +110,11 @@ function amexCdPenalty(termMonths: number): { days: number; quote: string } | nu
   return null;
 }
 
+/** The CD-page sentences the weekly watch hashes. A wording change is a review, not a new penalty. */
+export function amexCdSentences(): readonly string[] {
+  return [AMEX_CD_PAGE.minQuote, AMEX_CD_PAGE.compoundQuote, ...AMEX_CD_PAGE.penalties];
+}
+
 function centsFromDollarDigits(dollars: string): ReturnType<typeof centsFromInteger> {
   if (!/^\d+$/.test(dollars)) throw new Error('min deposit is not a dollar amount');
   return centsFromInteger(`${dollars}00`);

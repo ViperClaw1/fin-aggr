@@ -164,6 +164,7 @@ describe('bank page run', () => {
   it('publishes a confirmed clean row as verified by a person', async () => {
     const bank = ports();
     bank.confirmation = () => Promise.resolve({ confirmed: true, verifiedAt: '2026-11-15' });
+    bank.previous = () => Promise.resolve(readAlly(HTML).products);
     await runBankPage({
       client: client('ok'),
       request: {

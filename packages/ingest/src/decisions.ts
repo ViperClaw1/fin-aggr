@@ -48,6 +48,25 @@ export function openReview(row: Record<string, unknown>): OpenReview {
   };
 }
 
+/** The reason stored when a later publish closes the open row for that source. */
+export function supersededBy(versionId: number): string {
+  return `superseded by version ${String(versionId)}`;
+}
+
+/** Closes open rows for this source. A row opened later in the same transaction stays open. */
+export async function supersedeOpenReviews(
+  sql: Sql,
+  sourceId: string,
+  versionId: number,
+): Promise<void> {
+  await sql.query(
+    `update review_queue
+       set status = 'superseded', decided_at = now(), decision_reason = $2
+     where source_id = $1 and status = 'open'`,
+    [sourceId, supersededBy(versionId)],
+  );
+}
+
 /** One open row per source. A later hold updates that row instead of inserting another. */
 export async function enqueueReview(
   sql: Sql,

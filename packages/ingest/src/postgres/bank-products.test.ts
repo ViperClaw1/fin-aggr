@@ -40,6 +40,7 @@ describe('bank product publish', () => {
     });
     expect(result).toEqual({ queueId: null, versionId: 17 });
     expect(texts.some((text) => text.includes("publish_domain('bank_products'"))).toBe(true);
+    expect(texts.some((text) => text.includes("status = 'superseded'"))).toBe(true);
     expect(texts.some((text) => text.includes('v.is_mock = false'))).toBe(true);
     expect(texts.at(-1)).toContain('commit');
   });

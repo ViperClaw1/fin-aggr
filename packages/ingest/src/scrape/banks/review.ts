@@ -15,8 +15,9 @@ export function rateIsStale(asOf: string, retrievedDay: string): boolean {
 }
 
 /**
- * First connection holds every row. After a person confirms the bank,
- * only a stale date, an APY outside 0–15%, or a move over 50bp is held.
+ * First connection holds every row. After a person confirms the bank, a product
+ * id that is not in the previous published version is still first connection.
+ * A known row is held for a stale date, an APY outside 0–15%, or a move over 50bp.
  * A count under half the previous rows is `countGate` in the pipeline.
  */
 /** A throw from an adapter is manual mode. The caller publishes nothing. */
@@ -43,17 +44,20 @@ export function reviewBankProducts(input: {
       blocked: null,
     };
   }
+  const knownIds = new Set(input.previous.map((row) => row.id));
   const fresh: Product[] = [];
-  const stale: { key: string; reasons: string[] }[] = [];
+  const held: { key: string; reasons: string[] }[] = [];
   for (const row of input.rows) {
-    if (rateIsStale(row.validFrom, input.retrievedDay)) {
-      stale.push({ key: row.id, reasons: ['stale'] });
+    if (!knownIds.has(row.id)) {
+      held.push({ key: row.id, reasons: ['first_connection'] });
+    } else if (rateIsStale(row.validFrom, input.retrievedDay)) {
+      held.push({ key: row.id, reasons: ['stale'] });
     } else fresh.push(row);
   }
   const checked = validateProducts(fresh, input.previous);
   return {
     clean: checked.clean,
-    suspicious: [...stale, ...checked.suspicious],
+    suspicious: [...held, ...checked.suspicious],
     blocked: checked.blocked,
   };
 }

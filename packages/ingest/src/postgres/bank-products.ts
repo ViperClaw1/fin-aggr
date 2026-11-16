@@ -1,5 +1,5 @@
 import { centsFromInteger, Product, type Product as ProductRow } from '@fa/contracts';
-import { enqueueReview, withTransaction, type Sql } from '../decisions';
+import { enqueueReview, supersedeOpenReviews, withTransaction, type Sql } from '../decisions';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
 
@@ -236,9 +236,9 @@ export async function commitBankProducts(
         ? null
         : await publishRows(tx, input.institutionId, input.publish, input.heldIds);
     if (versionId !== null) {
-      await tx.query(`update sources set last_updated_at = now() where id = $1`, [
-        `bank:${input.institutionId}`,
-      ]);
+      const sourceId = input.queue?.sourceId ?? `bank:${input.institutionId}`;
+      await supersedeOpenReviews(tx, sourceId, versionId);
+      await tx.query(`update sources set last_updated_at = now() where id = $1`, [sourceId]);
     }
     if (input.queue === null) return { queueId: null, versionId };
     const queued = await enqueueReview(tx, input.queue);

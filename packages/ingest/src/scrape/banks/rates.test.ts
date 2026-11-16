@@ -198,7 +198,7 @@ describe('bank product review', () => {
     const fresh = sample('fdic:1:new', '2026-11-12');
     const report = reviewBankProducts({
       rows: [old, fresh],
-      previous: [],
+      previous: [old, fresh],
       confirmed: true,
       retrievedDay: '2026-11-16',
     });
@@ -206,6 +206,19 @@ describe('bank product review', () => {
     expect(report.clean.map((row) => row.id)).toEqual([fresh.id]);
     expect(rateIsStale('2025-01-01', '2026-11-16')).toBe(true);
     expect(rateIsStale('2026-11-12', '2026-11-16')).toBe(false);
+  });
+
+  it('holds a new product of a confirmed bank as a first connection', () => {
+    const known = sample('fdic-27471-savings', '2026-11-11');
+    const added = sample('fdic-27471-3510', '2026-11-11');
+    const report = reviewBankProducts({
+      rows: [known, added],
+      previous: [known],
+      confirmed: true,
+      retrievedDay: '2026-11-16',
+    });
+    expect(report.clean.map((row) => row.id)).toEqual([known.id]);
+    expect(report.suspicious).toEqual([{ key: added.id, reasons: ['first_connection'] }]);
   });
 
   it('a broken adapter is manual and returns no rows to publish', () => {

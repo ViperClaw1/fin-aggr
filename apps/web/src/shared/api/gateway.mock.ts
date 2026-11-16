@@ -158,7 +158,7 @@ function mockDataset(f: FixtureSet) {
     par_yields: { asOf: f.asOf, isMock: true },
     national_rates: { asOf: f.asOf, isMock: true },
     documents: { asOf: f.asOf, isMock: true },
-    bank_products: { asOf: f.bankProducts.asOf, isMock: false },
+    bank_products: { asOf: f.bankProducts.asOf, isMock: true },
   };
   return { ...datasetRollup(domains), domains };
 }

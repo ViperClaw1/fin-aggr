@@ -128,6 +128,14 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     timeoutMinutes: 45,
   },
   {
+    id: 'amex-cd-page',
+    cadence: 'weekly-monday',
+    cron: '0 11 * * 1',
+    workflow: 'ingest-weekly.yml',
+    timeoutMinutes: 15,
+    ready: true,
+  },
+  {
     id: 'tax-tables',
     cadence: 'manual-yearly',
     cron: null,

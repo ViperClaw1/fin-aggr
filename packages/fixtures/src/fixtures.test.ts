@@ -118,13 +118,7 @@ describe('AC-5: mocks are never presented as data', () => {
     }
     for (const p of rest) expect(p.verification.status).toBe('unverified');
     const real = [...new Set(all.filter((p) => !p.isMock).map((p) => p.sourceId))].sort();
-    expect(real).toEqual([
-      'bank:fdic:27471',
-      'bank:fdic:57803',
-      'bank:fdic:58177',
-      'fdic-institutions',
-      'insurance-limit-reference',
-    ]);
+    expect(real).toEqual(['fdic-institutions', 'insurance-limit-reference']);
   });
   it('facts are mock and documents synthetic', () => {
     expect(f.facts.every((x) => x.isMock && x.status === 'unverified')).toBe(true);
@@ -177,9 +171,10 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
+    // 27a77937: pilot rates are demo (isMock). Real rates come from bank_products.
     // ea477c50: pilot bank rates sit beside the mock catalog. Product ids use hyphens
     // because a colon cannot be a Windows path segment on the product route.
     // 459d396c: call-report outliers are null, not a boolean, and have no percentile
-    expect(fnv1a(JSON.stringify(f))).toBe('ea477c50');
+    expect(fnv1a(JSON.stringify(f))).toBe('27a77937');
   });
 });

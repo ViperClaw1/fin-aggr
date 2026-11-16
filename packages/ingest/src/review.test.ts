@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { formatDecision } from './cli';
-import { approveReview, enqueueReview, rejectReview, type Sql } from './decisions';
+import { approveReview, enqueueReview, rejectReview, supersededBy, type Sql } from './decisions';
 import { closeReviewIssue, createReviewIssue } from './github';
 import { mentionOverdue } from './overdue';
 import { formatIssueCreated, requireReviewer } from './policy';
@@ -19,6 +19,10 @@ function scripted(step: (text: string) => Record<string, unknown>[]): Sql & { ca
 }
 
 describe('review decisions', () => {
+  it('names the version that closes an open review', () => {
+    expect(supersededBy(17)).toBe('superseded by version 17');
+  });
+
   it('rejects an email and accepts a GitHub login', () => {
     expect(requireReviewer('ViperClaw1')).toBe('ViperClaw1');
     expect(() => requireReviewer('me@example.com')).toThrow(/login/i);

@@ -1,8 +1,5 @@
-// Hand-typed pilot rates (step 8.3). Not produced by the fixture seed.
-// Ally and Sallie Mae figures are from their public rates pages on 2026-11-15.
-// American Express savings APY is from the trimmed rates JSON of the same day;
-// minimum, compounding, and the page date are from the savings page.
-// Tax treatment is not on those pages. `taxable` stays unverified until a person confirms it.
+// Demo copies of pilot rates for the mock catalog. Not a published bank_products version.
+// Real pilot rates come only from the bank_products domain. These rows stay isMock.
 import {
   centsFromInteger,
   IsoDate,
@@ -30,7 +27,7 @@ function provenance(sourceId: string, url: string, asOf: string): Provenance {
     sourceUrl: url,
     retrievedAt: IsoDateTime.parse(`${asOf}T00:00:00Z`),
     verification: { status: 'unverified' },
-    isMock: false,
+    isMock: true,
   };
 }
 
@@ -250,7 +247,7 @@ const pilotDocuments: readonly DocumentMeta[] = [
 
 export const pilotBankDomain = {
   asOf: IsoDate.parse('2026-11-16'),
-  isMock: false as const,
+  isMock: true as const,
   products: pilotBankProducts,
   institutions: pilotInstitutions,
   documents: pilotDocuments,

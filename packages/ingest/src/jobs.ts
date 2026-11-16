@@ -1,3 +1,4 @@
+import { amexCdWatchSource, AMEX_CD_PAGE_URL } from './banks/amex-cd-watch';
 import { fdicFinancialsSource } from './fdic/financials-fetch';
 import { fdicInstitutionsSource } from './fdic/institutions';
 import { ecfrWatchSource } from './ecfr/watch';
@@ -19,9 +20,12 @@ import {
   watchPorts,
 } from './postgres/ports';
 import { runSource, type RunSummary } from './pipeline';
+import { markSourceManualFromEnv } from './postgres/sources';
 import { federalRegisterSource } from './register/watch';
 import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
 import { registerPilotBanks } from './scrape/banks/register';
+import { overnightWindowStart } from './scrape/rules';
+import { createScrapeSession } from './scrape/session';
 import { registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
 import { directGap, fiscalGap, runAuctionGap } from './treasury/gap';
@@ -40,6 +44,7 @@ export function registerConnectors(): void {
   registerJob('ecfr-745', (env) => runEcfr(env, '745'));
   registerJob('ecfr-328', (env) => runEcfr(env, '328'));
   registerJob('federal-register', (env) => runFederalRegister(env));
+  registerJob('amex-cd-page', (env) => runAmexCdPage(env));
   registerPilotBanks();
 }
 
@@ -157,6 +162,37 @@ async function runEcfr(env: NodeJS.ProcessEnv, part: '328' | '330' | '745'): Pro
   await prepareWatchSources(env);
   const source = ecfrWatchSource(part);
   reportRun(source.id, await runWatchSource(source, watchPorts(env, now), writeStdout), env);
+}
+
+async function runAmexCdPage(env: NodeJS.ProcessEnv): Promise<void> {
+  const now = (): string => new Date().toISOString();
+  if (overnightWindowStart(now(), 'America/Denver') === null) {
+    writeStdout('source amex-cd-page held reason=outside_window');
+    return;
+  }
+  await prepareWatchSources(env);
+  const session = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
+    fetch,
+    now,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    log: writeStdout,
+    onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
+  });
+  try {
+    const source = amexCdWatchSource(async () => {
+      const page = await session.get({
+        sourceId: 'amex-cd-page',
+        url: AMEX_CD_PAGE_URL,
+        timeZone: 'America/Denver',
+        excluded: false,
+      });
+      if (page.kind !== 'ok') throw new Error(`amex cd page ${page.kind}`);
+      return new TextDecoder().decode(page.body);
+    });
+    reportRun(source.id, await runWatchSource(source, watchPorts(env, now), writeStdout), env);
+  } finally {
+    session.flushLoad();
+  }
 }
 
 async function runFederalRegister(env: NodeJS.ProcessEnv): Promise<void> {

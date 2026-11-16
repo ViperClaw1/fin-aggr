@@ -318,6 +318,12 @@ Sallie Mae `bank:fdic:58177`. The CD URL without a trailing slash is a 301 to th
 
 Ally `bank:fdic:57803`. `robots.txt` `User-agent: *` disallows only `/content/dam/static/js/tagging/`. `view-rates/`, `/bank/cd-rates/`, and `/bank/high-yield-cd/` were fetched the same day. They state one APY per card and "Early withdrawal penalty will apply", or they point at the deposit-agreement PDF. They do not list a term next to a day count. No Ally CD product is emitted. The savings card on `view-rates/` stays the product.
 
+A product id that is not in the previous published `bank_products` version stays `first_connection` after the bank is confirmed. It is not published on that run. The known ids follow the usual stale, APY, and move checks.
+
+The American Express CD sentences are watched weekly, source `amex-cd-page`, Monday 11:00 UTC, the same workflow as the other weekly jobs. The fingerprint is those sentences and nothing else. The first snapshot is a baseline. A later difference queues one review and does not change the hard-coded quotes or publish a product. The fetch uses the scrape session, including the Denver overnight window.
+
+When a bank source publishes a version, every review row that was already open for that source is closed in the same transaction. Status is `superseded`, `decided_by` stays null, and `decision_reason` is `superseded by version <id>`. A review opened for rows that this same publish still holds is inserted after that close, so it stays open.
+
 The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), the 10-month and 12-month CDs, the IRA 6-month CD (`type` 3706), and the High Yield Savings row. Expected rates in the test are the hand values `0.045`, `0.0375`, and `0.032`.
 
 ## Alternatives considered
