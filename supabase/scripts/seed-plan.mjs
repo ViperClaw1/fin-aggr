@@ -10,6 +10,8 @@ const DOMAINS = [
   'par_yields',
   'national_rates',
   'documents',
+  // Empty demo version. Fixture products stay on `products`; scraped rows publish later.
+  'bank_products',
 ];
 
 const json = (value) => JSON.stringify(value);
