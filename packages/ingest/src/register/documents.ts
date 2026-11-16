@@ -17,7 +17,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** `2026-22495`, or a correction prefix such as the live `C1-2025-19864`. */
 const DOCUMENT_NUMBER = /^(?:[A-Z]\d-)?\d{4}-\d+$/;
 
-export interface CfrReference {
+interface CfrReference {
   title: number;
   part: number;
 }
