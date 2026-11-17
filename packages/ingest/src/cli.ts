@@ -16,6 +16,7 @@ import {
 } from './decisions';
 import { loadLocalEnv } from './env';
 import { requireReviewer, SIGNED_URL_SECONDS } from './policy';
+import { confirmReviewedProducts } from './postgres/bank-products';
 import { RAW_BUCKET } from './scrape/rules';
 
 const execFileAsync = promisify(execFile);
@@ -27,6 +28,19 @@ const publishers = new Map<string, Publisher>();
 /** Step 6 registers the parser that turns a held snapshot into a version. */
 export function registerPublisher(sourceId: string, publish: Publisher): void {
   publishers.set(sourceId, publish);
+}
+
+/** A bank row confirms the products it lists. The next bank run publishes them. */
+function bankApproval(login: string, nowIso: string): Publisher {
+  return async (sql, row) => {
+    await confirmReviewedProducts(sql, {
+      sourceId: row.source_id,
+      reason: row.reason,
+      snapshotId: row.snapshot_id,
+      login,
+      verifiedAt: nowIso.slice(0, 10),
+    });
+  };
 }
 
 export async function reviewerFrom(
@@ -151,7 +165,9 @@ export async function runCommand(
       );
       return;
     }
-    const publish = publishers.get(row.source_id);
+    const publish = row.source_id.startsWith('bank:')
+      ? bankApproval(login, io.now())
+      : publishers.get(row.source_id);
     if (publish === undefined) {
       throw new Error(`No held publisher is registered for ${row.source_id}`);
     }

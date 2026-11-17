@@ -48,8 +48,9 @@ export async function confirmPilotBank(
   const command = confirmBankCommand([input.sourceId]);
   const login = requireReviewer(input.login);
   const verifiedAt = confirmationDay(input.verifiedAt);
-  await confirmBank(sql, { sourceId: command.sourceId, login, verifiedAt });
-  log(formatBankConfirmed(command.sourceId, login, verifiedAt));
+  const state = await confirmBank(sql, { sourceId: command.sourceId, login, verifiedAt });
+  const line = formatBankConfirmed(command.sourceId, state.login, state.verifiedAt);
+  log(state.created ? line : `${line} (already confirmed)`);
 }
 
 function isDirect(): boolean {

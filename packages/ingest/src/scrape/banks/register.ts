@@ -4,6 +4,7 @@ import { writeStdout } from '../../run-line';
 import {
   bankConfirmation,
   commitBankProducts,
+  confirmedProductIds,
   previousBankProducts,
 } from '../../postgres/bank-products';
 import { finishJob, saveInstitutionSnapshot, sourceRequestedSince } from '../../postgres/ports';
@@ -29,6 +30,7 @@ function portsFor(env: NodeJS.ProcessEnv, spec: BankSpec): BankPorts {
   return {
     confirmation: () => withClient(url, (sql) => bankConfirmation(sql, spec.sourceId)),
     previous: () => withClient(url, (sql) => previousBankProducts(sql, spec.institutionId)),
+    confirmedIds: () => withClient(url, (sql) => confirmedProductIds(sql, spec.sourceId)),
     saveSnapshot: async (bytes) => {
       const saved = await saveInstitutionSnapshot(env, {
         sourceId: spec.sourceId,

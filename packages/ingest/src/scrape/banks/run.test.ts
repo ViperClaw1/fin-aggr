@@ -50,6 +50,7 @@ function ports(alreadyFetched = false): BankPorts & {
     ...state,
     confirmation: () => Promise.resolve({ confirmed: false }),
     previous: () => Promise.resolve([]),
+    confirmedIds: () => Promise.resolve([]),
     saveSnapshot: () => Promise.resolve(9),
     commit: (input) => {
       state.published = input.publish;

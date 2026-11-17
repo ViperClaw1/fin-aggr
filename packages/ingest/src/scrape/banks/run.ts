@@ -9,6 +9,8 @@ import { verifiedByHuman, type BankExtract } from './normalize';
 export interface BankPorts {
   confirmation(): Promise<{ confirmed: false } | { confirmed: true; verifiedAt: string }>;
   previous(): Promise<readonly Product[]>;
+  /** Product ids a person approved from the review queue. */
+  confirmedIds(): Promise<readonly string[]>;
   saveSnapshot(bytes: Uint8Array): Promise<number>;
   commit(input: {
     institutionId: string;
@@ -103,6 +105,7 @@ async function publishPage(input: BankRun, startedAt: string): Promise<void> {
     rows: extracted.products,
     previous,
     confirmed: confirmation.confirmed,
+    confirmedIds: await input.ports.confirmedIds(),
     retrievedDay: input.retrievedDay,
   });
   const extra = extracted.extra.map((row) =>

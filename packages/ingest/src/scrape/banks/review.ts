@@ -14,12 +14,6 @@ export function rateIsStale(asOf: string, retrievedDay: string): boolean {
   return midnight(retrievedDay) - midnight(asOf) > STALE_AFTER_DAYS * DAY_MS;
 }
 
-/**
- * First connection holds every row. After a person confirms the bank, a product
- * id that is not in the previous published version is still first connection.
- * A known row is held for a stale date, an APY outside 0–15%, or a move over 50bp.
- * A count under half the previous rows is `countGate` in the pipeline.
- */
 /** A throw from an adapter is manual mode. The caller publishes nothing. */
 export function readBankPage<T>(
   read: () => T,
@@ -31,10 +25,18 @@ export function readBankPage<T>(
   }
 }
 
+/**
+ * First connection holds every row. After a person confirms the bank, a product
+ * id is known when a person confirmed it or it is in the previous published version.
+ * Any other id is still first connection.
+ * A known row is held for a stale date, an APY outside 0–15%, or a move over 50bp.
+ * A count under half the previous rows is `countGate` in the pipeline.
+ */
 export function reviewBankProducts(input: {
   rows: readonly Product[];
   previous: readonly Product[];
   confirmed: boolean;
+  confirmedIds: readonly string[];
   retrievedDay: string;
 }): ValidationReport<Product> {
   if (!input.confirmed) {
@@ -44,7 +46,7 @@ export function reviewBankProducts(input: {
       blocked: null,
     };
   }
-  const knownIds = new Set(input.previous.map((row) => row.id));
+  const knownIds = new Set([...input.confirmedIds, ...input.previous.map((row) => row.id)]);
   const fresh: Product[] = [];
   const held: { key: string; reasons: string[] }[] = [];
   for (const row of input.rows) {

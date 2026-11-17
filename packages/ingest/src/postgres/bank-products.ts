@@ -96,11 +96,14 @@ export async function bankConfirmation(
   return { confirmed: true, verifiedAt };
 }
 
-/** Records that a person accepted this bank's products and eligibility. Does not publish. */
+/**
+ * Records that a person accepted this bank's eligibility. Does not publish.
+ * A bank that is already confirmed keeps its row; the caller prints that state.
+ */
 export async function confirmBank(
   sql: Sql,
   input: { sourceId: string; login: string; verifiedAt: string },
-): Promise<void> {
+): Promise<{ created: boolean; login: string; verifiedAt: string }> {
   const inserted = await sql.query(
     `insert into bank_confirmations (source_id, status, verified_by, login, verified_at)
      values ($1, 'verified', 'human', $2, $3)
@@ -108,8 +111,60 @@ export async function confirmBank(
      returning source_id`,
     [input.sourceId, input.login, input.verifiedAt],
   );
-  if (inserted.rows[0] === undefined)
-    throw new Error(`bank ${input.sourceId} is already confirmed`);
+  if (inserted.rows[0] !== undefined)
+    return { created: true, login: input.login, verifiedAt: input.verifiedAt };
+  const found = await sql.query(
+    `select login, verified_at::text as verified_at from bank_confirmations where source_id = $1`,
+    [input.sourceId],
+  );
+  const row = found.rows[0] ?? {};
+  return { created: false, login: String(row['login']), verifiedAt: String(row['verified_at']) };
+}
+
+/** Product ids a person confirmed for this bank. */
+export async function confirmedProductIds(sql: Sql, sourceId: string): Promise<string[]> {
+  const result = await sql.query(
+    `select product_id from bank_product_confirmations where source_id = $1 order by product_id`,
+    [sourceId],
+  );
+  return result.rows.map((row) => String(row['product_id']));
+}
+
+/**
+ * Product ids named in a bank review reason (`<id>: <reasons>; ...`).
+ * Only ids of this bank count, so a count-gate text is never read as a product.
+ */
+export function reviewedProductIds(sourceId: string, reason: string): string[] {
+  const prefix = `${sourceId.replace(/^bank:/, '').replaceAll(':', '-')}-`;
+  const ids = reason
+    .split('; ')
+    .map((part) => part.split(': ')[0] ?? '')
+    .filter((id) => id.startsWith(prefix) && id.length > prefix.length);
+  return [...new Set(ids)];
+}
+
+/** `ingest:approve` on a bank row confirms exactly the products listed in it. The next run publishes. */
+export async function confirmReviewedProducts(
+  sql: Sql,
+  input: {
+    sourceId: string;
+    reason: string;
+    snapshotId: number | null;
+    login: string;
+    verifiedAt: string;
+  },
+): Promise<string[]> {
+  const ids = reviewedProductIds(input.sourceId, input.reason);
+  if (ids.length === 0) throw new Error(`review for ${input.sourceId} lists no product`);
+  for (const id of ids) {
+    await sql.query(
+      `insert into bank_product_confirmations (source_id, product_id, login, verified_at, snapshot_id)
+       values ($1, $2, $3, $4, $5)
+       on conflict (source_id, product_id) do nothing`,
+      [input.sourceId, id, input.login, input.verifiedAt, input.snapshotId],
+    );
+  }
+  return ids;
 }
 
 async function insertVersion(sql: Sql, asOf: string): Promise<number> {

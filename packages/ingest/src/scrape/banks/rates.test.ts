@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   centsFromInteger,
@@ -185,6 +185,7 @@ describe('bank product review', () => {
       rows,
       previous: [],
       confirmed: false,
+      confirmedIds: [],
       retrievedDay: '2026-11-16',
     });
     expect(report.clean).toEqual([]);
@@ -200,6 +201,7 @@ describe('bank product review', () => {
       rows: [old, fresh],
       previous: [old, fresh],
       confirmed: true,
+      confirmedIds: [],
       retrievedDay: '2026-11-16',
     });
     expect(report.suspicious).toEqual([{ key: old.id, reasons: ['stale'] }]);
@@ -215,6 +217,7 @@ describe('bank product review', () => {
       rows: [known, added],
       previous: [known],
       confirmed: true,
+      confirmedIds: [],
       retrievedDay: '2026-11-16',
     });
     expect(report.clean.map((row) => row.id)).toEqual([known.id]);

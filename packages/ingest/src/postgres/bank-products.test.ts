@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Sql } from '../decisions';
 import { readAlly } from '../scrape/banks/57803';
-import { commitBankProducts, confirmBank } from './bank-products';
+import {
+  commitBankProducts,
+  confirmBank,
+  confirmReviewedProducts,
+  reviewedProductIds,
+} from './bank-products';
 
 const HTML = `<section><h3>Savings</h3><p>3.2% correct as of 11/12/26</p></section>`;
 
@@ -64,12 +69,65 @@ describe('bank product publish', () => {
 
   it('records a human confirmation and does not publish', async () => {
     const { sql, texts } = memorySql();
-    await confirmBank(sql, {
+    const state = await confirmBank(sql, {
       sourceId: 'bank:fdic:57803',
       login: 'owner',
       verifiedAt: '2026-11-15',
     });
+    expect(state).toEqual({ created: true, login: 'owner', verifiedAt: '2026-11-15' });
     expect(texts.some((text) => text.includes('bank_confirmations'))).toBe(true);
     expect(texts.some((text) => text.includes('publish_domain'))).toBe(false);
+  });
+
+  it('returns the stored state for a bank that is already confirmed', async () => {
+    const sql: Sql = {
+      query: (text) =>
+        Promise.resolve({
+          rows: text.startsWith('select')
+            ? [{ login: 'ViperClaw1', verified_at: '2026-11-15' }]
+            : [],
+        }),
+    };
+    const state = await confirmBank(sql, {
+      sourceId: 'bank:fdic:57803',
+      login: 'other',
+      verifiedAt: '2026-11-17',
+    });
+    expect(state).toEqual({ created: false, login: 'ViperClaw1', verifiedAt: '2026-11-15' });
+  });
+});
+
+describe('bank product confirmation from the queue', () => {
+  it('reads only this bank product ids from a review reason', () => {
+    expect(
+      reviewedProductIds(
+        'bank:fdic:27471',
+        'fdic-27471-3200: first_connection; fdic-27471-3510: first_connection, stale; fdic-1-x: stale',
+      ),
+    ).toEqual(['fdic-27471-3200', 'fdic-27471-3510']);
+    expect(reviewedProductIds('bank:fdic:27471', 'count 1 is under half of 4')).toEqual([]);
+  });
+
+  it('writes one confirmation per listed product and refuses a row with none', async () => {
+    const values: unknown[][] = [];
+    const sql: Sql = {
+      query: (text, params) => {
+        if (text.includes('bank_product_confirmations')) values.push([...(params ?? [])]);
+        return Promise.resolve({ rows: [] });
+      },
+    };
+    const input = { snapshotId: 9, login: 'ViperClaw1', verifiedAt: '2026-11-17' };
+    const ids = await confirmReviewedProducts(sql, {
+      ...input,
+      sourceId: 'bank:fdic:57803',
+      reason: 'fdic-57803-savings: first_connection',
+    });
+    expect(ids).toEqual(['fdic-57803-savings']);
+    expect(values).toEqual([
+      ['bank:fdic:57803', 'fdic-57803-savings', 'ViperClaw1', '2026-11-17', 9],
+    ]);
+    await expect(
+      confirmReviewedProducts(sql, { ...input, sourceId: 'bank:fdic:57803', reason: 'empty' }),
+    ).rejects.toThrow('review for bank:fdic:57803 lists no product');
   });
 });
