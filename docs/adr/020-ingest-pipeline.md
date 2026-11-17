@@ -59,7 +59,13 @@ GitHub-hosted runner addresses are often blocked as bots. Accepted at step 8.1: 
 
 Schedule is GitHub Actions (`schedule`), one workflow per cadence, `concurrency` per source (`cancel-in-progress: false`), `timeout-minutes`, one retry on a network error. The cadence table is in `docs/plan-stage-2.md` (step 5).
 
-Hosted runners start a scheduled workflow hours after the cron. On 2026-11-16 the 07:00 workflow started at 14:29 UTC, and `bank-rates` at 08:00 started at 15:14 UTC (10:14 Eastern). That is after 06:00 Eastern, so the run returned without requesting a bank and without a log line. `bank-rates` is therefore `0 3,4,5,6,7,8,9 * * *` (UTC), timeout 120 minutes, banks one at a time. 03:00 UTC is 22:00 Eastern in standard time. A start about seven hours late is still before 06:00 local for the zone whose window opens on that hour, and one late early slot can still sit inside the window for every US zone. The attempts share the `ingest-bank-rates` lock, so they do not run together. 03:00, 04:00, and 05:00 already belong to other workflows; that overlap stays, because the groups are different.
+GitHub drops and delays a cron that starts at minute 0. Since `f9c48b8` no scheduled `bank-rates` run has started; the runs that did start were `workflow_dispatch`. On 2026-11-17, by 08:48 UTC, DB contract, Review age, daily rules, live shape, and daily 07:00 had not started. Every cron in this repository uses minute 17, 37, or 47. `bank-rates` is `17 3-10 * * *` and `47 3-10 * * *` (UTC), timeout 120 minutes, banks one at a time. The once-per-night guard is unchanged, so a later slot does not request a bank again. The attempts share the `ingest-bank-rates` lock, so they do not run together. Hour 10 is still inside the Denver window when a start is late: standard time runs until 13:00 UTC, daylight time until 12:00 UTC.
+
+`amex-cd-page` runs at the end of that same job, on the same scrape session, and only inside the Denver overnight window. A `job_runs` row with `request_count > 0` since Monday 00:00 UTC skips the fetch (`already_fetched`, `request_count` 0). Monday 11:00 UTC is not the trigger: it is the edge of that window, and a delayed start falls outside it.
+
+Review age also reports a dropped schedule. A ready daily source with no `job_runs` row in 36 hours is `silent <id>`. `bank-rates` is silent when no `bank:` row has `request_count > 0` in those 36 hours; a skip row does not count. A weekly source uses 7 days plus 12 hours, so Monday morning does not fire before that week's run and Tuesday's review-age sees a missed week. `amex-cd-page` counts only `request_count > 0`, because the weekly guard writes a skip row on the other nights. The command prints `silent <n>` and exits 1 when the count is not 0. The overdue comments are written first. This check sees ingest sources. It does not see DB contract, CI, live shape, or Review age itself.
+
+If GitHub keeps dropping scheduled runs, trigger `workflow_dispatch` from an external scheduler (for example Supabase `pg_cron` and `pg_net` calling the GitHub API). That decision is deferred. It is not built here.
 
 A bank is requested at most once per overnight window. The guard is a `job_runs` row for that source with `request_count > 0` and `started_at` at or after 22:00 in the bank's zone. A later attempt logs `source <id> held reason=already_fetched` and inserts a row with `request_count` 0. Outside the window the log is `source <id> held reason=outside_window`, also with a row, and the bank is not requested. A skip row does not count as a request. Neither path exits without that line.
 
@@ -339,7 +345,7 @@ Ally `bank:fdic:57803`. `robots.txt` `User-agent: *` disallows only `/content/da
 
 A product id that is not in the previous published `bank_products` version stays `first_connection` after the bank is confirmed. It is not published on that run. The known ids follow the usual stale, APY, and move checks.
 
-The American Express CD sentences are watched weekly, source `amex-cd-page`, Monday 11:00 UTC, the same workflow as the other weekly jobs. The fingerprint is those sentences and nothing else. The first snapshot is a baseline. A later difference queues one review and does not change the hard-coded quotes or publish a product. The fetch uses the scrape session, including the Denver overnight window.
+The American Express CD sentences are watched weekly, source `amex-cd-page`, at the end of the `bank-rates` job. The fingerprint is those sentences and nothing else. The first snapshot is a baseline. A later difference queues one review and does not change the hard-coded quotes or publish a product. The fetch uses that job's scrape session, including the Denver overnight window. One fetch per UTC week: a later slot in the same week is `already_fetched`.
 
 When a bank source publishes a version, every review row that was already open for that source is closed in the same transaction. Status is `superseded`, `decided_by` stays null, and `decision_reason` is `superseded by version <id>`. A review opened for rows that this same publish still holds is inserted after that close, so it stays open.
 
@@ -361,6 +367,9 @@ The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), 
 - Turn an American Express JSON `apy` into a rate with `apy / 100` or decimal.js: rejected. `String(apy)` plus `rateFromPercent` does not do float arithmetic. A value that does not stringify inside six decimal places is reviewed, not rounded.
 - Publish a 0% row, or an IRA row, from the American Express pilot: rejected. `apy` 0 means the term is not offered. IRA products stay out of the pilot.
 - One `bank-rates` cron at 08:00 UTC: rejected. A hosted runner starts hours after the cron. On 2026-11-16 the 08:00 run started at 15:14 UTC (10:14 Eastern), after 06:00, and returned without a request and without a log.
+- Leave crons at minute 0: rejected. GitHub's load is highest then. Since `f9c48b8` the minute-0 `bank-rates` schedule has not started on its own.
+- Keep `amex-cd-page` on Monday 11:00 UTC: rejected. That instant is the edge of the Denver window, and a delayed start falls outside it.
+- Trigger `workflow_dispatch` from Supabase `pg_cron` and `pg_net` now: deferred. The off-minute crons and the silence check come first. An external scheduler is the next step only if GitHub keeps dropping runs.
 - A `workflow_dispatch` input that skips the overnight window: rejected. The window is a scrape rule, not a switch. A manual run is inside the window only during the UTC hours in the schedule section.
 
 ## Consequences

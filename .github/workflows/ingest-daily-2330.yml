@@ -1,9 +1,9 @@
-# Treasury Daily Par Yield Curve. 23:30 UTC (plan step 5).
+# Treasury Daily Par Yield Curve. 23:17 UTC (plan step 5).
 name: Ingest daily 23:30
 
 on:
   schedule:
-    - cron: '30 23 * * *'
+    - cron: '17 23 * * *'
   workflow_dispatch:
 
 permissions:

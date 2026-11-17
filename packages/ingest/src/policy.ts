@@ -9,6 +9,15 @@ export const SIGNED_URL_SECONDS = 7 * 24 * 60 * 60;
 /** A signal, not an SLA. Overdue rows stay held. */
 export const OVERDUE_DAYS = 3;
 
+/** A daily source with no `job_runs` row in this many hours was not started. */
+export const SILENCE_HOURS = 36;
+
+/**
+ * Weekly: Monday morning is still before that week's run (about 161 hours after
+ * the previous Monday), and Tuesday's review-age is about 185 hours after a miss.
+ */
+export const WEEKLY_SILENCE_HOURS = 7 * 24 + 12;
+
 /** Accepted 2026-11-04. One place so a revision is not a hunt through connectors. */
 export const PRODUCT_BOUNDS = {
   apyMin: '0',
@@ -64,6 +73,14 @@ export function formatNoIssue(id: number): string {
 
 export function formatQueueCounts(openCount: number, overdueCount: number): string {
   return `open ${String(openCount)}\noverdue ${String(overdueCount)}`;
+}
+
+export function formatSilence(ids: readonly string[]): string {
+  const lines = [`silent ${String(ids.length)}`];
+  for (const id of ids) {
+    lines.push(`silent ${id}`, `::warning::schedule silent: ${id}`);
+  }
+  return lines.join('\n');
 }
 
 export function overdueComment(id: number): string {

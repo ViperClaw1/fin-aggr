@@ -1,6 +1,7 @@
-# Bank rates, one bank at a time. Attempts at 03:00–09:00 UTC, timeout 120 minutes (ADR-020).
-# GitHub starts scheduled jobs hours late, so one 08:00 UTC slot lands after 06:00 Eastern.
+# Bank rates, one bank at a time. :17 and :47, hours 03–10 UTC, timeout 120 minutes (ADR-020).
+# Minute 0 is when GitHub drops and delays the most schedules.
 # A bank already requested in this overnight window is skipped inside the job.
+# amex-cd-page runs at the end of the same job, once per UTC week, inside the Denver window.
 # Manual workflow_dispatch does not skip the overnight window (ADR-020).
 # A manual run is inside that window only while the bank's local hour is 22–05.
 # Standard time, from 22:00 local until 06:00 local:
@@ -11,7 +12,8 @@ name: Ingest bank rates
 
 on:
   schedule:
-    - cron: '0 3,4,5,6,7,8,9 * * *'
+    - cron: '17 3-10 * * *'
+    - cron: '47 3-10 * * *'
   workflow_dispatch:
 
 permissions:

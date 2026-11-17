@@ -4,31 +4,51 @@ import { isBankSourceId } from './scrape/rules';
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 
 type Cadence =
-  'daily-0700' | 'daily-2330' | 'bank-rates' | 'daily-rules' | 'weekly-monday' | 'manual-yearly';
+  | 'daily-0700'
+  | 'daily-2330'
+  | 'bank-rates'
+  | 'daily-rules'
+  | 'weekly-monday'
+  | 'weekly-window'
+  | 'manual-yearly';
 
 export interface ScheduleEntry {
   id: string;
   cadence: Cadence;
-  /** UTC cron. `null` is workflow_dispatch only (tax tables). */
-  cron: string | null;
+  /** UTC cron lines. `null` is workflow_dispatch only (tax tables). */
+  cron: string | readonly string[] | null;
   workflow: string;
   timeoutMinutes: number;
   /** A ready source must have a job. Pending sources log a line and exit 0. */
   ready?: boolean;
+  /** Runs inside the bank-rates job. The workflow has no separate step for it. */
+  embedded?: boolean;
+  /** Skip rows do not count. Silence looks for `request_count > 0`. */
+  silence?: 'request';
+}
+
+/** Cron lines for one workflow. An empty list is workflow_dispatch only. */
+export function cronLines(cron: ScheduleEntry['cron']): readonly string[] {
+  if (cron === null) return [];
+  return typeof cron === 'string' ? [cron] : cron;
+}
+
+/** Text stored on `sources.schedule`. Two lines are joined so the column stays one value. */
+export function scheduleLabel(cron: ScheduleEntry['cron']): string {
+  return cronLines(cron).join(' and ');
 }
 
 /**
  * Cadence table from plan step 5.
- * 05:00 UTC is the daily rules pull: it misses db-contract (03:00), review age (04:00), and the 07:00 pull.
- * Bank rates attempt every hour 03:00–09:00 UTC. A hosted runner starts hours late; 03:00 UTC is 22:00
- * Eastern in standard time, and a start about seven hours late is still before 06:00 local for the zone
- * whose window opens on that hour. Monday 11:00 UTC is after the last bank attempt starts.
+ * Minutes are 17, 37, or 47. GitHub drops and delays a minute-0 cron under load.
+ * Bank rates attempt at :17 and :47, hours 03–10 UTC. The once-per-night guard
+ * still allows one request per bank. amex-cd-page runs at the end of that job.
  */
 export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'fdic-institutions',
     cadence: 'daily-0700',
-    cron: '0 7 * * *',
+    cron: '17 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -36,7 +56,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'treasury-fiscal-data',
     cadence: 'daily-0700',
-    cron: '0 7 * * *',
+    cron: '17 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -44,7 +64,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'treasurydirect',
     cadence: 'daily-0700',
-    cron: '0 7 * * *',
+    cron: '17 7 * * *',
     workflow: 'ingest-daily-0700.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -52,7 +72,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'treasury-par-yield',
     cadence: 'daily-2330',
-    cron: '30 23 * * *',
+    cron: '17 23 * * *',
     workflow: 'ingest-daily-2330.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -60,14 +80,14 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'bank-rates',
     cadence: 'bank-rates',
-    cron: '0 3,4,5,6,7,8,9 * * *',
+    cron: ['17 3-10 * * *', '47 3-10 * * *'],
     workflow: 'ingest-bank-rates.yml',
     timeoutMinutes: 120,
   },
   {
     id: 'ecfr-330',
     cadence: 'daily-rules',
-    cron: '0 5 * * *',
+    cron: '47 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -75,7 +95,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'ecfr-745',
     cadence: 'daily-rules',
-    cron: '0 5 * * *',
+    cron: '47 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -83,7 +103,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'ecfr-328',
     cadence: 'daily-rules',
-    cron: '0 5 * * *',
+    cron: '47 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -91,7 +111,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'federal-register',
     cadence: 'daily-rules',
-    cron: '0 5 * * *',
+    cron: '47 5 * * *',
     workflow: 'ingest-daily-rules.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -99,7 +119,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'fdic-financials',
     cadence: 'weekly-monday',
-    cron: '0 11 * * 1',
+    cron: '37 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 15,
     ready: true,
@@ -107,7 +127,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'ncua-5300',
     cadence: 'weekly-monday',
-    cron: '0 11 * * 1',
+    cron: '37 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
     ready: true,
@@ -115,7 +135,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'fdic-national-rates',
     cadence: 'weekly-monday',
-    cron: '0 11 * * 1',
+    cron: '37 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
     ready: true,
@@ -123,17 +143,19 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'bank-pdf-hashes',
     cadence: 'weekly-monday',
-    cron: '0 11 * * 1',
+    cron: '37 11 * * 1',
     workflow: 'ingest-weekly.yml',
     timeoutMinutes: 45,
   },
   {
     id: 'amex-cd-page',
-    cadence: 'weekly-monday',
-    cron: '0 11 * * 1',
-    workflow: 'ingest-weekly.yml',
-    timeoutMinutes: 15,
+    cadence: 'weekly-window',
+    cron: ['17 3-10 * * *', '47 3-10 * * *'],
+    workflow: 'ingest-bank-rates.yml',
+    timeoutMinutes: 120,
     ready: true,
+    embedded: true,
+    silence: 'request',
   },
   {
     id: 'tax-tables',
@@ -151,6 +173,7 @@ export type BankJob = (env: NodeJS.ProcessEnv, scrape: ScrapeClient) => Promise<
 
 const jobs = new Map<string, ScheduledJob>();
 const banks = new Map<string, BankJob>();
+let afterBanks: BankJob | undefined;
 
 /** Step 6 registers a connector here. A second registration is a mistake. */
 export function registerJob(id: string, job: ScheduledJob): void {
@@ -158,6 +181,12 @@ export function registerJob(id: string, job: ScheduledJob): void {
   if (!SCHEDULE.some((row) => row.id === id)) throw new Error(`unknown source ${id}`);
   if (jobs.has(id)) throw new Error(`source ${id} is already registered`);
   jobs.set(id, job);
+}
+
+/** Runs after the banks, on the same scrape session. One follow-up. */
+export function registerAfterBanks(job: BankJob): void {
+  if (afterBanks !== undefined) throw new Error('bank-rates follow-up is already registered');
+  afterBanks = job;
 }
 
 /** Step 8 registers one bank. `runScheduled('bank-rates')` runs them in registration order. */
@@ -171,6 +200,7 @@ export function registerBank(id: string, job: BankJob): void {
 export function resetJobs(): void {
   jobs.clear();
   banks.clear();
+  afterBanks = undefined;
 }
 
 export function scheduleById(id: string): ScheduleEntry | undefined {
@@ -189,22 +219,7 @@ export async function runScheduled(
   const entry = scheduleById(id);
   if (entry === undefined) throw new Error(`unknown source ${id}`);
   if (id === 'bank-rates') {
-    if (banks.size === 0) {
-      log('source bank-rates pending');
-      return;
-    }
-    const session = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
-      fetch,
-      now: () => new Date().toISOString(),
-      sleep: delay,
-      log,
-      onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
-    });
-    try {
-      await runOneAtATime([...banks.values()].map((job) => () => job(env, session)));
-    } finally {
-      session.flushLoad();
-    }
+    await runBankRates(env, log);
     return;
   }
   const job = jobs.get(id);
@@ -214,6 +229,40 @@ export async function runScheduled(
     return;
   }
   await onceOnNetworkError(() => job(env));
+}
+
+/** Banks, then the follow-up, on one scrape session. The first failure is raised at the end. */
+async function runBankRates(env: NodeJS.ProcessEnv, log: (line: string) => void): Promise<void> {
+  if (banks.size === 0 && afterBanks === undefined) {
+    log('source bank-rates pending');
+    return;
+  }
+  const session = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
+    fetch,
+    now: () => new Date().toISOString(),
+    sleep: delay,
+    log,
+    onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
+  });
+  let failure: Error | undefined;
+  try {
+    if (banks.size === 0) log('source bank-rates pending');
+    else await runOneAtATime([...banks.values()].map((job) => () => job(env, session)));
+  } catch (error) {
+    failure = asError(error);
+  }
+  try {
+    if (afterBanks !== undefined) await afterBanks(env, session);
+  } catch (error) {
+    failure ??= asError(error);
+  } finally {
+    session.flushLoad();
+  }
+  if (failure !== undefined) throw failure;
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error('ingest failed');
 }
 
 /**

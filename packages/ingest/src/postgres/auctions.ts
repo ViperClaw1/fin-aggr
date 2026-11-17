@@ -4,7 +4,7 @@ import { publishTreasuryProducts } from '../treasury/product-gaps';
 export async function ensureAuctionSources(sql: Sql): Promise<void> {
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '0 7 * * *')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '17 7 * * *')
      on conflict (id) do nothing`,
     [
       'treasury-fiscal-data',
@@ -14,7 +14,7 @@ export async function ensureAuctionSources(sql: Sql): Promise<void> {
   );
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '0 7 * * *')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '17 7 * * *')
      on conflict (id) do nothing`,
     [
       'treasurydirect',

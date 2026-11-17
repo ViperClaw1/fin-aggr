@@ -1,10 +1,10 @@
-# FDIC financials, NCUA 5300, FDIC national rates, bank PDF hashes, Amex CD sentences.
-# Monday 11:00 UTC (plan step 5).
+# FDIC financials, NCUA 5300, FDIC national rates, bank PDF hashes.
+# Monday 11:37 UTC. amex-cd-page runs from the bank-rates workflow (ADR-020).
 name: Ingest weekly
 
 on:
   schedule:
-    - cron: '0 11 * * 1'
+    - cron: '37 11 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -37,11 +37,4 @@ jobs:
     with:
       source: bank-pdf-hashes
       timeout-minutes: 45
-    secrets: inherit
-
-  amex-cd-page:
-    uses: ./.github/workflows/ingest-source.yml
-    with:
-      source: amex-cd-page
-      timeout-minutes: 15
     secrets: inherit

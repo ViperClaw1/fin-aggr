@@ -207,6 +207,16 @@ function dayBefore(year: number, month: number, day: number): ZoneClock {
   };
 }
 
+/** Monday 00:00 UTC of the week that contains `nowIso`. The week is a UTC date, not a bank zone. */
+export function utcWeekStart(nowIso: string): string {
+  const parsed = new Date(nowIso);
+  if (Number.isNaN(parsed.getTime())) throw new Error('week start time is invalid');
+  const daysSinceMonday = (parsed.getUTCDay() + 6) % 7;
+  return new Date(
+    Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate() - daysSinceMonday),
+  ).toISOString();
+}
+
 /**
  * UTC instant when the current overnight window opened (22:00 in the bank zone).
  * Null when `nowIso` is outside 22:00–06:00 there. 06:00 local is already outside.

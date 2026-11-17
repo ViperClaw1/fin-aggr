@@ -8,7 +8,7 @@ const SOURCE_ID = 'ncua-5300';
 export async function ensureNcuaSource(sql: Sql): Promise<void> {
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '0 11 * * 1')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '37 11 * * 1')
      on conflict (id) do nothing`,
     [
       SOURCE_ID,

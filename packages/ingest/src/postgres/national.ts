@@ -11,7 +11,7 @@ const SOURCE_URL = 'https://fred.stlouisfed.org/release/tables?rid=317&eid=12178
 export async function ensureNationalRatesSource(sql: Sql): Promise<void> {
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '0 11 * * 1')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '37 11 * * 1')
      on conflict (id) do nothing`,
     [SOURCE_ID, 'FDIC national deposit rates via FRED', SOURCE_URL],
   );

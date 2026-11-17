@@ -6,8 +6,8 @@ name: Ingest live shape
 
 on:
   schedule:
-    # 06:30 UTC, before the 07:00 directory pull
-    - cron: '30 6 * * *'
+    # 06:37 UTC, before the 07:17 directory pull
+    - cron: '37 6 * * *'
   workflow_dispatch:
 
 permissions:

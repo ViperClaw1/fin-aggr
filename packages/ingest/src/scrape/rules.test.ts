@@ -5,6 +5,7 @@ import {
   isOvernight,
   overnightWindowStart,
   optOutLate,
+  utcWeekStart,
   scrapeUserAgent,
   shortQuote,
 } from './rules';
@@ -81,6 +82,13 @@ describe('overnight window', () => {
     );
     expect(overnightWindowStart('2026-11-11T11:00:00.000Z', 'America/New_York')).toBeNull();
     expect(overnightWindowStart('2026-11-11T15:00:00.000Z', 'America/New_York')).toBeNull();
+  });
+
+  it('starts the week on Monday 00:00 UTC', () => {
+    expect(utcWeekStart('2026-11-16T05:17:00.000Z')).toBe('2026-11-16T00:00:00.000Z');
+    expect(utcWeekStart('2026-11-17T10:47:00.000Z')).toBe('2026-11-16T00:00:00.000Z');
+    expect(utcWeekStart('2026-11-15T23:00:00.000Z')).toBe('2026-11-09T00:00:00.000Z');
+    expect(() => utcWeekStart('yesterday')).toThrow(/time/i);
   });
 });
 

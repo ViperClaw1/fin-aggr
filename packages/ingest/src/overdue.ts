@@ -7,9 +7,11 @@ import {
   formatNoIssue,
   formatOverdue,
   formatQueueCounts,
+  formatSilence,
   OVERDUE_DAYS,
   overdueComment,
 } from './policy';
+import { silentSourceIds } from './silence';
 
 export function cutoffIso(nowMs: number): string {
   return new Date(nowMs - OVERDUE_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -49,15 +51,18 @@ if (isDirect()) {
     process.stderr.write('REVIEW_REPO_TOKEN is missing\n');
     process.exitCode = 1;
   } else {
-    withClient(databaseUrl(process.env), (sql) =>
-      mentionOverdue(sql, {
+    withClient(databaseUrl(process.env), async (sql) => {
+      await mentionOverdue(sql, {
         cutoffIso: cutoffIso(Date.now()),
         comment: (issueNumber, body) => commentOnIssue(fetch, { token, issueNumber, body }),
         log: (line) => {
           process.stdout.write(`${line}\n`);
         },
-      }),
-    ).catch((error: unknown) => {
+      });
+      const silent = await silentSourceIds(sql, Date.now());
+      process.stdout.write(`${formatSilence(silent)}\n`);
+      if (silent.length > 0) process.exitCode = 1;
+    }).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : 'review overdue failed';
       process.stderr.write(`${message}\n`);
       process.exitCode = 1;

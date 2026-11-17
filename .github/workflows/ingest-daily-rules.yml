@@ -1,9 +1,9 @@
-# eCFR 12 CFR 330, 745, 328 and the Federal Register. 05:00 UTC (plan step 5).
+# eCFR 12 CFR 330, 745, 328 and the Federal Register. 05:47 UTC (plan step 5).
 name: Ingest daily rules
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '47 5 * * *'
   workflow_dispatch:
 
 permissions:

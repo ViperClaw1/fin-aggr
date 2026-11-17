@@ -4,7 +4,7 @@ const OFFICIAL = {
   kind: 'official_api',
   license: 'public domain',
   operationalKind: 'official_api',
-  schedule: '0 5 * * *',
+  schedule: '47 5 * * *',
 } as const;
 
 const WATCH_SOURCES = [
@@ -39,7 +39,7 @@ const WATCH_SOURCES = [
     kind: 'issuer_document',
     license: 'issuer terms',
     operationalKind: 'scrape',
-    schedule: '0 11 * * 1',
+    schedule: '17 3-10 * * * and 47 3-10 * * *',
   },
 ] as const;
 

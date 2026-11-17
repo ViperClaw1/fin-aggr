@@ -1,11 +1,12 @@
 # Comments on private review issues that have been open for more than 3 days (ADR-020).
-# Stdout is counters and "overdue #N mentioned". Diffs, snapshot URLs, and artifacts stay out.
+# Also exits 1 when a scheduled ingest source has no job_runs row in its silence window.
+# Stdout is counters, "overdue #N mentioned", and "silent <id>". Diffs and snapshot URLs stay out.
 name: Review age
 
 on:
   schedule:
-    # 08:00 UTC+4
-    - cron: '0 4 * * *'
+    # 08:17 UTC+4
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 jobs:

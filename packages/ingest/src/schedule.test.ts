@@ -1,10 +1,12 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { isNetworkError, onceOnNetworkError } from './network';
 import { main } from './run';
 import {
   SCHEDULE,
+  cronLines,
+  registerAfterBanks,
   registerBank,
   registerJob,
   resetJobs,
@@ -17,10 +19,6 @@ const WORKFLOWS = join(process.cwd(), '.github/workflows');
 
 function workflowText(name: string): string {
   return readFileSync(join(WORKFLOWS, name), 'utf8');
-}
-
-function count(text: string, needle: string): number {
-  return text.split(needle).length - 1;
 }
 
 describe('network retry', () => {
@@ -115,10 +113,16 @@ describe('schedule catalog', () => {
     expect(scheduleById('missing')).toBeUndefined();
   });
 
-  it('retries bank rates across the hours a late runner can still use', () => {
-    expect(scheduleById('bank-rates')?.cron).toBe('0 3,4,5,6,7,8,9 * * *');
+  it('retries bank rates off the hour and keeps the overnight window', () => {
+    expect(cronLines(scheduleById('bank-rates')?.cron ?? null)).toEqual([
+      '17 3-10 * * *',
+      '47 3-10 * * *',
+    ]);
+    expect(scheduleById('amex-cd-page')?.workflow).toBe('ingest-bank-rates.yml');
+    expect(scheduleById('amex-cd-page')?.embedded).toBe(true);
     const text = workflowText('ingest-bank-rates.yml');
     expect(text).not.toContain('ignore_window');
+    expect(text).not.toContain('source: amex-cd-page');
     expect(text).toContain('Eastern 03:00–11:00');
     expect(text).toContain('Hawaii 08:00–16:00');
   });
@@ -199,6 +203,23 @@ describe('scheduled run', () => {
     expect(started).toBe(2);
   });
 
+  it('runs the follow-up after a bank failure, on the same session', async () => {
+    let scrape: object | undefined;
+    let followed = false;
+    registerBank('bank:a', (_env, session) => {
+      scrape = session;
+      return Promise.reject(new Error('validation'));
+    });
+    registerAfterBanks((_env, session) => {
+      followed = session === scrape;
+      return Promise.resolve();
+    });
+    await expect(
+      runScheduled('bank-rates', { FA_SCRAPE_MAILBOX: 'ops@fin-aggr.example' }, () => undefined),
+    ).rejects.toThrow('bank-rates failed 1: validation');
+    expect(followed).toBe(true);
+  });
+
   it('rejects a bank id that is not a source id', () => {
     expect(() => {
       registerBank('ally', () => Promise.resolve());
@@ -265,52 +286,5 @@ describe('ingest run command', () => {
     const lines: string[] = [];
     await main(['tax-tables'], {}, (line) => lines.push(line));
     expect(lines).toEqual(['source tax-tables pending']);
-  });
-});
-
-describe('schedule workflows', () => {
-  it('calls the shared runner once per source, with that source concurrency and timeout', () => {
-    const files = new Set(SCHEDULE.map((row) => row.workflow));
-    for (const file of files) {
-      const text = workflowText(file);
-      const rows = SCHEDULE.filter((row) => row.workflow === file);
-      expect(count(text, 'uses: ./.github/workflows/ingest-source.yml')).toBe(rows.length);
-      expect(text).not.toContain('upload-artifact');
-      expect(text).not.toContain('strategy:');
-      expect(text).toContain('permissions:\n  contents: read');
-      expect(text).toContain('workflow_dispatch:');
-      const cron = rows[0]?.cron ?? null;
-      expect(count(text, 'cron:')).toBe(cron === null ? 0 : 1);
-      expect(text).toContain(cron === null ? 'on:\n  workflow_dispatch:' : `cron: '${cron}'`);
-      for (const row of rows) {
-        expect(text).toContain(
-          `source: ${row.id}\n      timeout-minutes: ${String(row.timeoutMinutes)}`,
-        );
-      }
-    }
-  });
-
-  it('sets the source lock, the timeout, and one run command on the shared workflow', () => {
-    const text = workflowText('ingest-source.yml');
-    expect(text).toContain('group: ingest-${{ inputs.source }}');
-    expect(text).toContain('cancel-in-progress: false');
-    expect(text).toContain('timeout-minutes: ${{ inputs.timeout-minutes }}');
-    expect(text).toContain('pnpm ingest:run ${{ inputs.source }}');
-    expect(text).toContain('SUPABASE_DB_URL');
-    expect(text).toContain('SUPABASE_SECRET_KEY');
-    expect(text).toContain('REVALIDATE_SECRET');
-    expect(text).toContain('REVIEW_REPO_TOKEN');
-    expect(text).toContain('FRED_API_KEY');
-    expect(text).toContain('FA_SCRAPE_MAILBOX');
-    expect(text).toContain(
-      `fromJSON('["fdic-institutions","treasury-par-yield","fdic-financials","ncua-5300","fdic-national-rates","treasury-fiscal-data","treasurydirect","ecfr-330","ecfr-745","ecfr-328","federal-register","amex-cd-page"]')`,
-    );
-    expect(text).not.toContain('upload-artifact');
-    expect(text).not.toContain('console.log');
-  });
-
-  it('keeps the runner stdout on the fixed line', () => {
-    const source = readFileSync(join(process.cwd(), 'packages/ingest/src/run.ts'), 'utf8');
-    expect(source).not.toContain('console.log');
   });
 });

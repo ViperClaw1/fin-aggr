@@ -12,7 +12,7 @@ const SOURCE_URL =
 export async function ensureParYieldSource(sql: Sql): Promise<void> {
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '30 23 * * *')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '17 23 * * *')
      on conflict (id) do nothing`,
     [SOURCE_ID, 'Daily Treasury Par Yield Curve', SOURCE_URL],
   );

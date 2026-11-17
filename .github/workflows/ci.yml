@@ -5,9 +5,9 @@ on:
   push:
     branches: [main]
   pull_request:
-  # 02:00 UTC+4. Firefox and WebKit only; the other jobs skip a schedule run.
+  # 02:47 UTC+4. Firefox and WebKit only; the other jobs skip a schedule run.
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '47 22 * * *'
 
 jobs:
   gates:

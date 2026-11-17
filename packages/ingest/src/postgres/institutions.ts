@@ -9,7 +9,7 @@ const SOURCE_ID = 'fdic-institutions';
 export async function ensureFdicSource(sql: Sql): Promise<void> {
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '0 7 * * *')
+     values ($1, $2, $3, 'official_api', 'public domain', 'official_api', '17 7 * * *')
      on conflict (id) do nothing`,
     [SOURCE_ID, 'FDIC BankFind institutions', 'https://api.fdic.gov/banks/institutions'],
   );
