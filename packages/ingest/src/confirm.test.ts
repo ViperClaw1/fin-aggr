@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   confirmableFact,
   confirmationDate,
@@ -26,6 +26,8 @@ function scripted(rows: Record<string, unknown>[]): Sql & {
   };
 }
 
+const yes = () => Promise.resolve(true);
+
 describe('fact confirmation', () => {
   it('parses one known fact id', () => {
     expect(confirmCommand(['insurance:fdic'])).toEqual({ factId: 'insurance:fdic' });
@@ -49,6 +51,7 @@ describe('fact confirmation', () => {
       sql,
       { factId: 'insurance:fdic', login: 'ViperClaw1', verifiedAt: '2026-11-15T13:19:00.000Z' },
       (line) => lines.push(line),
+      yes,
     );
     expect(sql.calls[0]).toContain('insert into fact_confirmations');
     expect(sql.calls[0]).toContain("'verified'");
@@ -74,6 +77,7 @@ describe('fact confirmation', () => {
         sql,
         { factId: 'insurance:ncua', login: 'me@example.com', verifiedAt: '2026-11-15' },
         (line) => lines.push(line),
+        yes,
       ),
     ).rejects.toThrow(/login/i);
     expect(sql.calls).toEqual([]);
@@ -87,17 +91,39 @@ describe('fact confirmation', () => {
       query: (text) => {
         expect(lines[0]).toContain('quote: Single-price auctions.');
         calls.push(text);
-        return Promise.resolve({ rows: [] });
+        return Promise.resolve({
+          rows: text.startsWith('select')
+            ? [{ login: 'ViperClaw1', verified_at: '2026-11-16' }]
+            : [],
+        });
       },
     };
-    await expect(
-      confirmFact(
-        sql,
-        { factId: 'treasury:tier', login: 'ViperClaw1', verifiedAt: '2026-11-15' },
-        (line) => lines.push(line),
-      ),
-    ).rejects.toThrow('fact treasury:tier is already confirmed');
-    expect(lines[0]).toBe(formatFactPreview(confirmableFact('treasury:tier')));
-    expect(calls).toHaveLength(1);
+    await confirmFact(
+      sql,
+      { factId: 'treasury:tier', login: 'other', verifiedAt: '2026-11-17' },
+      (line) => lines.push(line),
+      yes,
+    );
+    expect(lines).toEqual([
+      formatFactPreview(confirmableFact('treasury:tier')),
+      'fact treasury:tier verified by human ViperClaw1 on 2026-11-16 (already confirmed)',
+    ]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('writes nothing when the person does not answer yes', async () => {
+    const lines: string[] = [];
+    const sql = scripted([{ fact_id: 'treasury:tier' }]);
+    await confirmFact(
+      sql,
+      { factId: 'treasury:tier', login: 'ViperClaw1', verifiedAt: '2026-11-17' },
+      (line) => lines.push(line),
+      () => Promise.resolve(false),
+    );
+    expect(sql.calls).toEqual([]);
+    expect(lines).toEqual([
+      formatFactPreview(confirmableFact('treasury:tier')),
+      'fact treasury:tier not confirmed',
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { createInterface } from 'node:readline/promises';
 import { promisify } from 'node:util';
 import { reviewerFrom } from './cli';
 import { databaseUrl, withClient } from './db';
@@ -88,16 +89,24 @@ export function formatConfirmed(factId: string, login: string, verifiedAt: strin
   return `fact ${factId} verified by human ${login} on ${verifiedAt}`;
 }
 
-/** Records verified / by human. Does not publish the quote. */
+/**
+ * Records verified / by human. Does not publish the quote.
+ * The preview is printed first; nothing is written unless `ask` answers yes.
+ */
 export async function confirmFact(
   sql: Sql,
   input: { factId: string; login: string; verifiedAt: string },
   log: (line: string) => void,
+  ask: () => Promise<boolean>,
 ): Promise<void> {
   const command = confirmCommand([input.factId]);
   const login = requireReviewer(input.login);
   const verifiedAt = confirmationDate(input.verifiedAt);
   log(formatFactPreview(confirmableFact(command.factId)));
+  if (!(await ask())) {
+    log(`fact ${command.factId} not confirmed`);
+    return;
+  }
   const inserted = await sql.query(
     `insert into fact_confirmations (fact_id, status, verified_by, login, verified_at)
      values ($1, 'verified', 'human', $2, $3)
@@ -105,10 +114,29 @@ export async function confirmFact(
      returning fact_id`,
     [command.factId, login, verifiedAt],
   );
-  if (inserted.rows[0] === undefined) {
-    throw new Error(`fact ${command.factId} is already confirmed`);
+  if (inserted.rows[0] !== undefined) {
+    log(formatConfirmed(command.factId, login, verifiedAt));
+    return;
   }
-  log(formatConfirmed(command.factId, login, verifiedAt));
+  const stored = await sql.query(
+    `select login, verified_at::text as verified_at from fact_confirmations where fact_id = $1`,
+    [command.factId],
+  );
+  const row = stored.rows[0] ?? {};
+  log(
+    `${formatConfirmed(command.factId, String(row['login']), String(row['verified_at']))} (already confirmed)`,
+  );
+}
+
+/** Only an explicit `y` or `yes` writes the row. */
+async function askYes(): Promise<boolean> {
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await prompt.question('Quote matches the source and proves the field? [y/N] ');
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    prompt.close();
+  }
 }
 
 function isDirect(): boolean {
@@ -126,9 +154,14 @@ if (isDirect()) {
   )
     .then((login) =>
       withClient(databaseUrl(process.env), (sql) =>
-        confirmFact(sql, { ...command, login, verifiedAt }, (line) => {
-          process.stdout.write(`${line}\n`);
-        }),
+        confirmFact(
+          sql,
+          { ...command, login, verifiedAt },
+          (line) => {
+            process.stdout.write(`${line}\n`);
+          },
+          askYes,
+        ),
       ),
     )
     .catch((error: unknown) => {
