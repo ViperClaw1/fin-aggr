@@ -40,6 +40,8 @@ for (const path of P0_ROUTES) {
   test(`${path} responds, shows the demo banner and has no serious or critical axe violations`, async ({
     page,
   }) => {
+    // axe over a full comparison table takes about 30 s on a slow runner
+    if (path.startsWith('/compare/')) test.setTimeout(60_000);
     const response = await page.goto(path);
     expect(response?.status()).toBeLessThan(400);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

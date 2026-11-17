@@ -6,14 +6,14 @@ export const metadata: Metadata = {
   alternates: { canonical: '/bot' },
 };
 
-// DRAFT pending owner approval. Not legal advice.
+// Approved by the owner on 2026-11-17. Not legal advice.
 export default function BotPage() {
   return (
     <>
       <h1>Crawler</h1>
       <p>
-        DRAFT. FA reads public rate pages of banks so the comparison can cite the bank&apos;s own
-        site. This page is who we are and how to ask us to stop.
+        FA reads public rate pages of banks so the comparison can cite the bank&apos;s own site.
+        This page is who we are and how to ask us to stop.
       </p>
       <h2>Who we are</h2>
       <p>

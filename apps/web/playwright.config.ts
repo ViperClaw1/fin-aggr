@@ -4,6 +4,14 @@ const PORT = 3100;
 // the component stand exists only in development (spec §6 rule 7), so it gets its own dev server
 const DEV_PORT = 3101;
 const CI = process.env['CI'] !== undefined;
+// Injected mock failures are keyed by a request hash, so the same document fails on every retry
+// (doc_07 at 0.15). The rate is inlined at build time: build and test with it at 0.
+const failureRate = process.env.NEXT_PUBLIC_MOCK_FAILURE_RATE?.trim();
+if (failureRate !== undefined && failureRate !== '' && Number(failureRate) !== 0) {
+  throw new Error(
+    `NEXT_PUBLIC_MOCK_FAILURE_RATE=${failureRate}: e2e needs 0. Unset it, then rebuild before pnpm e2e.`,
+  );
+}
 // Next 16 allows one `next dev` per app folder: with your own dev server running, point the
 // component project at it (E2E_DEV_URL=http://localhost:3000) and no second one is started.
 const selectedProjects = process.argv

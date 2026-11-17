@@ -180,6 +180,7 @@ test('the filter form writes the URL, Reset clears it', async ({ page }) => {
 });
 
 test('compare with the filter form has no serious or critical axe violations', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/compare/cd');
   await expect(page.getByRole('form', { name: 'Filters' })).toBeVisible();
   await expectNoA11yViolations(page);
