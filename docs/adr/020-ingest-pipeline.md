@@ -351,6 +351,26 @@ When a bank source publishes a version, every review row that was already open f
 
 The fixture is a trimmed copy of the 2026-11-15 JSON: the 3-month CD (`apy` 0), the 10-month and 12-month CDs, the IRA 6-month CD (`type` 3706), and the High Yield Savings row. Expected rates in the test are the hand values `0.045`, `0.0375`, and `0.032`.
 
+### Pilot vetting (2026-11-17)
+
+One request per page with `FA (+https://fin-aggr.vercel.app)` (`FA_SCRAPE_MAILBOX` was not set), 10 seconds per registrable domain, no cookie, outside the overnight window, as on 2026-11-15. Pages were not stored. FDIC ids come from `institutions` searched by name. Every response header block was under 6.2 KB. No page stated national availability in text; that column is not checked and is not assumed.
+
+| Bank | FDIC | Final host | robots `*` | Rates without JavaScript | Stated date | Decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| Bread (Comenity Capital) | `fdic:57570` UT | `www.breadfinancial.com/en/bread-savings.html` | `Allow: /` | APY in HTML and ld+json, minimum on page | none found | take; term table and penalty sentence still to find |
+| EverBank | `fdic:34775` FL | `www.everbank.com/banking/cd` | `Allow: /` | ld+json `QuantitativeValue` "APY for new accounts" | 11/13/2026 | take; penalty sentence not found yet |
+| Happen Bank (formerly LendingClub) | `fdic:32551` UT | `www.happen.com/personal-banking/savings/certificate-of-deposit` | `Allow: /` | APY, terms, $500 minimum in HTML | 11/16/2026 | take; penalty is "at the bank's discretion", not a day count, so review |
+| First-Citizens (CIT Bank) | `fdic:11063` NC | `www.cit.com/cit-bank/platinum-savings` | no rule | savings APY tiers in HTML | July 1, 2026 | take savings only; CD pages are a script shell |
+| Barclays | `fdic:57203` DE | `banking.us.barclays/` | robots 404, no policy | savings APY in HTML | 10/07/2026 | take savings only; CD URL unknown |
+| Synchrony | `fdic:27314` UT | `www.synchrony.com/banking/products/cd` | no rule | empty `% APY`, blank "as of" | blank | later; rates load by script |
+| Capital One | `fdic:4297` VA | `www.capitalone.com/bank/cds/online-cds/` | no rule | `NaN APY`. The CMS model `/assets/shell/page_models/bank/resourceapi/bank/disclosures/cds/online-cds.json` (inline as `web-shell-state`) carries the terms (6–48 months), the date, and the penalty (12 months or less: 3 months of interest; longer: 6 months), with rates as `${rates:cds:…:interestRateType=APY}` tokens. A `DynamicDataHandler` outside the 131 shell chunks fills them | 11/16/2026 | later; the token source needs a browser network capture |
+| Access Bank (ACCESSbank) | `fdic:58727` NE | `www.accessbank.com/for-you/accounts/interest-rates` | no rule | effective date element empty | not stated | later; table rules above, state eligibility |
+| Goldman Sachs Bank USA (Marcus) | `fdic:33124` NY | `www.marcus.com` | robots itself 403 | 403 | — | no; a block is manual mode |
+| Live Oak Banking Company | `fdic:58665` NC | `www.liveoakbank.com` | 403 | 403, captcha | — | no; manual mode |
+| Discover Bank | `fdic:5649` DE, `ACTIVE` 0 since 2025-05-18 | redirects to Capital One | — | — | — | no; covered by `fdic:4297` |
+
+FDIC `WEBADDR` is stale for Synchrony (`synchronybank.com`), Bread (`Savings.Breadfinancial.com`), and Live Oak (`liveoak.bank`). An adapter config uses the final host after redirects. None of these rows is in the registry until its adapter lands.
+
 ## Alternatives considered
 - Ingest inside `apps/web` route handlers: rejected. A scrape does not belong in the request path, and the web bundle must not take on connector code. Actions have no serverless time limit and already run Playwright.
 - Publish every parsed row and fix mistakes later: rejected. A wrong rate is the consumer-risk in the plan. Hold is the default.
