@@ -36,6 +36,7 @@
     "ingest:reject": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reject",
     "ingest:reopen": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts reopen",
     "ingest:overdue": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/overdue.ts",
+    "ingest:resume": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/resume.ts",
     "ingest:exclude": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/exclude.ts",
     "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/live.ts"
   },

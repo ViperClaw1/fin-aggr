@@ -220,6 +220,18 @@ describe('scheduled run', () => {
     expect(followed).toBe(true);
   });
 
+  it('logs a failed follow-up and still succeeds when the banks succeeded', async () => {
+    const lines: string[] = [];
+    registerBank('bank:a', () => Promise.resolve());
+    registerAfterBanks(() => Promise.reject(new Error('headers_overflow')));
+    await expect(
+      runScheduled('bank-rates', { FA_SCRAPE_MAILBOX: 'ops@fin-aggr.example' }, (line) =>
+        lines.push(line),
+      ),
+    ).resolves.toBeUndefined();
+    expect(lines).toContain('source bank-rates followup failed');
+  });
+
   it('rejects a bank id that is not a source id', () => {
     expect(() => {
       registerBank('ally', () => Promise.resolve());

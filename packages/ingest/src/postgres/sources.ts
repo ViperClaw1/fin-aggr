@@ -23,6 +23,39 @@ export async function markSourceManualFromEnv(
   await withClient(databaseUrl(env), (sql) => markSourceManual(sql, sourceId, reason));
 }
 
+/**
+ * Manual back to active, with a row in `source_status_log`. An opted-out bank
+ * is not resumed: the opt-out is the bank's decision, not a fault.
+ */
+export async function resumeSource(
+  sql: Sql,
+  input: { sourceId: string; reason: string; by: string },
+): Promise<void> {
+  const by = requireReviewer(input.by);
+  if (input.reason.trim() === '') throw new Error('reason is required');
+  await sql.query('begin');
+  try {
+    const result = await sql.query(
+      `update sources set status = 'active', notes = null
+        where id = $1 and status = 'manual' and excluded is not true
+        returning id`,
+      [input.sourceId],
+    );
+    if (result.rows.length === 0) {
+      throw new Error(`source ${input.sourceId} is not manual, or is excluded`);
+    }
+    await sql.query(
+      `insert into source_status_log (source_id, from_status, to_status, reason, login)
+       values ($1, 'manual', 'active', $2, $3)`,
+      [input.sourceId, input.reason.trim(), by],
+    );
+    await sql.query('commit');
+  } catch (error) {
+    await sql.query('rollback');
+    throw error;
+  }
+}
+
 export interface OptOut {
   sourceId: string;
   requestedAt: string;

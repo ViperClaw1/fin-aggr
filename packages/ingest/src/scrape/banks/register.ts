@@ -11,7 +11,7 @@ import { finishJob, saveInstitutionSnapshot, sourceRequestedSince } from '../../
 import { markSourceManualFromEnv } from '../../postgres/sources';
 import { upsertBankSources } from '../../postgres/banks';
 import { registerBank } from '../../schedule';
-import { AMEX_ORIGIN, AMEX_REFERER, createAmexSession } from '../../banks/amex-fetch';
+import { AMEX_ORIGIN, AMEX_REFERER } from '../../banks/amex-fetch';
 import { runBankPage, type BankPorts } from './run';
 import { allyAdapter, readAlly } from './57803';
 import { readAmex, amexAdapter } from './27471';
@@ -76,7 +76,7 @@ function dayOf(iso: string): string {
   return iso.slice(0, 10);
 }
 
-/** Ally and Sallie Mae share the session the schedule opened. */
+/** Every bank shares the session the schedule opened (one transport, `scrapeFetch`). */
 async function runHtmlBank(
   env: NodeJS.ProcessEnv,
   client: Parameters<typeof runBankPage>[0]['client'],
@@ -95,12 +95,6 @@ async function runHtmlBank(
     ports: portsFor(env, spec),
     log: writeStdout,
     now,
-  });
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
   });
 }
 
@@ -134,7 +128,7 @@ export function registerPilotBanks(): void {
       readSallie,
     ),
   );
-  registerBank(amexAdapter.sourceId, async (env) => {
+  registerBank(amexAdapter.sourceId, async (env, client) => {
     const spec: BankSpec = {
       sourceId: amexAdapter.sourceId,
       institutionId: amexAdapter.institutionId,
@@ -144,32 +138,22 @@ export function registerPilotBanks(): void {
     };
     const excluded = await ensureBank(env, spec);
     const now = () => new Date().toISOString();
-    const session = createAmexSession(env['FA_SCRAPE_MAILBOX'], {
-      now,
-      sleep: delay,
-      log: writeStdout,
-      onManual: (sourceId, reason) => markSourceManualFromEnv(env, sourceId, reason),
-    });
     const retrievedDay = dayOf(now());
-    try {
-      await runBankPage({
-        client: session,
-        request: {
-          sourceId: spec.sourceId,
-          url: spec.url,
-          timeZone: spec.timeZone,
-          excluded,
-          headers: { origin: AMEX_ORIGIN, referer: AMEX_REFERER },
-        },
-        institutionId: spec.institutionId,
-        retrievedDay,
-        read: (text) => readAmex(text, retrievedDay),
-        ports: portsFor(env, spec),
-        log: writeStdout,
-        now,
-      });
-    } finally {
-      session.flushLoad();
-    }
+    await runBankPage({
+      client,
+      request: {
+        sourceId: spec.sourceId,
+        url: spec.url,
+        timeZone: spec.timeZone,
+        excluded,
+        headers: { origin: AMEX_ORIGIN, referer: AMEX_REFERER },
+      },
+      institutionId: spec.institutionId,
+      retrievedDay,
+      read: (text) => readAmex(text, retrievedDay),
+      ports: portsFor(env, spec),
+      log: writeStdout,
+      now,
+    });
   });
 }

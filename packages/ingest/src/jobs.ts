@@ -27,7 +27,8 @@ import { federalRegisterSource } from './register/watch';
 import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
 import { registerPilotBanks } from './scrape/banks/register';
 import { databaseUrl, withClient } from './db';
-import { jobRecord } from './fetch-budget';
+import { CodedError, jobRecord } from './fetch-budget';
+import { scrapeFetch } from './scrape/http';
 import { overnightWindowStart, utcWeekStart } from './scrape/rules';
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 import { registerAfterBanks, registerJob } from './schedule';
@@ -175,7 +176,7 @@ async function runAmexCdPage(env: NodeJS.ProcessEnv, session?: ScrapeClient): Pr
     return;
   }
   const own = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
-    fetch,
+    fetch: scrapeFetch,
     now: () => new Date().toISOString(),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     log: writeStdout,
@@ -225,7 +226,8 @@ async function watchAmexCdPage(env: NodeJS.ProcessEnv, session: ScrapeClient): P
       timeZone: 'America/Denver',
       excluded: false,
     });
-    if (page.kind !== 'ok') throw new Error(`amex cd page ${page.kind}`);
+    if (page.kind === 'manual') throw new CodedError(page.reason);
+    if (page.kind !== 'ok') throw new CodedError(page.kind);
     return new TextDecoder().decode(page.body);
   });
   reportRun(source.id, await runWatchSource(source, watchPorts(env, now), writeStdout), env);

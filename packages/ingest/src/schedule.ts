@@ -1,6 +1,7 @@
 import { onceOnNetworkError } from './network';
 import { markSourceManualFromEnv } from './postgres/sources';
 import { isBankSourceId } from './scrape/rules';
+import { scrapeFetch } from './scrape/http';
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 
 type Cadence =
@@ -231,14 +232,14 @@ export async function runScheduled(
   await onceOnNetworkError(() => job(env));
 }
 
-/** Banks, then the follow-up, on one scrape session. The first failure is raised at the end. */
+/** Banks, then the follow-up, on one scrape session. A bank failure is raised at the end; a follow-up failure is only logged. */
 async function runBankRates(env: NodeJS.ProcessEnv, log: (line: string) => void): Promise<void> {
   if (banks.size === 0 && afterBanks === undefined) {
     log('source bank-rates pending');
     return;
   }
   const session = createScrapeSession(env['FA_SCRAPE_MAILBOX'], {
-    fetch,
+    fetch: scrapeFetch,
     now: () => new Date().toISOString(),
     sleep: delay,
     log,
@@ -253,8 +254,10 @@ async function runBankRates(env: NodeJS.ProcessEnv, log: (line: string) => void)
   }
   try {
     if (afterBanks !== undefined) await afterBanks(env, session);
-  } catch (error) {
-    failure ??= asError(error);
+  } catch {
+    // The watch already logged its stage and code and opened its issue.
+    // A broken watch does not fail a night whose banks succeeded.
+    log('source bank-rates followup failed');
   } finally {
     session.flushLoad();
   }
