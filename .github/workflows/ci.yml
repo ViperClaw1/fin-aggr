@@ -12,14 +12,14 @@ on:
 jobs:
   gates:
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_DATA_SOURCE: mock
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -34,7 +34,7 @@ jobs:
       - run: pnpm test
       - run: pnpm ingest:run bank-pdf-hashes # not ready → "source bank-pdf-hashes pending", exit 0, no secrets
       - run: pnpm bench # spec §5: rankProducts ≤ 50 ms on 120 products and on the 60 CDs
-      - run: pnpm golden:check # Python 3 ships with ubuntu-latest
+      - run: pnpm golden:check # Python 3 ships with ubuntu-24.04
       - run: pnpm build
       - run: pnpm bundle:report # First Load JS per route; fails above 200 KB on /compare/[category] (ADR-016 D7)
       - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
@@ -47,15 +47,15 @@ jobs:
   # `playwright install --with-deps`), then the browser suite itself (~9 minutes).
   e2e-browsers:
     if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       NEXT_PUBLIC_DATA_SOURCE: mock
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -66,7 +66,7 @@ jobs:
 
   lighthouse:
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       NEXT_PUBLIC_DATA_SOURCE: mock
@@ -76,9 +76,9 @@ jobs:
       matrix:
         scenario: [anonymous, profile]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -101,14 +101,15 @@ jobs:
   # "Skipped - Not affected" passes when production already serves an ancestor.
   production-commit:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The script polls for 15 minutes. Leave room for checkout and a slow Vercel deploy.
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 50
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
+          package-manager-cache: false # no pnpm in this job; v5 would auto-cache for packageManager
       - run: node tools/check-production-commit.mjs https://fin-aggr.vercel.app ${{ github.sha }}

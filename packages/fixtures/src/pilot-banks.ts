@@ -161,12 +161,9 @@ function bank(id: string, name: string, website: string): Institution {
       sourceId: 'fdic-institutions',
       sourceUrl: 'https://api.fdic.gov/banks/institutions',
       retrievedAt: IsoDateTime.parse('2026-11-13T12:55:01Z'),
-      verification: {
-        status: 'verified',
-        verifiedAt: IsoDate.parse('2026-11-13'),
-        by: 'official_api',
-      },
-      isMock: false,
+      // Demo copy of the FDIC record (invariant 4). Live data comes from fdic-institutions.
+      verification: { status: 'unverified' },
+      isMock: true,
     },
   };
 }

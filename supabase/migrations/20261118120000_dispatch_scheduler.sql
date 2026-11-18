@@ -94,11 +94,13 @@ begin
       ('dispatch-bank-rates', '5,35 3-10 * * *', 'ingest-bank-rates.yml'),
       ('dispatch-db-contract', '37 3 * * *', 'db-contract.yml'),
       ('dispatch-review-age', '17 4 * * *', 'review-age.yml'),
-      ('dispatch-daily-rules', '47 5 * * *', 'ingest-daily-rules.yml'),
+      -- Ingest slots run 12 minutes after the GitHub cron, so whichever fires second
+      -- lands on the per-source daily guard (ADR-020). 17.11: GitHub dropped both.
+      ('dispatch-daily-rules', '59 5 * * *', 'ingest-daily-rules.yml'),
       ('dispatch-live-shape', '37 6 * * *', 'ingest-live-shape.yml'),
-      ('dispatch-daily-0700', '17 7 * * *', 'ingest-daily-0700.yml'),
-      ('dispatch-weekly', '37 11 * * 1', 'ingest-weekly.yml'),
-      ('dispatch-daily-2330', '17 23 * * *', 'ingest-daily-2330.yml')
+      ('dispatch-daily-0700', '29 7 * * *', 'ingest-daily-0700.yml'),
+      ('dispatch-weekly', '49 11 * * 1', 'ingest-weekly.yml'),
+      ('dispatch-daily-2330', '29 23 * * *', 'ingest-daily-2330.yml')
     ) as t (name, schedule, file)
   loop
     perform cron.schedule(job.name, job.schedule, format('select public.dispatch_workflow(%L)', job.file));

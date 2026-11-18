@@ -110,15 +110,9 @@ describe('AC-5: mocks are never presented as data', () => {
   it('everything is isMock except reference constants, which stay unverified', () => {
     const all = provenances(f);
     expect(all.length).toBeGreaterThan(300);
-    const official = all.filter((p) => !p.isMock && p.sourceId === 'fdic-institutions');
-    const rest = all.filter((p) => p.isMock || p.sourceId !== 'fdic-institutions');
-    expect(official.length).toBeGreaterThan(0);
-    for (const p of official) {
-      expect(p.verification).toMatchObject({ status: 'verified', by: 'official_api' });
-    }
-    for (const p of rest) expect(p.verification.status).toBe('unverified');
+    for (const p of all) expect(p.verification.status).toBe('unverified');
     const real = [...new Set(all.filter((p) => !p.isMock).map((p) => p.sourceId))].sort();
-    expect(real).toEqual(['fdic-institutions', 'insurance-limit-reference']);
+    expect(real).toEqual(['insurance-limit-reference']);
   });
   it('facts are mock and documents synthetic', () => {
     expect(f.facts.every((x) => x.isMock && x.status === 'unverified')).toBe(true);
@@ -171,11 +165,12 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
+    // 85149612: pilot institutions are demo copies (isMock, unverified; invariant 4).
     // 957278a0: every product states scope national, channel online, no relationship rate (ADR-022).
     // 27a77937: pilot rates are demo (isMock). Real rates come from bank_products.
     // ea477c50: pilot bank rates sit beside the mock catalog. Product ids use hyphens
     // because a colon cannot be a Windows path segment on the product route.
     // 459d396c: call-report outliers are null, not a boolean, and have no percentile
-    expect(fnv1a(JSON.stringify(f))).toBe('957278a0');
+    expect(fnv1a(JSON.stringify(f))).toBe('85149612');
   });
 });
