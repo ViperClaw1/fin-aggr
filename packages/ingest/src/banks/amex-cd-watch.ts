@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fingerprintOf, readFingerprint } from '../content-hash';
+import type { PageResult } from '../scrape/session';
 import type { ValidationReport } from '../validate';
 import type { WatchSource } from '../watch';
 import { amexCdSentences } from '../scrape/banks/normalize';
@@ -20,6 +21,22 @@ export function amexCdWatchText(html: string): string {
       return text.includes(line) ? line : `missing: ${line}`;
     })
     .join('\n');
+}
+
+/**
+ * The page result before the watch runs. A manual stop (captcha, 403, header overflow)
+ * is a held night with that code, not a failure: the session already logged it and set
+ * the source to manual (ADR-020).
+ */
+export function amexCdPageOutcome(
+  page: PageResult,
+): { kind: 'text'; text: string } | { kind: 'held'; code: string; requestCount: 0 | 1 } {
+  if (page.kind === 'ok') return { kind: 'text', text: new TextDecoder().decode(page.body) };
+  if (page.kind === 'manual') return { kind: 'held', code: page.reason, requestCount: 1 };
+  if (page.kind === 'outside_window' || page.kind === 'excluded') {
+    return { kind: 'held', code: page.kind, requestCount: 0 };
+  }
+  return { kind: 'held', code: page.kind, requestCount: 1 };
 }
 
 function emptyReport(): ValidationReport<string> {

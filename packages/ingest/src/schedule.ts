@@ -254,14 +254,28 @@ async function runBankRates(env: NodeJS.ProcessEnv, log: (line: string) => void)
   }
   try {
     if (afterBanks !== undefined) await afterBanks(env, session);
-  } catch {
-    // The watch already logged its stage and code and opened its issue.
-    // A broken watch does not fail a night whose banks succeeded.
-    log('source bank-rates followup failed');
+  } catch (error) {
+    // A broken watch does not fail a night whose banks succeeded. Its issue is the signal.
+    log(followupFailedLine(error));
   } finally {
     session.flushLoad();
   }
   if (failure !== undefined) throw failure;
+}
+
+/**
+ * `source bank-rates followup failed stage=<stage> code=<code>`. Only the two tokens are
+ * copied from the error, never its message, so a URL or payload cannot reach the log.
+ */
+export function followupFailedLine(error: unknown): string {
+  const message = error instanceof Error ? error.message : '';
+  const match = /stage=([a-z_]+) code=([A-Za-z0-9_:-]+)/.exec(message);
+  const own =
+    typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
+  const stage = match?.[1] ?? 'followup';
+  const code =
+    match?.[2] ?? (typeof own === 'string' && /^[A-Za-z0-9_]+$/.test(own) ? own : 'unknown');
+  return `source bank-rates followup failed stage=${stage} code=${code}`;
 }
 
 function asError(error: unknown): Error {

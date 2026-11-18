@@ -6,6 +6,7 @@ import { main } from './run';
 import {
   SCHEDULE,
   cronLines,
+  followupFailedLine,
   registerAfterBanks,
   registerBank,
   registerJob,
@@ -229,7 +230,18 @@ describe('scheduled run', () => {
         lines.push(line),
       ),
     ).resolves.toBeUndefined();
-    expect(lines).toContain('source bank-rates followup failed');
+    expect(lines).toContain('source bank-rates followup failed stage=followup code=unknown');
+  });
+
+  it('prints the stage and code of a failed follow-up and nothing else from the message', () => {
+    expect(
+      followupFailedLine(
+        new Error('source amex-cd-page failed stage=fetch code=headers_overflow https://x'),
+      ),
+    ).toBe('source bank-rates followup failed stage=fetch code=headers_overflow');
+    expect(followupFailedLine(Object.assign(new Error('https://x'), { code: 'ECONNRESET' }))).toBe(
+      'source bank-rates followup failed stage=followup code=ECONNRESET',
+    );
   });
 
   it('rejects a bank id that is not a source id', () => {

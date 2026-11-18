@@ -1,4 +1,4 @@
-import { amexCdWatchSource, AMEX_CD_PAGE_URL } from './banks/amex-cd-watch';
+import { amexCdPageOutcome, amexCdWatchSource, AMEX_CD_PAGE_URL } from './banks/amex-cd-watch';
 import { fdicFinancialsSource } from './fdic/financials-fetch';
 import { fdicInstitutionsSource } from './fdic/institutions';
 import { ecfrWatchSource } from './ecfr/watch';
@@ -27,7 +27,7 @@ import { federalRegisterSource } from './register/watch';
 import { formatRunLine, formatStageFailure, writeStdout, writeStepSummary } from './run-line';
 import { registerPilotBanks } from './scrape/banks/register';
 import { databaseUrl, withClient } from './db';
-import { CodedError, jobRecord } from './fetch-budget';
+import { jobRecord } from './fetch-budget';
 import { scrapeFetch } from './scrape/http';
 import { overnightWindowStart, utcWeekStart } from './scrape/rules';
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
@@ -219,17 +219,34 @@ async function watchAmexCdPage(env: NodeJS.ProcessEnv, session: ScrapeClient): P
     );
     return;
   }
-  const source = amexCdWatchSource(async () => {
-    const page = await session.get({
+  const outcome = amexCdPageOutcome(
+    await session.get({
       sourceId: 'amex-cd-page',
       url: AMEX_CD_PAGE_URL,
       timeZone: 'America/Denver',
       excluded: false,
-    });
-    if (page.kind === 'manual') throw new CodedError(page.reason);
-    if (page.kind !== 'ok') throw new CodedError(page.kind);
-    return new TextDecoder().decode(page.body);
-  });
+    }),
+  );
+  if (outcome.kind === 'held') {
+    writeStdout(`source amex-cd-page held reason=${outcome.code}`);
+    await withClient(databaseUrl(env), (sql) =>
+      finishJob(
+        sql,
+        jobRecord({
+          source: { id: 'amex-cd-page', domain: 'bank_products' },
+          startedAt,
+          endedAt: now(),
+          status: 'held',
+          rowCount: 0,
+          errors: [outcome.code],
+          bytes: 0,
+          requestCount: outcome.requestCount,
+        }),
+      ),
+    );
+    return;
+  }
+  const source = amexCdWatchSource(() => Promise.resolve(outcome.text));
   reportRun(source.id, await runWatchSource(source, watchPorts(env, now), writeStdout), env);
 }
 
