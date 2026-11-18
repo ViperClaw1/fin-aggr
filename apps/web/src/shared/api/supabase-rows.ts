@@ -1,16 +1,32 @@
 // Maps PostgREST rows onto the contracts. Rates arrive as text from the *_text views (ADR-019).
-import type {
-  BankMetrics,
-  DocumentMeta,
-  FactRecord,
-  Institution,
-  InsuranceRules,
-  Product,
-  TaxTables,
+import {
+  GatewayError,
+  type BankMarket,
+  type BankMetrics,
+  type DocumentMeta,
+  type FactRecord,
+  type Institution,
+  type InsuranceRules,
+  type PageOf,
+  type Product,
+  type TaxTables,
 } from '@fa/contracts';
 import type { SponsoredItem } from '@fa/contracts/ads';
 
 type Row = Record<string, unknown>;
+
+/** Offset paging: the cursor is the index of the next row. */
+export function offsetOf(cursor: string | undefined): number {
+  if (cursor === undefined) return 0;
+  if (!/^\d+$/.test(cursor)) {
+    throw new GatewayError('validation_failed', `Invalid cursor "${cursor}"`, false);
+  }
+  return Number(cursor);
+}
+
+export function page<T>(items: T[], start: number, limit: number): PageOf<T> {
+  return { items, nextCursor: items.length === limit ? String(start + limit) : null };
+}
 
 function cents(value: unknown): unknown {
   if (typeof value === 'number') return value;
@@ -68,8 +84,26 @@ export function productFrom(row: Row, tiers: readonly Row[]): unknown {
     taxTreatment: row['tax_treatment'],
     validFrom: row['valid_from'],
     validTo: row['valid_to'],
+    scope: row['scope_kind'],
+    marketId: row['market_id'],
+    channel: row['channel'],
+    relationshipRate: row['relationship_rate'],
     provenance: row['provenance'],
   } satisfies Record<keyof Product, unknown>;
+}
+
+/** RLS serves only markets verified within 45 days (ADR-022). */
+export function bankMarketFrom(row: Row): unknown {
+  const verifiedAt = row['verified_at'];
+  return {
+    institutionId: row['bank_id'],
+    marketId: row['market_id'],
+    zipPrefixes: row['zip_prefixes'],
+    zips: row['zips'],
+    representativeZip: row['representative_zip'],
+    // timestamptz; the contract keeps the day
+    verifiedAt: typeof verifiedAt === 'string' ? verifiedAt.slice(0, 10) : verifiedAt,
+  } satisfies Record<keyof BankMarket, unknown>;
 }
 
 export function documentFrom(row: Row): unknown {

@@ -1,6 +1,7 @@
 // In-process mock gateway (ADR-005): fixtures from a seed, schema-checked responses, cursor
 // pagination, deterministic latency and failure injection keyed by a hash of the request.
 import {
+  BankMarket,
   BankMetrics,
   datasetRollup,
   DatasetInfo,
@@ -204,6 +205,8 @@ export function createMockGateway(options: MockGatewayOptions): DataGateway {
           [...f.products, ...f.bankProducts.products].find((p) => p.id === id) ??
           notFound(`Product ${id}`),
       ),
+    // every demo offer is national, so there is no market to match (ADR-022)
+    listBankMarkets: () => respond('listBankMarkets', [], listOf(BankMarket), () => []),
     getDocument: (id) =>
       respond(
         'getDocument',

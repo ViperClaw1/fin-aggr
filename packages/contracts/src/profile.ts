@@ -2,7 +2,13 @@
 import { z } from 'zod';
 import { Cents } from './money/cents';
 import { Rate } from './money/rate';
-import { AGE_RANGE, HOLDING_MONTHS_RANGE, RESIDENCIES, STATE_CODE_LENGTH } from './profile-rules';
+import {
+  AGE_RANGE,
+  HOLDING_MONTHS_RANGE,
+  RESIDENCIES,
+  STATE_CODE_LENGTH,
+  ZIP_PATTERN,
+} from './profile-rules';
 import { FilingStatus } from './reference';
 
 export const Profile = z.strictObject({
@@ -10,6 +16,8 @@ export const Profile = z.strictObject({
   taxYear: z.int(),
   filingStatus: FilingStatus,
   stateCode: z.string().length(STATE_CODE_LENGTH),
+  // never leaves the browser: market matching runs on the client (ADR-022)
+  zip: z.string().regex(ZIP_PATTERN).optional(),
   taxableIncome: Cents, // before this interest
   cityMarginalRate: Rate.nullable(), // entered by hand
   residency: z.enum(RESIDENCIES),

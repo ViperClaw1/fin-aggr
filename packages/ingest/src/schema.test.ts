@@ -170,3 +170,34 @@ describe('bank opt-out', () => {
     expect(optOut).toContain("opt_out_by ~ '^[A-Za-z0-9-]{1,39}$'");
   });
 });
+
+describe('geographic pricing (ADR-022)', () => {
+  const geo = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261118150000_geographic_pricing.sql'),
+    'utf8',
+  );
+
+  it('refuses a market row without its suffix or requestZip, and a national row with a suffix', () => {
+    expect(geo).toContain("scope_kind in ('national', 'market')");
+    expect(geo).toContain("when 'national' then market_id is null and position('--m-' in id) = 0");
+    expect(geo).toContain("right(id, char_length(market_id) + 4) = '--m-' || market_id");
+    expect(geo).toContain("provenance ? 'requestZip'");
+  });
+
+  it('backfills the pilot banks as national', () => {
+    expect(geo).toContain("institution_id in ('fdic:57803', 'fdic:27471', 'fdic:58177')");
+  });
+
+  it('serves only markets verified within 45 days, with a representative ZIP inside the market', () => {
+    expect(geo).toContain('representative_zip text not null');
+    expect(geo).toContain(
+      'representative_zip = any (zips) or left(representative_zip, 3) = any (zip_prefixes)',
+    );
+    expect(geo).toContain('alter table bank_markets enable row level security');
+    expect(geo).toContain('revoke select on bank_markets from anon, authenticated');
+    expect(geo).not.toMatch(/grant select \([^)]*verified_by/);
+    expect(geo).toContain(
+      "using (verified_at is not null and verified_at > now() - interval '45 days')",
+    );
+  });
+});

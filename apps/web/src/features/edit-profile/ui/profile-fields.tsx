@@ -5,7 +5,7 @@
 import { FILING_STATUS_LABEL, formatUsd, RESIDENCY_LABEL, type ProfileDraft } from '@fa/contracts';
 import { DEFAULT_SCENARIO } from '@/entities/profile';
 import { MoneyInput, PercentInput, StateSelect } from '@/shared/ui/inputs';
-import { ChoiceField, WholeNumberField } from './fields';
+import { ChoiceField, WholeNumberField, ZipField } from './fields';
 
 interface ProfileFieldsProps {
   draft: ProfileDraft;
@@ -30,6 +30,12 @@ export function ProfileFields({ draft, write }: ProfileFieldsProps) {
         value={draft.stateCode ?? ''}
         onChange={(code) => {
           write({ stateCode: code === '' ? undefined : code });
+        }}
+      />
+      <ZipField
+        defaultValue={draft.zip}
+        onValueChange={(zip) => {
+          write({ zip });
         }}
       />
       <MoneyInput

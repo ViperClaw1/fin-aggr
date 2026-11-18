@@ -27,6 +27,7 @@ export function createLazyGateway(load: () => Promise<DataGateway>): DataGateway
     getBankMetrics: call('getBankMetrics'),
     listProducts: call('listProducts'),
     getProduct: call('getProduct'),
+    listBankMarkets: call('listBankMarkets'),
     getDocument: call('getDocument'),
     listFacts: call('listFacts'),
     getTaxTables: call('getTaxTables'),

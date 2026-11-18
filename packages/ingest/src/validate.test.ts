@@ -53,6 +53,22 @@ describe('product bounds', () => {
     expect(report.suspicious[0]?.key).toBe('broken');
   });
 
+  it('holds a market rate read without a ZIP, so it is never published (ADR-022)', () => {
+    const market = {
+      ...product('0.04'),
+      id: 'fdic-1-cd12--m-ny-metro',
+      scope: 'market',
+      marketId: 'ny-metro',
+    };
+    const report = validateProducts([market], []);
+    expect(report.clean).toHaveLength(0);
+    expect(report.suspicious).toEqual([
+      { key: 'fdic-1-cd12--m-ny-metro', reasons: ['market offer requires provenance.requestZip'] },
+    ]);
+    const withZip = { ...market, provenance: { ...provenance, requestZip: '10001' } };
+    expect(validateProducts([withZip], []).clean).toHaveLength(1);
+  });
+
   it('blocks an empty batch and a batch smaller than half', () => {
     expect(countGate(0, 4)).toBe('empty');
     expect(countGate(1, 4)).toBe('shrunk');

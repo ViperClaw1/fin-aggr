@@ -19,7 +19,7 @@ describe('persistence', () => {
     const backend = memoryBackend();
     const store = await hydrated(backend);
     store.getState().update({ stateCode: 'NY' });
-    expect(stored(backend)).toEqual({ state: { draft: { stateCode: 'NY' } }, version: 1 });
+    expect(stored(backend)).toEqual({ state: { draft: { stateCode: 'NY' } }, version: 2 });
   });
   it('a reload (a new store on the same storage) restores the draft', async () => {
     const backend = memoryBackend();
@@ -51,7 +51,7 @@ describe('persistence', () => {
 describe('a stored profile that cannot be used is discarded once', () => {
   it.each([
     ['broken JSON', '{"state":', 'corrupt'],
-    ['a future version', JSON.stringify({ state: { draft: {} }, version: 2 }), 'future_version'],
+    ['a future version', JSON.stringify({ state: { draft: {} }, version: 3 }), 'future_version'],
     [
       'an unknown key',
       JSON.stringify({ state: { draft: { email: 'x' } }, version: 1 }),
@@ -100,13 +100,25 @@ describe('migration', () => {
     },
     1,
   );
-  it('migrates a stored v0 draft and rewrites it as v1', async () => {
+  it('migrates a stored v0 draft and rewrites it at the current version', async () => {
     const backend = memoryBackend({
       [STORAGE_KEY]: JSON.stringify({ state: { draft: { state: 'TX', age: 50 } }, version: 0 }),
     });
     const store = await hydrated(backend, { migrate });
     expect(store.getState().draft).toEqual({ stateCode: 'TX', age: 50 });
-    expect(stored(backend)).toEqual({ state: { draft: { stateCode: 'TX', age: 50 } }, version: 1 });
+    expect(stored(backend)).toEqual({ state: { draft: { stateCode: 'TX', age: 50 } }, version: 2 });
+  });
+  it('a stored v1 draft (before zip) loads unchanged and then accepts a zip', async () => {
+    const backend = memoryBackend({
+      [STORAGE_KEY]: JSON.stringify({ state: { draft: { stateCode: 'NY', age: 40 } }, version: 1 }),
+    });
+    const store = await hydrated(backend);
+    expect(store.getState().draft).toEqual({ stateCode: 'NY', age: 40 });
+    expect(store.getState().update({ zip: '10001' }).ok).toBe(true);
+    expect(stored(backend)).toEqual({
+      state: { draft: { stateCode: 'NY', age: 40, zip: '10001' } },
+      version: 2,
+    });
   });
   it('a version with no migration step is discarded as corrupt', async () => {
     const backend = memoryBackend({
@@ -144,7 +156,7 @@ describe('actions', () => {
     store.getState().clearAll();
     expect([store.getState().draft, backend.getItem(STORAGE_KEY)]).toEqual([{}, null]);
     store.getState().update({ age: 30 });
-    expect(stored(backend)).toEqual({ state: { draft: { age: 30 } }, version: 1 });
+    expect(stored(backend)).toEqual({ state: { draft: { age: 30 } }, version: 2 });
   });
 });
 

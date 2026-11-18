@@ -27,6 +27,7 @@ export { Id, IsoDate, IsoDateTime } from './primitives';
 export { fact, Provenance, type Fact } from './provenance';
 export { MAX_RULE_DEPTH, ProfileField, Rule, ruleDepth } from './rules';
 export {
+  BankMarket,
   BankMetrics,
   DocumentMeta,
   EarlyWithdrawal,
@@ -56,6 +57,7 @@ export {
 } from './reference';
 export { Profile, ProfileDraft } from './profile';
 export { isProfile, isProfileDraft } from './profile-checks';
+export { ZIP_PATTERN } from './profile-rules';
 export { normalizeInstitutionQuery, normalizeProductQuery } from './query-keys';
 export { Assumption, CalcStep } from './calc';
 export { FactQuery, InstitutionQuery, Page, ProductQuery, type PageOf } from './queries';

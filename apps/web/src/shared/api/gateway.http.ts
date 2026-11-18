@@ -10,6 +10,7 @@ export const httpGateway: DataGateway = {
   getBankMetrics: notImplemented('getBankMetrics'),
   listProducts: notImplemented('listProducts'),
   getProduct: notImplemented('getProduct'),
+  listBankMarkets: notImplemented('listBankMarkets'),
   getDocument: notImplemented('getDocument'),
   listFacts: notImplemented('listFacts'),
   getTaxTables: notImplemented('getTaxTables'),

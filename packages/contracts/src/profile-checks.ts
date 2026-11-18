@@ -8,6 +8,7 @@ import {
   HOLDING_MONTHS_RANGE,
   RESIDENCIES,
   STATE_CODE_LENGTH,
+  ZIP_PATTERN,
 } from './profile-rules';
 
 type Check = (v: unknown) => boolean;
@@ -25,28 +26,36 @@ const nullable =
   (v) =>
     v === null || check(v);
 
-/** A strict object: exactly these keys, each passing its check. */
-const strictObject = (fields: Record<string, Check>): Check => {
-  const keys = Object.keys(fields).sort().join(',');
-  return (v) =>
-    typeof v === 'object' &&
-    v !== null &&
-    !Array.isArray(v) &&
-    Object.keys(v).sort().join(',') === keys &&
-    Object.entries(fields).every(([k, check]) => check((v as Record<string, unknown>)[k]));
+const isZip: Check = (v) => typeof v === 'string' && ZIP_PATTERN.test(v);
+
+/** A strict object: these keys (the `optional` ones may be absent), each present one passing its check. */
+const strictObject = (fields: Record<string, Check>, optional: readonly string[] = []): Check => {
+  const required = Object.keys(fields).filter((k) => !optional.includes(k));
+  return (v) => {
+    if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+    const value = v as Record<string, unknown>;
+    return (
+      required.every((k) => k in value) &&
+      Object.entries(value).every(([k, item]) => fields[k]?.(item) === true)
+    );
+  };
 };
 
-const PROFILE = strictObject({
-  version: (v) => v === 1,
-  taxYear: Number.isSafeInteger,
-  filingStatus: oneOf(FILING_STATUSES),
-  stateCode: (v) => typeof v === 'string' && v.length === STATE_CODE_LENGTH,
-  taxableIncome: isCents,
-  cityMarginalRate: nullable(isRate),
-  residency: oneOf(RESIDENCIES),
-  age: nullable(inRange(AGE_RANGE)),
-  scenario: strictObject({ principal: isCents, holdingMonths: inRange(HOLDING_MONTHS_RANGE) }),
-});
+const PROFILE = strictObject(
+  {
+    version: (v) => v === 1,
+    taxYear: Number.isSafeInteger,
+    filingStatus: oneOf(FILING_STATUSES),
+    stateCode: (v) => typeof v === 'string' && v.length === STATE_CODE_LENGTH,
+    zip: isZip,
+    taxableIncome: isCents,
+    cityMarginalRate: nullable(isRate),
+    residency: oneOf(RESIDENCIES),
+    age: nullable(inRange(AGE_RANGE)),
+    scenario: strictObject({ principal: isCents, holdingMonths: inRange(HOLDING_MONTHS_RANGE) }),
+  },
+  ['zip'],
+);
 
 export const isProfile = (x: unknown): x is Profile => PROFILE(x);
 
@@ -67,6 +76,7 @@ const DRAFT = partialObject({
   taxYear: Number.isSafeInteger,
   filingStatus: oneOf(FILING_STATUSES),
   stateCode: (v) => typeof v === 'string' && v.length === STATE_CODE_LENGTH,
+  zip: isZip,
   taxableIncome: isCents,
   cityMarginalRate: nullable(isRate),
   residency: oneOf(RESIDENCIES),

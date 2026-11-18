@@ -171,10 +171,11 @@ describe('variant coverage for E2', () => {
 describe('stability', () => {
   it('the default data set does not change by accident', () => {
     // Update only on a deliberate fixture change, and say why in the commit message.
+    // 957278a0: every product states scope national, channel online, no relationship rate (ADR-022).
     // 27a77937: pilot rates are demo (isMock). Real rates come from bank_products.
     // ea477c50: pilot bank rates sit beside the mock catalog. Product ids use hyphens
     // because a colon cannot be a Windows path segment on the product route.
     // 459d396c: call-report outliers are null, not a boolean, and have no percentile
-    expect(fnv1a(JSON.stringify(f))).toBe('27a77937');
+    expect(fnv1a(JSON.stringify(f))).toBe('957278a0');
   });
 });

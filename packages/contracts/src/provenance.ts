@@ -13,6 +13,11 @@ export const Provenance = z.strictObject({
       quote: z.string().min(1).max(400),
     })
     .optional(),
+  /** The ZIP our request carried when the page priced by ZIP (ADR-022). Never a user's ZIP. */
+  requestZip: z
+    .string()
+    .regex(/^\d{5}$/)
+    .optional(),
   verification: z.discriminatedUnion('status', [
     z.strictObject({
       status: z.literal('verified'),

@@ -10,6 +10,7 @@ describe('http gateway', () => {
     ['getBankMetrics', () => httpGateway.getBankMetrics('fdic:1', IsoDate.parse('2026-01-01'))],
     ['listProducts', () => httpGateway.listProducts({ category: 'cd' })],
     ['getProduct', () => httpGateway.getProduct('prod_cd_0001')],
+    ['listBankMarkets', () => httpGateway.listBankMarkets()],
     ['getDocument', () => httpGateway.getDocument('doc_01')],
     ['listFacts', () => httpGateway.listFacts({ documentId: 'doc_01' })],
     ['getTaxTables', () => httpGateway.getTaxTables(2026)],
@@ -19,7 +20,7 @@ describe('http gateway', () => {
     ['getDatasetInfo', () => httpGateway.getDatasetInfo()],
   ];
 
-  it('covers all 12 DataGateway methods', () => {
+  it('covers all 13 DataGateway methods', () => {
     expect(new Set(calls.map(([name]) => name))).toEqual(new Set(Object.keys(httpGateway)));
   });
 

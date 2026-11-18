@@ -86,6 +86,32 @@ export const EarlyWithdrawal = z.discriminatedUnion('kind', [
 ]);
 export type EarlyWithdrawal = z.infer<typeof EarlyWithdrawal>;
 
+/** A bank's pricing market, lower-case words joined by single hyphens (ADR-022). */
+const MarketId = z
+  .string()
+  .max(24)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+const Zip5 = z.string().regex(/^\d{5}$/);
+
+/**
+ * ZIPs where a bank's market price applies. Gateways return only rows a person verified
+ * within the freshness window; the browser matches the profile ZIP against them (ADR-022).
+ */
+export const BankMarket = z
+  .strictObject({
+    institutionId: Id,
+    marketId: MarketId,
+    zipPrefixes: z.array(z.string().regex(/^\d{3}$/)),
+    zips: z.array(Zip5),
+    representativeZip: Zip5,
+    verifiedAt: IsoDate,
+  })
+  .refine((m) => m.zips.length > 0 || m.zipPrefixes.length > 0, {
+    error: 'a market lists at least one ZIP or prefix',
+  });
+export type BankMarket = z.infer<typeof BankMarket>;
+
 const ProductShape = z.strictObject({
   id: Id,
   institutionId: Id,
@@ -102,9 +128,34 @@ const ProductShape = z.strictObject({
   taxTreatment: z.enum(['taxable', 'state_local_exempt', 'federal_exempt']),
   validFrom: IsoDate,
   validTo: IsoDate.nullable(),
+  // Pricing geography (ADR-022). Defaults keep national rows and older payloads valid.
+  scope: z.enum(['national', 'market']).default('national'),
+  marketId: MarketId.nullable().default(null),
+  channel: z.enum(['online', 'branch']).default('online'),
+  relationshipRate: z.boolean().default(false),
   provenance: Provenance,
 });
 type ProductShape = z.infer<typeof ProductShape>;
+
+/** Suffix that makes a market offer a product of its own (ADR-022). */
+const MARKET_ID_SEPARATOR = '--m-';
+
+function scopeProblems(p: ProductShape): string[] {
+  if (p.scope === 'national') {
+    const problems: string[] = [];
+    if (p.marketId !== null) problems.push('national offer has a marketId');
+    if (p.id.includes(MARKET_ID_SEPARATOR)) problems.push('national id carries a market suffix');
+    return problems;
+  }
+  if (p.marketId === null) return ['market offer requires marketId'];
+  const problems: string[] = [];
+  if (!p.id.endsWith(`${MARKET_ID_SEPARATOR}${p.marketId}`))
+    problems.push('market offer id must end with its market suffix');
+  // invariant 6: a market rate is only the rate read for a ZIP in that market
+  if (p.provenance.requestZip === undefined)
+    problems.push('market offer requires provenance.requestZip');
+  return problems;
+}
 
 /** Tiers sorted by minBalance, non-overlapping; only the last one may be open-ended. */
 function tierProblems(tiers: readonly RateTier[]): string[] {
@@ -121,7 +172,7 @@ function tierProblems(tiers: readonly RateTier[]): string[] {
 
 /** Cross-field invariants not expressible per field (spec §4 + E1 plan). */
 function productProblems(p: ProductShape): string[] {
-  const problems = tierProblems(p.tiers);
+  const problems = [...tierProblems(p.tiers), ...scopeProblems(p)];
   if (p.validTo !== null && p.validTo < p.validFrom) problems.push('validTo is before validFrom');
   if (p.maxDeposit !== null && p.maxDeposit < p.minOpening)
     problems.push('maxDeposit is below minOpening');

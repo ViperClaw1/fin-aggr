@@ -1,6 +1,7 @@
 'use client';
 
-// Form fields the shared inputs do not cover: a select of labelled codes and a whole number.
+// Form fields the shared inputs do not cover: a select of labelled codes, a whole number, a ZIP.
+import { ZIP_PATTERN } from '@fa/contracts';
 import { useId, useState } from 'react';
 import { parseWholeNumber } from '../model/whole-number';
 
@@ -102,6 +103,52 @@ export function WholeNumberField({
       {invalid ? (
         <p id={`${id}-error`} className="text-sm text-danger">
           Enter a whole number, for example 12.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+interface ZipFieldProps {
+  defaultValue: string | undefined;
+  /** Called on blur with a five-digit ZIP, or `undefined` when the field is cleared. */
+  onValueChange: (value: string | undefined) => void;
+}
+
+/** A text field: a ZIP keeps its leading zeros. It stays in this browser (ADR-022). */
+export function ZipField({ defaultValue, onValueChange }: ZipFieldProps) {
+  const id = useId();
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        ZIP code
+      </label>
+      <p id={`${id}-hint`} className="text-xs text-muted">
+        Optional. Some banks price by region. Stays in this browser.
+      </p>
+      <input
+        id={id}
+        name="zip"
+        type="text"
+        inputMode="numeric"
+        maxLength={5}
+        placeholder="e.g. 10001"
+        autoComplete="off"
+        defaultValue={defaultValue ?? ''}
+        aria-invalid={invalid}
+        aria-describedby={invalid ? `${id}-hint ${id}-error` : `${id}-hint`}
+        onBlur={(e) => {
+          const text = e.currentTarget.value.trim();
+          const ok = text === '' || ZIP_PATTERN.test(text);
+          setInvalid(!ok);
+          if (ok) onValueChange(text === '' ? undefined : text);
+        }}
+        className="control"
+      />
+      {invalid ? (
+        <p id={`${id}-error`} className="text-sm text-danger">
+          Enter five digits, for example 10001.
         </p>
       ) : null}
     </div>

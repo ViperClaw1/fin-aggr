@@ -72,6 +72,10 @@ function product(input: {
     taxTreatment: 'taxable',
     validFrom: IsoDate.parse(input.asOf),
     validTo: null,
+    scope: 'national',
+    marketId: null,
+    channel: 'online',
+    relationshipRate: false,
     provenance: provenance(sourceId, input.url, input.asOf),
   };
 }

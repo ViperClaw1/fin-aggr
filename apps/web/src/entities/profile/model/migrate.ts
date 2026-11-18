@@ -1,14 +1,17 @@
 // Versioned profile drafts. Changing the shape of Profile means: bump CURRENT_VERSION, add the
 // step from the previous version to MIGRATIONS, and a test (.claude/rules/web.md).
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 /** Turns a draft of version `from` into version `from + 1`. The result is validated by the caller. */
 type Migration = (draft: unknown) => unknown;
 export type MigrationTable = Readonly<Partial<Record<number, Migration>>>;
 
-/** No older versions exist yet. */
-const MIGRATIONS: MigrationTable = {};
+const MIGRATIONS: MigrationTable = {
+  // 1 → 2 added the optional `zip` (ADR-022); a version 1 draft is already a valid version 2 draft.
+  // The bump makes an older build read a draft with `zip` as a future version, not a corrupt one.
+  1: (draft) => draft,
+};
 
 export class ProfileVersionError extends Error {
   constructor(

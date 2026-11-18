@@ -1,6 +1,7 @@
 // Spec §4 contract tests 4 and 6: one suite every DataGateway implementation must pass.
 // Imported only by *.test.ts files.
 import {
+  BankMarket,
   BankMetrics,
   DatasetInfo,
   DocumentMeta,
@@ -153,5 +154,16 @@ export function gatewayContract(name: string, create: () => DataGateway): void {
         for (const ad of ads) expect(SponsoredItem.parse(ad).placement).toBe(placement);
       }
     });
+
+    marketsContract(gw);
+  });
+}
+
+function marketsContract(gw: DataGateway): void {
+  it('serves bank markets that parse, and only for institutions it knows', async () => {
+    for (const m of await gw.listBankMarkets()) {
+      expect(BankMarket.parse(m)).toEqual(m);
+      expect(Institution.parse(await gw.getInstitution(m.institutionId)).id).toBe(m.institutionId);
+    }
   });
 }

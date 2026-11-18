@@ -1,6 +1,7 @@
 // Server read of the published dataset (ADR-019). The browser never loads this module.
 import 'server-only';
 import {
+  BankMarket,
   BankMetrics,
   DatasetDomainInfo,
   DatasetInfo,
@@ -24,11 +25,14 @@ import {
 import { SponsoredItem, SponsoredPlacement } from '@fa/contracts/ads';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
+  bankMarketFrom,
   documentFrom,
   factFrom,
   institutionFrom,
   insuranceFrom,
   metricsFrom,
+  offsetOf,
+  page,
   productFrom,
   sourceFrom,
   sponsoredFrom,
@@ -58,18 +62,8 @@ function parsed<T>(schema: Schema<T>, value: unknown, label = 'row'): T {
 
 const INSTITUTION_COLUMNS =
   'id, name, regulator, kind, partner_institution_ids, hq_state, website, provenance';
-
-function offsetOf(cursor: string | undefined): number {
-  if (cursor === undefined) return 0;
-  if (!/^\d+$/.test(cursor)) {
-    throw new GatewayError('validation_failed', `Invalid cursor "${cursor}"`, false);
-  }
-  return Number(cursor);
-}
-
-function page<T>(items: T[], start: number, limit: number): PageOf<T> {
-  return { items, nextCursor: items.length === limit ? String(start + limit) : null };
-}
+// anon may not read verified_by (column grant in the ADR-022 migration)
+const MARKET_COLUMNS = 'bank_id, market_id, zip_prefixes, zips, representative_zip, verified_at';
 
 async function many(
   query: PromiseLike<{ data: unknown; error: DbError | null }>,
@@ -231,6 +225,10 @@ export function createSupabaseGateway(): DataGateway {
     },
     listProducts,
     getProduct,
+    listBankMarkets: async () =>
+      (await many(supabase().from('bank_markets').select(MARKET_COLUMNS).order('bank_id'))).map(
+        (row) => parsed(BankMarket, bankMarketFrom(row), 'bank market'),
+      ),
     getDocument,
     listFacts,
     getTaxTables: (taxYear) => taxTables(taxYear),

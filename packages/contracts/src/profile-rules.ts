@@ -10,3 +10,5 @@ export const RESIDENCIES = ['us_citizen', 'us_resident', 'nonresident'] as const
 export const AGE_RANGE = [0, 120] as const;
 export const HOLDING_MONTHS_RANGE = [1, 120] as const;
 export const STATE_CODE_LENGTH = 2;
+/** Five-digit ZIP. Browser-only, matched against bank markets on the client (ADR-022). */
+export const ZIP_PATTERN = /^\d{5}$/;

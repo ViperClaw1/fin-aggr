@@ -1,7 +1,14 @@
 // The data source boundary (ADR-005). Never imports profile.ts (ADR-004).
 import type { z } from 'zod';
 import type { SponsoredItem, SponsoredPlacement } from './ads';
-import type { BankMetrics, DocumentMeta, FactRecord, Institution, Product } from './entities';
+import type {
+  BankMarket,
+  BankMetrics,
+  DocumentMeta,
+  FactRecord,
+  Institution,
+  Product,
+} from './entities';
 import type { Id, IsoDate } from './primitives';
 import type { FactQuery, InstitutionQuery, PageOf, ProductQuery } from './queries';
 import type { DatasetInfo, InsuranceRules, SourceRegistryEntry, TaxTables } from './reference';
@@ -32,6 +39,8 @@ export interface DataGateway {
   getBankMetrics(id: Id, asOf?: IsoDate): Promise<BankMetrics>;
   listProducts(q: z.input<typeof ProductQuery>): Promise<PageOf<Product>>;
   getProduct(id: Id): Promise<Product>;
+  /** Markets verified within 45 days; the browser matches a ZIP against them (ADR-022). */
+  listBankMarkets(): Promise<BankMarket[]>;
   getDocument(id: Id): Promise<DocumentMeta>;
   listFacts(q: z.input<typeof FactQuery>): Promise<FactRecord[]>;
   getTaxTables(taxYear: number): Promise<TaxTables>;

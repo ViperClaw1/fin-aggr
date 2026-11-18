@@ -109,6 +109,7 @@ describe('zod schemas and zod-free checks agree', () => {
       taxYear: [2026, 2026.5, Number.MAX_SAFE_INTEGER + 1, '2026'],
       filingStatus: ['single', 'married_joint', 'head_of_household', 'other', 0],
       stateCode: ['NY', 'N', 'NYC', '', 7],
+      zip: ['10001', '1000', '100011', '1000a', 10001, null],
       taxableIncome: [0, 12345600, -1, 1.5, '1'],
       cityMarginalRate: [null, '0.03', '1', '1.5', 0.03],
       residency: ['us_citizen', 'us_resident', 'nonresident', 'alien', null],
@@ -141,13 +142,15 @@ describe('zod schemas and zod-free checks agree', () => {
     }
     expect(values.filter(isProfile).length).toBeGreaterThan(100);
     expect(agree(Profile, isProfile, values)).toEqual([]);
-  });
+    // 20000 zod parses: about 2 s alone, past the 5 s default when the whole suite runs in parallel
+  }, 20_000);
 
   it('ProfileDraft on partial drafts built from edge values for every field', () => {
     const fields: Record<string, readonly unknown[]> = {
       taxYear: [2026, 2026.5, Number.MAX_SAFE_INTEGER + 1, '2026'],
       filingStatus: ['single', 'married_joint', 'head_of_household', 'other', 0],
       stateCode: ['NY', 'N', 'NYC', '', 7],
+      zip: ['10001', '1000', '100011', '1000a', 10001, null],
       taxableIncome: [0, 12345600, -1, 1.5, '1'],
       cityMarginalRate: [null, '0.03', '1', '1.5', 0.03],
       residency: ['us_citizen', 'us_resident', 'nonresident', 'alien', null],
@@ -181,7 +184,7 @@ describe('zod schemas and zod-free checks agree', () => {
     }
     expect(values.filter(isProfileDraft).length).toBeGreaterThan(100);
     expect(agree(ProfileDraft, isProfileDraft, values)).toEqual([]);
-  });
+  }, 20_000);
 
   it('query normalizers give what the schemas give on valid queries', () => {
     const products = [

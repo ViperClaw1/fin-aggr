@@ -146,6 +146,10 @@ function finish(rng: Rng, d: Draft, i: number, input: ProductInputs): Product {
     eligibility: cycle(RULES, i + rng.int(0, RULES.length - 1)),
     validFrom: VALID_FROM,
     validTo: null,
+    scope: 'national',
+    marketId: null,
+    channel: 'online',
+    relationshipRate: false,
     // the product's own provenance stands for its APY tiers
     provenance: mockProvenance(
       'mock-issuer-rates',

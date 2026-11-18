@@ -45,6 +45,10 @@ function productFromDb(row: Record<string, unknown>): ProductRow {
     taxTreatment: row['tax_treatment'],
     validFrom: textField(row, 'valid_from'),
     validTo: row['valid_to'],
+    scope: row['scope_kind'],
+    marketId: row['market_id'],
+    channel: row['channel'],
+    relationshipRate: row['relationship_rate'],
     provenance: row['provenance'],
   });
   if (!parsed.success) throw new Error('stored bank product is invalid');
@@ -54,7 +58,7 @@ function productFromDb(row: Record<string, unknown>): ProductRow {
 const PRODUCT_COLUMNS = `id, institution_id, category, name, term_months, tier_mode, compounding,
   min_opening::text as min_opening, max_deposit::text as max_deposit,
   early_withdrawal, eligibility, tax_treatment, valid_from::text as valid_from,
-  valid_to::text as valid_to, provenance`;
+  valid_to::text as valid_to, scope_kind, market_id, channel, relationship_rate, provenance`;
 
 async function readBankProducts(sql: Sql, institutionId: string): Promise<ProductRow[]> {
   const result = await sql.query(
@@ -187,11 +191,12 @@ async function copyKept(
     `insert into products (
        version_id, id, institution_id, category, name, term_months, tier_mode, compounding,
        min_opening, max_deposit, early_withdrawal, eligibility, tax_treatment,
-       valid_from, valid_to, provenance
+       valid_from, valid_to, scope_kind, market_id, channel, relationship_rate, provenance
      )
      select $1, p.id, p.institution_id, p.category, p.name, p.term_months, p.tier_mode,
             p.compounding, p.min_opening, p.max_deposit, p.early_withdrawal, p.eligibility,
-            p.tax_treatment, p.valid_from, p.valid_to, p.provenance
+            p.tax_treatment, p.valid_from, p.valid_to, p.scope_kind, p.market_id, p.channel,
+            p.relationship_rate, p.provenance
      from products p
      join dataset_versions v on v.id = p.version_id
      where v.domain = '${DOMAIN}' and v.is_current and v.is_mock = false
@@ -215,9 +220,10 @@ async function insertProduct(sql: Sql, versionId: number, product: ProductRow): 
     `insert into products (
        version_id, id, institution_id, category, name, term_months, tier_mode, compounding,
        min_opening, max_deposit, early_withdrawal, eligibility, tax_treatment,
-       valid_from, valid_to, provenance
+       valid_from, valid_to, scope_kind, market_id, channel, relationship_rate, provenance
      ) values (
-       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14, $15, $16::jsonb
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14, $15,
+       $16, $17, $18, $19, $20::jsonb
      )`,
     [
       versionId,
@@ -235,6 +241,10 @@ async function insertProduct(sql: Sql, versionId: number, product: ProductRow): 
       product.taxTreatment,
       product.validFrom,
       product.validTo,
+      product.scope,
+      product.marketId,
+      product.channel,
+      product.relationshipRate,
       JSON.stringify(product.provenance),
     ],
   );

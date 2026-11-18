@@ -220,20 +220,27 @@ for (const path of ['/', '/compare/cd']) {
   });
 }
 
-// AC-4: a sentinel income never reaches a request URL, header or body
+// AC-4: a sentinel income and ZIP (ADR-022) never reach a request URL, header, body, or the console
 test('the profile never leaves the browser (AC-4 sentinel)', async ({ page }) => {
-  const SENTINEL = /987,?654/;
+  const SENTINEL = /987,?654|07962/;
   const leaks: string[] = [];
   page.on('request', (request) => {
     const parts = [request.url(), JSON.stringify(request.headers()), request.postData() ?? ''];
     if (parts.some((p) => SENTINEL.test(p))) leaks.push(request.url());
+  });
+  page.on('console', (message) => {
+    if (SENTINEL.test(message.text())) leaks.push(`console: ${message.text()}`);
   });
 
   await page.goto('/');
   await openDrawer(page);
   await drawer(page).getByLabel('State of residence').selectOption('NY');
   await fillIncome(page, '987654');
+  const zip = drawer(page).getByLabel('ZIP code');
+  await zip.fill('07962');
+  await zip.blur();
   await expect(profileButton(page)).toHaveText('Profile: 2 of 4 filled');
+  expect(page.url()).not.toMatch(SENTINEL);
 
   // A second goto of / in Firefox sometimes never reaches load (same as f51cf4c on /compare/cd).
   for (const path of ['/compare/cd', '/compare/savings']) {
