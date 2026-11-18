@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Institution as InstitutionRow } from '@fa/contracts';
-import { revalidateDomain } from '../cli';
+import { revalidateDomain } from '../revalidate';
 import { databaseUrl, withClient } from '../db';
 import type { Sql } from '../decisions';
 import { upstreamStreak } from '../failure';
@@ -59,6 +59,15 @@ async function uploadRaw(env: NodeJS.ProcessEnv, path: string, bytes: Uint8Array
   if (uploaded.error !== null) throw new Error('raw snapshot upload failed');
 }
 
+export async function downloadRawSnapshot(
+  env: NodeJS.ProcessEnv,
+  bucketPath: string,
+): Promise<Uint8Array> {
+  const downloaded = await storageClient(env).storage.from(RAW_BUCKET).download(bucketPath);
+  if (downloaded.error !== null) throw new Error('raw snapshot download failed');
+  return new Uint8Array(await downloaded.data.arrayBuffer());
+}
+
 export async function previousSnapshotBytes(
   env: NodeJS.ProcessEnv,
   sourceId: string,
@@ -72,9 +81,7 @@ export async function previousSnapshotBytes(
     return typeof bucketPath === 'string' ? bucketPath : null;
   });
   if (path === null) return null;
-  const downloaded = await storageClient(env).storage.from(RAW_BUCKET).download(path);
-  if (downloaded.error !== null) throw new Error('raw snapshot download failed');
-  return new Uint8Array(await downloaded.data.arrayBuffer());
+  return downloadRawSnapshot(env, path);
 }
 
 async function signedRawUrl(env: NodeJS.ProcessEnv, path: string): Promise<string> {

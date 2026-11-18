@@ -1,4 +1,4 @@
-import { revalidateDomain } from '../cli';
+import { revalidateDomain } from '../revalidate';
 import { databaseUrl, withClient } from '../db';
 import type { Sql } from '../decisions';
 import { upstreamStreak } from '../failure';

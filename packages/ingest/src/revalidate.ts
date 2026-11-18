@@ -1,5 +1,22 @@
 import { formatIssueCreated } from './policy';
 
+/** `POST /api/revalidate` on the site, after a publish commits (ADR-019). */
+export async function revalidateDomain(env: NodeJS.ProcessEnv, domain: string): Promise<void> {
+  const configured = env['NEXT_PUBLIC_SITE_URL']?.trim() ?? '';
+  const origin = (configured === '' ? 'https://fin-aggr.vercel.app' : configured).replace(
+    /\/$/,
+    '',
+  );
+  const secret = env['REVALIDATE_SECRET']?.trim() ?? '';
+  if (secret === '') throw new Error('REVALIDATE_SECRET is missing');
+  const response = await fetch(`${origin}/api/revalidate`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ domain }),
+  });
+  if (!response.ok) throw new Error(`revalidate failed: ${String(response.status)}`);
+}
+
 /** HTTP status from `revalidate failed: 500`. Zero when the message has no status. */
 export async function revalidateOrStatus(revalidate: () => Promise<void>): Promise<number | null> {
   try {

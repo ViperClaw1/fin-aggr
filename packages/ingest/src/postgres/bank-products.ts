@@ -272,6 +272,27 @@ async function publishRows(
 }
 
 /**
+ * Publishes approved rows of one bank inside the caller's transaction.
+ * A row whose id is already in the current version is skipped, so a second
+ * call is a no-op (null). This bank's other current rows are kept.
+ */
+export async function publishApprovedBankRows(
+  tx: Sql,
+  input: { sourceId: string; institutionId: string; rows: readonly ProductRow[] },
+): Promise<number | null> {
+  const current = await previousBankProducts(tx, input.institutionId);
+  const currentIds = new Set(current.map((row) => row.id));
+  const rows = input.rows.filter((row) => !currentIds.has(row.id));
+  if (rows.length === 0) return null;
+  const replaced = new Set(rows.map((row) => row.id));
+  const kept = current.map((row) => row.id).filter((id) => !replaced.has(id));
+  const versionId = await publishRows(tx, input.institutionId, rows, kept);
+  await supersedeOpenReviews(tx, input.sourceId, versionId);
+  await tx.query(`update sources set last_updated_at = now() where id = $1`, [input.sourceId]);
+  return versionId;
+}
+
+/**
  * Clean rows become the current `bank_products` version.
  * A null publish leaves the previous version current.
  * Other banks are copied. A held id of this bank keeps its previous row.

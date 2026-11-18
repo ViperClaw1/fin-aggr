@@ -4,44 +4,25 @@ import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { commandOf } from './args';
 import { closeReviewIssue, issueNumberFromUrl, reopenReviewIssue } from './github';
-import { databaseUrl, withClient } from './db';
 import {
-  approveReview,
-  listOpen,
-  openReview,
-  rejectReview,
-  reopenReview,
-  type OpenReview,
-  type Sql,
-} from './decisions';
+  approveRow,
+  assertPublishEnv,
+  defaultDeps,
+  publishApproved,
+  publishedLine,
+  revalidateOrWarn,
+  rowWithStatus,
+  type CliDeps,
+  type CliIo,
+} from './approve';
+import { listOpen, rejectReview, reopenReview, type OpenReview, type Sql } from './decisions';
 import { loadLocalEnv } from './env';
 import { requireReviewer, SIGNED_URL_SECONDS } from './policy';
-import { confirmReviewedProducts } from './postgres/bank-products';
 import { RAW_BUCKET } from './scrape/rules';
 
+export { PUBLISH_ENV, registerPublisher, revalidateWarning, type CliDeps } from './approve';
+
 const execFileAsync = promisify(execFile);
-
-type Publisher = (sql: Sql, row: OpenReview) => Promise<void>;
-
-const publishers = new Map<string, Publisher>();
-
-/** Step 6 registers the parser that turns a held snapshot into a version. */
-export function registerPublisher(sourceId: string, publish: Publisher): void {
-  publishers.set(sourceId, publish);
-}
-
-/** A bank row confirms the products it lists. The next bank run publishes them. */
-function bankApproval(login: string, nowIso: string): Publisher {
-  return async (sql, row) => {
-    await confirmReviewedProducts(sql, {
-      sourceId: row.source_id,
-      reason: row.reason,
-      snapshotId: row.snapshot_id,
-      login,
-      verifiedAt: nowIso.slice(0, 10),
-    });
-  };
-}
 
 export async function reviewerFrom(
   env: NodeJS.ProcessEnv,
@@ -91,45 +72,30 @@ async function snapshotPath(sql: Sql, id: number): Promise<string> {
   return path;
 }
 
-export async function revalidateDomain(env: NodeJS.ProcessEnv, domain: string): Promise<void> {
-  const configured = env['NEXT_PUBLIC_SITE_URL']?.trim() ?? '';
-  const origin = (configured === '' ? 'https://fin-aggr.vercel.app' : configured).replace(
-    /\/$/,
-    '',
-  );
-  const secret = env['REVALIDATE_SECRET']?.trim() ?? '';
-  if (secret === '') throw new Error('REVALIDATE_SECRET is missing');
-  const response = await fetch(`${origin}/api/revalidate`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ domain }),
-  });
-  if (!response.ok) throw new Error(`revalidate failed: ${String(response.status)}`);
-}
-
-async function openRow(sql: Sql, id: number): Promise<OpenReview> {
-  const result = await sql.query(
-    `select id, source_id, domain, reason, snapshot_id, issue_url
-     from review_queue where id = $1 and status = 'open'`,
-    [id],
-  );
-  const row = result.rows[0];
-  if (row === undefined) throw new Error(`review ${String(id)} is not open`);
-  return openReview(row);
+function openRow(sql: Sql, id: number): Promise<OpenReview> {
+  return rowWithStatus(sql, id, 'open');
 }
 
 export async function runCommand(
   env: NodeJS.ProcessEnv,
   argv: readonly string[],
-  io: {
-    log: (line: string) => void;
-    warn: (line: string) => void;
-    ghLogin: () => Promise<string>;
-    now: () => string;
-  },
+  io: CliIo,
+  deps: CliDeps = defaultDeps(env),
 ): Promise<void> {
   const command = commandOf(argv);
-  await withClient(databaseUrl(env), async (sql) => {
+  if (command.kind === 'revalidate') {
+    await deps.revalidate(command.domain);
+    io.log(`revalidated ${command.domain}`);
+    return;
+  }
+  if (command.kind === 'approve' || command.kind === 'publish-approved') {
+    assertPublishEnv(env);
+  }
+  if (command.kind === 'publish-approved') {
+    await publishApproved(command.id, io, deps);
+    return;
+  }
+  await deps.withSql(async (sql) => {
     if (command.kind === 'review') {
       if (command.id === null) {
         const rows = await listOpen(sql);
@@ -165,20 +131,10 @@ export async function runCommand(
       );
       return;
     }
-    const publish = row.source_id.startsWith('bank:')
-      ? bankApproval(login, io.now())
-      : publishers.get(row.source_id);
-    if (publish === undefined) {
-      throw new Error(`No held publisher is registered for ${row.source_id}`);
-    }
-    await approveReview(sql, {
-      id: command.id,
-      login,
-      decidedAt: io.now(),
-      publish: (tx) => publish(tx, row),
-    });
-    await revalidateDomain(env, row.domain);
+    const { planned, versionId } = await approveRow({ sql, row, login, io, deps });
     io.log(formatDecision(command.id, 'approved', login));
+    if (planned) io.log(publishedLine(command.id, versionId));
+    await revalidateOrWarn(deps, row.domain, io.warn);
     await syncPrivateIssue(
       env,
       { issueUrl: row.issue_url, body: `approved by ${login}`, action: 'closed' },
