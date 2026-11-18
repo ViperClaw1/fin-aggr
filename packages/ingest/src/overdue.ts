@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { databaseUrl, withClient } from './db';
 import { listOverdue, type Sql } from './decisions';
+import { failedDispatches, formatDispatchFailures } from './dispatch';
 import { loadLocalEnv } from './env';
 import { commentOnIssue, issueNumberFromUrl } from './github';
 import {
@@ -61,7 +62,9 @@ if (isDirect()) {
       });
       const silent = await silentSourceIds(sql, Date.now());
       process.stdout.write(`${formatSilence(silent)}\n`);
-      if (silent.length > 0) process.exitCode = 1;
+      const failed = await failedDispatches(sql, Date.now());
+      process.stdout.write(`${formatDispatchFailures(failed)}\n`);
+      if (silent.length > 0 || failed.length > 0) process.exitCode = 1;
     }).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : 'review overdue failed';
       process.stderr.write(`${message}\n`);
