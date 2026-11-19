@@ -227,7 +227,9 @@ describe('bank page run', () => {
       now: () => DAY,
     });
     expect(calls).toBe(0);
-    expect(lines).toEqual(['source bank:fdic:57803 held reason=outside_window']);
+    expect(lines).toEqual([
+      'source bank:fdic:57803 held reason=outside_window window=05:00–13:00Z',
+    ]);
     expect(bank.jobs).toEqual([
       expect.objectContaining({
         status: 'held',

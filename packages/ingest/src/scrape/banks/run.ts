@@ -2,7 +2,12 @@ import type { Product } from '@fa/contracts';
 import { decidePublish } from '../../pipeline';
 import { countGate } from '../../validate';
 import type { PageRequest, PageResult, ScrapeClient } from '../session';
-import { formatManual, overnightWindowStart, type ManualReason } from '../rules';
+import {
+  formatManual,
+  overnightWindowStart,
+  overnightWindowUtc,
+  type ManualReason,
+} from '../rules';
 import { reviewBankProducts } from './review';
 import { verifiedByHuman, type BankExtract } from './normalize';
 
@@ -179,8 +184,10 @@ async function stopAdapter(input: {
   await input.ports.markManual('adapter');
 }
 
-function holdLine(sourceId: string, reason: string): string {
-  return `source ${sourceId} held reason=${reason}`;
+function holdLine(input: BankRun, reason: string, at: string): string {
+  const { sourceId, timeZone } = input.request;
+  const window = reason === 'outside_window' ? ` window=${overnightWindowUtc(at, timeZone)}` : '';
+  return `source ${sourceId} held reason=${reason}${window}`;
 }
 
 async function writeJob(input: BankRun, job: Omit<BankJobWrite, 'endedAt'>): Promise<void> {
@@ -193,7 +200,7 @@ async function holdWithoutRequest(
   reason: 'outside_window' | 'already_fetched',
   startedAt: string,
 ): Promise<void> {
-  input.log(holdLine(input.request.sourceId, reason));
+  input.log(holdLine(input, reason, startedAt));
   await writeJob(input, {
     startedAt,
     status: 'held',
@@ -221,7 +228,7 @@ async function noteIdle(
     });
     return;
   }
-  input.log(holdLine(input.request.sourceId, page.kind));
+  input.log(holdLine(input, page.kind, input.now()));
   await writeJob(input, {
     startedAt,
     status: 'held',

@@ -42,7 +42,8 @@ export function scheduleLabel(cron: ScheduleEntry['cron']): string {
 /**
  * Cadence table from plan step 5.
  * Minutes are 17, 37, or 47. GitHub drops and delays a minute-0 cron under load.
- * Bank rates attempt at :17 and :47, hours 03–10 UTC. The once-per-night guard
+ * Bank rates attempt at :17 and :47, hours 04–12 UTC: `overnightUtcHours` of the pilot
+ * banks' zone (America/Denver, MST 05–13Z and MDT 04–12Z). The once-per-night guard
  * still allows one request per bank. amex-cd-page runs at the end of that job.
  */
 export const SCHEDULE: readonly ScheduleEntry[] = [
@@ -81,7 +82,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'bank-rates',
     cadence: 'bank-rates',
-    cron: ['17 3-10 * * *', '47 3-10 * * *'],
+    cron: ['17 4-12 * * *', '47 4-12 * * *'],
     workflow: 'ingest-bank-rates.yml',
     timeoutMinutes: 120,
   },
@@ -151,7 +152,7 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
   {
     id: 'amex-cd-page',
     cadence: 'weekly-window',
-    cron: ['17 3-10 * * *', '47 3-10 * * *'],
+    cron: ['17 4-12 * * *', '47 4-12 * * *'],
     workflow: 'ingest-bank-rates.yml',
     timeoutMinutes: 120,
     ready: true,

@@ -171,7 +171,7 @@
 | --- | --- | --- | --- |
 | каждый день 07:17 | `17 7 * * *` | `ingest-daily-0700.yml` | `fdic-institutions`; `treasury-fiscal-data`, `treasurydirect` |
 | каждый день 23:17 | `17 23 * * *` | `ingest-daily-2330.yml` | `treasury-par-yield` |
-| :17 и :47, часы 03–10 UTC, таймаут 120 мин | `17 3-10 * * *`, `47 3-10 * * *` | `ingest-bank-rates.yml` | `bank-rates`, банки по очереди (`runOneAtATime`); в конце той же джобы `amex-cd-page` (раз в неделю) |
+| :17 и :47, часы 04–12 UTC (окно Denver с учётом DST), таймаут 120 мин | `17 4-12 * * *`, `47 4-12 * * *` | `ingest-bank-rates.yml` | `bank-rates`, банки по очереди (`runOneAtATime`); в конце той же джобы `amex-cd-page` (раз в неделю) |
 | каждый день 05:47 | `47 5 * * *` | `ingest-daily-rules.yml` | `ecfr-330`, `ecfr-745`, `ecfr-328`, `federal-register` |
 | каждый понедельник 11:37 | `37 11 * * 1` | `ingest-weekly.yml` | `fdic-financials`, `ncua-5300`, `fdic-national-rates`, `bank-pdf-hashes` |
 | раз в год, вручную | нет | `ingest-tax-tables.yml` | `tax-tables` |

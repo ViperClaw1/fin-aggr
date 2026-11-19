@@ -1,7 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SCHEDULE, cronLines } from './schedule';
+import { SCHEDULE, cronLines, scheduleById } from './schedule';
+import { amexAdapter } from './scrape/banks/27471';
+import { allyAdapter } from './scrape/banks/57803';
+import { sallieAdapter } from './scrape/banks/58177';
+import { overnightUtcHours } from './scrape/rules';
 
 const WORKFLOWS = join(process.cwd(), '.github/workflows');
 
@@ -68,6 +72,22 @@ describe('schedule workflows', () => {
     );
     expect(text).not.toContain('upload-artifact');
     expect(text).not.toContain('console.log');
+  });
+
+  it('derives bank-rates hours from the pilot banks windows across DST', () => {
+    const zones = [allyAdapter.timeZone, sallieAdapter.timeZone, amexAdapter.timeZone];
+    const hours = overnightUtcHours(zones, 2026);
+    const range = `${String(hours[0])}-${String(hours.at(-1))}`;
+    expect(hours.length).toBe((hours.at(-1) ?? 0) - (hours[0] ?? 0) + 1);
+    expect(cronLines(scheduleById('bank-rates')?.cron ?? null)).toEqual([
+      `17 ${range} * * *`,
+      `47 ${range} * * *`,
+    ]);
+    const sql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20261119120000_bank_rates_slots.sql'),
+      'utf8',
+    );
+    expect(sql).toContain(`'5,35 ${range} * * *'`);
   });
 
   it('keeps the runner stdout on the fixed line', () => {

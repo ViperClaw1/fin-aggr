@@ -29,7 +29,7 @@ import { registerPilotBanks } from './scrape/banks/register';
 import { databaseUrl, withClient } from './db';
 import { jobRecord } from './fetch-budget';
 import { scrapeFetch } from './scrape/http';
-import { overnightWindowStart, utcWeekStart } from './scrape/rules';
+import { overnightWindowStart, overnightWindowUtc, utcWeekStart } from './scrape/rules';
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 import { registerAfterBanks, registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
@@ -193,7 +193,9 @@ async function watchAmexCdPage(env: NodeJS.ProcessEnv, session: ScrapeClient): P
   const now = (): string => new Date().toISOString();
   const startedAt = now();
   if (overnightWindowStart(startedAt, 'America/Denver') === null) {
-    writeStdout('source amex-cd-page held reason=outside_window');
+    writeStdout(
+      `source amex-cd-page held reason=outside_window window=${overnightWindowUtc(startedAt, 'America/Denver')}`,
+    );
     return;
   }
   await prepareWatchSources(env);

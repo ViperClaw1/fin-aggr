@@ -5,7 +5,6 @@ import { isNetworkError, onceOnNetworkError } from './network';
 import { main } from './run';
 import {
   SCHEDULE,
-  cronLines,
   followupFailedLine,
   registerAfterBanks,
   registerBank,
@@ -115,10 +114,6 @@ describe('schedule catalog', () => {
   });
 
   it('retries bank rates off the hour and keeps the overnight window', () => {
-    expect(cronLines(scheduleById('bank-rates')?.cron ?? null)).toEqual([
-      '17 3-10 * * *',
-      '47 3-10 * * *',
-    ]);
     expect(scheduleById('amex-cd-page')?.workflow).toBe('ingest-bank-rates.yml');
     expect(scheduleById('amex-cd-page')?.embedded).toBe(true);
     const text = workflowText('ingest-bank-rates.yml');

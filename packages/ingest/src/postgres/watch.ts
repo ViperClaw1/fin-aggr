@@ -39,7 +39,7 @@ const WATCH_SOURCES = [
     kind: 'issuer_document',
     license: 'issuer terms',
     operationalKind: 'scrape',
-    schedule: '17 3-10 * * * and 47 3-10 * * *',
+    schedule: '17 4-12 * * * and 47 4-12 * * *',
   },
 ] as const;
 

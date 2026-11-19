@@ -14,7 +14,7 @@ export async function upsertBankSources(
   if (entries.length === 0) return;
   await sql.query(
     `insert into sources (id, name, url, kind, license, operational_kind, schedule)
-     select u.id, u.name, u.url, 'issuer_document', $4, 'scrape', '17 3-10 * * * and 47 3-10 * * *'
+     select u.id, u.name, u.url, 'issuer_document', $4, 'scrape', '17 4-12 * * * and 47 4-12 * * *'
      from unnest($1::text[], $2::text[], $3::text[]) as u(id, name, url)
      on conflict (id) do update
        set name = excluded.name, url = excluded.url, schedule = excluded.schedule

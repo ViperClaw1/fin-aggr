@@ -3,7 +3,9 @@ import {
   assertPublicPage,
   blockReason,
   isOvernight,
+  overnightUtcHours,
   overnightWindowStart,
+  overnightWindowUtc,
   optOutLate,
   utcWeekStart,
   scrapeUserAgent,
@@ -122,5 +124,37 @@ describe('blocks', () => {
     expect(blockReason(403, '', 'forbidden')).toBe('blocked');
     expect(blockReason(200, '', 'APY 4.00%')).toBeNull();
     expect(blockReason(404, '', 'missing')).toBeNull();
+  });
+});
+
+describe('dispatch slots', () => {
+  it('covers Denver standard and daylight windows: 04–12 UTC', () => {
+    expect(overnightUtcHours(['America/Denver'], 2026)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('keeps Phoenix at 05–12 UTC all year', () => {
+    expect(overnightUtcHours(['America/Phoenix'], 2026)).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('takes the union of zones', () => {
+    expect(overnightUtcHours(['America/New_York', 'America/Los_Angeles'], 2026)).toEqual([
+      2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+    ]);
+  });
+});
+
+describe('window in UTC', () => {
+  it('names tonight when outside the window', () => {
+    expect(overnightWindowUtc('2026-11-18T19:26:00.000Z', 'America/Denver')).toBe('05:00–13:00Z');
+    expect(overnightWindowUtc('2026-07-15T19:00:00.000Z', 'America/Denver')).toBe('04:00–12:00Z');
+  });
+
+  it('names the open window inside it', () => {
+    expect(overnightWindowUtc('2026-11-19T08:00:00.000Z', 'America/Denver')).toBe('05:00–13:00Z');
+  });
+
+  it('ends at 06:00 local on a DST night', () => {
+    // 2026-11-01 02:00 MDT -> 01:00 MST: window 04:00Z to 13:00Z.
+    expect(overnightWindowUtc('2026-11-01T07:00:00.000Z', 'America/Denver')).toBe('04:00–13:00Z');
   });
 });

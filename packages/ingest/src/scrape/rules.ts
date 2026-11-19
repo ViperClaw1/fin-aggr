@@ -191,7 +191,11 @@ function zoneOffsetMs(instant: Date, timeZone: string): number {
 }
 
 function utcAtHour22(day: ZoneClock, timeZone: string): Date {
-  const guess = new Date(Date.UTC(day.year, day.month - 1, day.day, 22));
+  return utcAtLocalHour(day, 22, timeZone);
+}
+
+function utcAtLocalHour(day: ZoneClock, hour: number, timeZone: string): Date {
+  const guess = new Date(Date.UTC(day.year, day.month - 1, day.day, hour));
   const corrected = new Date(guess.getTime() - zoneOffsetMs(guess, timeZone));
   return new Date(guess.getTime() - zoneOffsetMs(corrected, timeZone));
 }
@@ -226,6 +230,47 @@ export function overnightWindowStart(nowIso: string, timeZone: string): string |
   const clock = zoneClock(nowIso, timeZone);
   const day = clock.hour >= 22 ? clock : dayBefore(clock.year, clock.month, clock.day);
   return utcAtHour22(day, timeZone).toISOString();
+}
+
+function hhmm(date: Date): string {
+  return date.toISOString().slice(11, 16);
+}
+
+/**
+ * The bank's window in UTC, `05:00–13:00Z`: the one open at `nowIso`, else tonight's.
+ * Read from the zone's own clock, so a DST night is 7 or 9 hours.
+ */
+export function overnightWindowUtc(nowIso: string, timeZone: string): string {
+  const open = overnightWindowStart(nowIso, timeZone);
+  const clock = zoneClock(nowIso, timeZone);
+  const start = open === null ? utcAtHour22(clock, timeZone) : new Date(open);
+  const startDay = zoneClock(start.toISOString(), timeZone);
+  const next = new Date(Date.UTC(startDay.year, startDay.month - 1, startDay.day + 1));
+  const end = utcAtLocalHour(
+    { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate(), hour: 6 },
+    6,
+    timeZone,
+  );
+  return `${hhmm(start)}–${hhmm(end)}Z`;
+}
+
+/**
+ * UTC hours that touch 22:00–06:00 local in any of the zones, in January or July (DST-aware).
+ * Dispatch slots are derived from this. Sorted, unique.
+ */
+export function overnightUtcHours(timeZones: readonly string[], year: number): number[] {
+  const instants = ['01', '07'].flatMap((month) =>
+    Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      at: `${String(year)}-${month}-15T${String(hour).padStart(2, '0')}:00:00.000Z`,
+    })),
+  );
+  const hours = new Set(
+    instants
+      .filter(({ at }) => timeZones.some((zone) => isOvernight(at, zone)))
+      .map(({ hour }) => hour),
+  );
+  return [...hours].sort((a, b) => a - b);
 }
 
 /** Applied more than 24 hours after the bank asked. Earlier than the request is an error. */

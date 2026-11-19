@@ -28,6 +28,19 @@ limit 50;
 `status = 'failed'` with `github_dispatch_token is not in vault` or `review_repo_token is not in vault`
 means the Vault secret is missing (step 5).
 
+`dispatch-bank-rates` runs `5,35 4-12 * * *` and calls `dispatch_bank_rates('ingest-bank-rates.yml')`.
+It succeeds without a `dispatch_log` row when the Denver window is closed or a bank was already
+requested this window (expected after the first good run of the night). Check:
+
+```sql
+select public.denver_window_start(now()) as win,
+       exists (select 1 from job_runs
+                where source_id like 'bank:%' and request_count > 0
+                  and started_at >= public.denver_window_start(now())) as collected;
+```
+
+A held bank logs `held reason=outside_window window=05:00–13:00Z`: the window in UTC for that bank.
+
 Ingest slots are 12 minutes after their GitHub cron: daily-rules 05:59, daily-0700 07:29,
 weekly Mon 11:49, daily-2330 23:29. A second run of the same day lands on `unchanged`.
 
