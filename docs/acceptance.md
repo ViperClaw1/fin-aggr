@@ -11,7 +11,7 @@
 
 | AC | Критерий (спека §1) | Чем проверяется | Где | Статус и доказательство |
 | --- | --- | --- | --- | --- |
-| AC-1 | Гейты в CI | `format:check`, `typecheck`, `lint`, `depcruise`, `knip`, `test`, `build` (в той же джобе ещё canaries, `rules:check`, `golden:check`, `bundle:report`, e2e) | `.github/workflows/ci.yml`, джоба `gates` | ✅ [gates на 41876801041](https://github.com/ViperClaw1/fin-aggr/actions/runs/41876801041/job/126738260606). Workflow целиком красный из-за `production-commit`, не из-за гейтов |
+| AC-1 | Гейты в CI | `format:check`, `typecheck`, `lint`, `depcruise`, `knip`, `test`, `build` (в той же джобе ещё canaries, `rules:check`, `golden:check`, `bundle:report`, e2e) | `.github/workflows/ci.yml`, джоба `gates` | ✅ [gates на 41876801041](https://github.com/ViperClaw1/fin-aggr/actions/runs/41876801041/job/126738260606). Workflow целиком был красным из-за `production-commit`, не из-за гейтов. С [44934347039](https://github.com/ViperClaw1/fin-aggr/actions/runs/44934347039) (`5421d7b`) зелёный весь |
 | AC-2 | Движок: ≥ 20 золотых кейсов, строки ≥ 90%, ветвления ≥ 85% | `golden:check`, пороги vitest | `packages/engine/golden/`, `vitest.config.mjs` | ✅ 50 кейсов (`node tools/golden-count.mjs`, 2026-11-05). Пороги в конфиге. Последние записанные доли покрытия: строки 98,63%, ветвления 98,08% (`docs/plan-e7.md`). Джоба `gates` прогнала `pnpm test` на `282b4a5` |
 | AC-3 | У каждого числа источник или допущение | e2e | `apps/web/e2e/p0.spec.ts` | ✅ тот же прогон `gates` (`pnpm e2e`) |
 | AC-4 | Профиль не уходит в сеть, CSP | e2e, доход-метка `987654`, CSP | `apps/web/e2e/p0.spec.ts`, `apps/web/e2e/csp.spec.ts` | ✅ тот же прогон `gates` |
@@ -42,10 +42,11 @@
 - Lighthouse на Windows идёт с патчем (ADR-014). В зачёт AC-8 идёт раннер, не ноутбук.
 - Тексты `/disclosure`, `/privacy`, `/methodology`, блок «How we make money» и оговорки страхования остаются DRAFT, пока не утверждены.
 - Профиль хранится только в браузере.
-- TBT с профилем на прогоне `41662400511` — 441,5 мс, на [41994137865](https://github.com/ViperClaw1/fin-aggr/actions/runs/41994137865) медиана 614 мс. Порог 300 мс остаётся предупреждением. Медиана Performance этого прогона 0,84, замер до шага 2.9. CI не падает из-за шума вокруг 0,85: ошибка только ниже 0,80. Порог 0,85 вернётся, когда медиана девяти прогонов после 2.9 будет не ниже 0,90.
+- TBT с профилем на прогоне `41662400511` — 441,5 мс, на [41994137865](https://github.com/ViperClaw1/fin-aggr/actions/runs/41994137865) медиана 614 мс. Порог 300 мс остаётся предупреждением. Медиана Performance этого прогона 0,84, замер до шага 2.9. CI не падает из-за шума вокруг 0,85: ошибка только ниже 0,80. Порог 0,85 вернётся, когда медиана девяти прогонов после 2.9 будет не ниже 0,90. После 2.9 ([44934347039](https://github.com/ViperClaw1/fin-aggr/actions/runs/44934347039)) медиана `/compare/cd` 0,86, TBT 470 мс: порог `error` пока 0,80.
 - Джоба `e2e-browsers` впервые зелёная на перезапуске [42083288660](https://github.com/ViperClaw1/fin-aggr/actions/runs/42083288660) (`6484053`). Первый attempt того же пуша упал: локатор страницы цитаты ловил и скрытую строку подсветки, а повторный `goto('/')` в Firefox не доходил до `load`. Оба теста чинятся следом; до этой правки прогон остаётся нестабильным.
 - PSI без пароля на preview после шага 2.9 (фаза 0.5) ещё не снят. Три прогона `/compare/cd` пишутся в ADR-016 и в таблицу ниже.
-- Пока на production включён `DEMO_PASSWORD`, `<meta name="build">` с живого сайта не читается. Форма пароля в этой рабочей копии ставит тот же тег, а `tools/check-production-commit.mjs` принимает 401. Это заработает после выкладки и Redeploy.
+- `production-commit` зелёный по метке сборки: на [44934347039](https://github.com/ViperClaw1/fin-aggr/actions/runs/44934347039) форма пароля отдала `<meta name="build">` = `5421d7b`. `DEMO_PASSWORD` на production по-прежнему включён (401), его снимают на шаге 9.
+- Функции Vercel выполняются в `sfo1`, рядом с Supabase `us-west-1` (фаза 0.4, 2026-11-21). До этого был `iad1` (`x-vercel-id: fra1::iad1::…`). После смены в Settings → Functions и Redeploy ответ `/api/revalidate` — `fra1::sfo1::…`, где `fra1` — ближайшая edge-точка. Запись в ADR-019.
 
 ## Замеры AC-8
 
@@ -56,6 +57,6 @@
 | Без профиля | PSI, мобильный, 3 прогона, 2026-11-02 | 100 (прогоны 100, 99, 100) | 70 мс | 0,001 | [o6q4ug4bzm](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/o6q4ug4bzm?form_factor=mobile), [u9ycte91f2](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/u9ycte91f2?form_factor=mobile), [rdf59f0w7n](https://pagespeed.web.dev/analysis/https-fin-aggr-vercel-app-compare-cd/rdf59f0w7n?form_factor=mobile) |
 | С профилем, зачёт AC-8 | Lighthouse CI, 5 прогонов, `569d689`, 2026-11-03 | проверка 0,85 прошла, точный балл не напечатан | 441,5 мс | медиана ≤ 0,1 | [41662400511](https://github.com/ViperClaw1/fin-aggr/actions/runs/41662400511) |
 | С профилем, измеренный прогон | Lighthouse CI, 5 прогонов, `688d4d6`, 2026-11-05 | 0,84 (0,81, 0,82, 0,84, 0,97, 1,00) | 614 мс (36, 200,5, 614, 705, 720) | не в логе ошибки | [41994137865](https://github.com/ViperClaw1/fin-aggr/actions/runs/41994137865) |
-| С профилем, после шага 2.9 | Lighthouse CI, 9 прогонов | ещё не снято | ещё не снято | ещё не снято | прогон появится после выкладки. Порог `error` 0,85 — только если медиана ≥ 0,90 |
+| С профилем, после шага 2.9, `/compare/cd` | Lighthouse CI, 9 прогонов, `5421d7b`, 2026-11-21 | 0,86 (0,77, 0,82, 0,84, 0,85, 0,86, 0,88, 0,89, 1,00, 1,00) | 470 мс (55, 61, 435, 458, 470, 582, 609, 733, 1074) | 0,06 во всех девяти | [44934347039](https://github.com/ViperClaw1/fin-aggr/actions/runs/44934347039). Медиана ≥ 0,85, критерий 0.1 выполнен. Ниже 0,90, поэтому порог `error` остаётся 0,80. Остальные страницы с профилем: `/` 0,92, `/product/prod_cd_0001` 0,91, `/banks` 0,87 |
 
 Ноутбук, обычное окно браузера и Brave в эту таблицу не входят.

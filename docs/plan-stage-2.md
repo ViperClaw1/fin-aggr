@@ -17,10 +17,10 @@
 | --- | --- |
 | E0–E6 | закрыты |
 | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-9, AC-10 | ✅ |
-| AC-7 (axe, клавиатура) | ✅ Chromium; Firefox и WebKit — джоба `e2e-browsers` на `main` и ночью, 5 тестов в `test.fixme` |
+| AC-7 (axe, клавиатура) | ✅ Chromium; Firefox и WebKit — джоба `e2e-browsers` на `main` и ночью. Из 5 `test.fixme` 2 исправлены, 3 оставлены с причиной (ограничения среды, `acceptance.md`) |
 | AC-8, бандл | ✅ ≤ 200 KB (`bundle:report`) |
 | AC-8, Lighthouse без профиля | ✅ PSI, медиана 100 (2026-11-02) |
-| AC-8, Lighthouse с профилем | **открыт.** Прогон `41662400511` (`569d689`) прошёл порог 0,85 без точного балла; прогон `41994137865` (`688d4d6`) дал медиану 0,84. По правилу остановки ADR-016 следующий шаг — 2.9. CI сейчас: 9 прогонов, `error` ниже 0,80, `warn` ниже 0,85 |
+| AC-8, Lighthouse с профилем | ✅ после 2.9: медиана `/compare/cd` 0,86 из 9 прогонов, [44934347039](https://github.com/ViperClaw1/fin-aggr/actions/runs/44934347039) (`5421d7b`, 2026-11-21). Порог `error` остаётся 0,80. История: Прогон `41662400511` (`569d689`) прошёл порог 0,85 без точного балла; прогон `41994137865` (`688d4d6`) дал медиану 0,84. По правилу остановки ADR-016 следующий шаг — 2.9. CI сейчас: 9 прогонов, `error` ниже 0,80, `warn` ниже 0,85 |
 | README, `acceptance.md`, `demo.md`, `stage1-report.md` | написаны |
 | Тексты `/disclosure`, `/privacy`, `/methodology`, «How we make money», оговорки покрытия | DRAFT, ждут утверждения владельцем |
 | Показ демо (M5) | не проведён |
@@ -34,7 +34,7 @@
 | 0.1 | **Шаг 2.9:** таблица `/compare` рисуется один раз, фильтр только скрывает строки; `content-visibility: auto` ниже первого экрана. Запись в ADR-016 (меняет D1). Затем Lighthouse CI с профилем, 9 прогонов. Исправить `stage1-report.md` и `plan-e7.md` | разработчик | 1–1,5 дня | медиана с профилем ≥ 0,85 на раннере, записана в `acceptance.md` с номером прогона; при ≥ 0,90 порог `error` вернуть на 0,85 |
 | 0.2 | **`e2e-browsers` зелёная на `main`** после `2844a53`, `688d4d6`, `c2c76d2` | разработчик | 0,25 дня | ссылка в `acceptance.md`: перезапуск [42083288660](https://github.com/ViperClaw1/fin-aggr/actions/runs/42083288660) (`6484053`). Первый attempt упал по таймингу; до фикса тестов прогон нестабилен |
 | 0.3 | **Разобрать 5 `test.fixme`:** Firefox сдвигает каталог при снятии обложки профиля — это видимый пользователю сдвиг, исправить; WebKit не возвращает фокус на кнопку цитаты — доступность, исправить; WebKit и `hover: hover` в тестах — ограничение среды, оставить `fixme` с причиной; Firefox и второй контекст без JavaScript — оставить `fixme` с причиной | разработчик | 0,5–1 день | в `acceptance.md` по каждому — «исправлено» или причина |
-| 0.4 | **Production:** `DEMO_PASSWORD` для Production, Redeploy; джоба `production-commit` зелёная (метка `<meta name="build">` на форме пароля); регион функций Vercel сверить в Settings → Functions и выставить `sfo1`, рядом с Supabase `us-west-1`, записать в ADR-019 | владелец + разработчик | 0,25 дня | зелёный `production-commit`; регион функций записан |
+| 0.4 | **Production:** `DEMO_PASSWORD` для Production, Redeploy; джоба `production-commit` зелёная (метка `<meta name="build">` на форме пароля); регион функций Vercel сверить в Settings → Functions и выставить `sfo1`, рядом с Supabase `us-west-1`, записать в ADR-019 | владелец + разработчик | 0,25 дня | зелёный `production-commit`; регион функций записан. **Сделано 2026-11-21:** `production-commit` зелёный на `5421d7b`, функции в `sfo1` (ADR-019) |
 | 0.5 | **PSI на preview без пароля:** 3 прогона `/compare/cd` после 0.1 | разработчик | 0,25 дня | медиана в ADR-016 и `acceptance.md` |
 | 0.6 | **Тексты:** утвердить или поправить; с утверждённых снять DRAFT | владелец | — | список в `acceptance.md`: утверждено или черновик для показа |
 | 0.7 | **Показ демо** по `demo.md`, запись вопросов и замечаний заказчика | владелец | 1 встреча | M5 закрыт в `plan-e7.md` с датой; замечания — список в `stage1-report.md` |
@@ -88,7 +88,7 @@
 
 | Что | Когда | Статус |
 | --- | --- | --- |
-| Supabase `staging` и `prod`, Pro, `us-west-1` | до шага 2 | заведён один хостовый проект (секреты с 2026-11-09), на нём `pg_cron`, `pg_net` и Vault (`github_dispatch_token`, `review_repo_token`). Разделение на `staging` и `prod`, тариф и регион не сверены |
+| Supabase `staging` и `prod`, Pro, `us-west-1` | до шага 2 | заведён один хостовый проект (секреты с 2026-11-09), на нём `pg_cron`, `pg_net` и Vault (`github_dispatch_token`, `review_repo_token`). Регион `us-west-1` (подтвердил владелец 2026-11-21), функции Vercel в `sfo1`. Разделение на `staging` и `prod` и тариф не сверены |
 | GitHub Actions secrets: база | до шага 2 | готово: `SUPABASE_URL`, `SUPABASE_DB_URL`, `SUPABASE_SECRET_KEY` |
 | GitHub Actions secrets: остальное | до шага 5 | готово: `REVALIDATE_SECRET`, `REVIEW_REPO_TOKEN`, `FRED_API_KEY`, `FA_SCRAPE_MAILBOX` |
 | Приватный репозиторий для задач проверки, токен бота | до шага 4 | готово: `ViperClaw1/fin-aggr-review`, `REVIEW_REPO_TOKEN` |
