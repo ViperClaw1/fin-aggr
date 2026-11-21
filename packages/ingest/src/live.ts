@@ -33,8 +33,19 @@ export async function checkLiveShapes(fetchImpl: typeof fetch): Promise<string[]
   ];
 }
 
-function succeeded(line: string): boolean {
-  return line.endsWith(' ok') || line.endsWith(' unchanged') || line.endsWith(' changed');
+/** The host refused the check (403, 429): a warning, not a red job. Any other http code is red. */
+export function unavailable(line: string): boolean {
+  return / shape http (403|429)$/.test(line);
+}
+
+/** A green line. A shape failure stays red. */
+export function succeeded(line: string): boolean {
+  return (
+    line.endsWith(' ok') ||
+    line.endsWith(' unchanged') ||
+    line.endsWith(' changed') ||
+    unavailable(line)
+  );
 }
 
 function isDirect(): boolean {
@@ -45,7 +56,10 @@ function isDirect(): boolean {
 if (isDirect()) {
   checkLiveShapes(fetch)
     .then((lines) => {
-      for (const line of lines) process.stdout.write(`${line}\n`);
+      for (const line of lines) {
+        process.stdout.write(`${line}\n`);
+        if (unavailable(line)) process.stdout.write(`::warning::${line}\n`);
+      }
       if (lines.some((line) => !succeeded(line))) process.exitCode = 1;
     })
     .catch((error: unknown) => {

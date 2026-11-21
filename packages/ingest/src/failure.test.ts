@@ -60,6 +60,37 @@ describe('upstream outage', () => {
     );
   });
 
+  it('opens one issue on the second consecutive 403', async () => {
+    let streak = 0;
+    const opened: string[] = [];
+    const ports = {
+      now: () => '2026-11-21T05:59:00.000Z',
+      finishJob: () => {
+        streak += 1;
+        return Promise.resolve();
+      },
+      failureStreak: () => Promise.resolve(streak),
+      notifyFailure: (_message: string, title?: string) => {
+        opened.push(title ?? '');
+        return Promise.resolve({ number: 19, created: opened.length === 1 });
+      },
+    };
+    const run = () =>
+      recordFailure(ports, {
+        sourceId: 'ecfr-745',
+        domain: 'reference',
+        startedAt: '2026-11-21T05:59:00.000Z',
+        failure: { stage: 'fetch', code: 'http_403' },
+        log: () => undefined,
+      });
+    const first = await run();
+    const second = await run();
+    expect(first.issueNumber).toBeNull();
+    expect(first.holdReason).toBe('upstream_unavailable:http_403');
+    expect(second.issueNumber).toBe(19);
+    expect(opened).toEqual(['Ingest ecfr-745 failed']);
+  });
+
   it('opens a parse failure on the first run', async () => {
     const notes: string[] = [];
     const ports = {

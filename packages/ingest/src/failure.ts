@@ -7,14 +7,28 @@ function isUpstreamOutage(code: string): boolean {
   return code === 'TimeoutError' || code === 'AbortError' || /^http_5\d\d$/.test(code);
 }
 
-function upstreamReason(code: string): string | undefined {
-  return isUpstreamOutage(code) ? `upstream_unavailable:${code}` : undefined;
+/**
+ * The host refused us (403 after its one retry, 429 after its retries). The run is
+ * `unavailable`: a warning, not a red job. Shape and parse errors are never in this set.
+ */
+export function isUnavailable(failure: { stage: string; code: string } | null): boolean {
+  return failure?.stage === 'fetch' && (failure.code === 'http_403' || failure.code === 'http_429');
 }
 
-/** An outage opens an issue on the third consecutive failed run. Our errors open on the first. */
-function openAfterStreak(code: string, consecutiveUpstream: number): boolean {
-  if (!isUpstreamOutage(code)) return true;
-  return consecutiveUpstream >= 3;
+function upstreamReason(code: string): string | undefined {
+  return isUpstreamOutage(code) || isUnavailable({ stage: 'fetch', code })
+    ? `upstream_unavailable:${code}`
+    : undefined;
+}
+
+/**
+ * An outage opens an issue on the third consecutive failed run, a refusal (403, 429) on
+ * the second. Our errors open on the first. The issue is deduped by title.
+ */
+function openAfterStreak(failure: { stage: string; code: string }, streak: number): boolean {
+  if (isUnavailable(failure)) return streak >= 2;
+  if (!isUpstreamOutage(failure.code)) return true;
+  return streak >= 3;
 }
 
 export async function recordFailure(
@@ -59,7 +73,7 @@ export async function recordFailure(
   });
   const holdReason = upstreamReason(failure.code);
   const streak = ports.failureStreak === undefined ? 3 : await ports.failureStreak(input.sourceId);
-  if (!openAfterStreak(failure.code, streak)) {
+  if (!openAfterStreak(failure, streak)) {
     return { issueNumber: null, holdReason };
   }
   const issue = await ports.notifyFailure(
@@ -87,7 +101,7 @@ function upstreamRow(errors: unknown): boolean {
   if (!Array.isArray(errors) || errors.length === 0) return false;
   return errors.every((item: unknown) => {
     const code = rowCode(item);
-    return code !== null && isUpstreamOutage(code);
+    return code !== null && (isUpstreamOutage(code) || code === 'http_403' || code === 'http_429');
   });
 }
 

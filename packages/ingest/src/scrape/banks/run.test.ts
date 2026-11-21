@@ -112,6 +112,36 @@ describe('bank page run', () => {
     expect(bank.jobs[0]).toMatchObject({ status: 'held', requestCount: 1 });
   });
 
+  it('holds once with bank_not_confirmed when products are confirmed but the bank is not', async () => {
+    const bank = ports();
+    bank.confirmedIds = () => Promise.resolve(['fdic-57803-savings']);
+    const lines: string[] = [];
+    await runBankPage({
+      client: client('ok'),
+      request: {
+        sourceId: 'bank:fdic:57803',
+        url: 'https://www.ally.com/bank/view-rates/',
+        timeZone: 'America/Denver',
+        excluded: false,
+      },
+      institutionId: 'fdic:57803',
+      retrievedDay: '2026-11-16',
+      read: readAlly,
+      ports: bank,
+      log: (line) => {
+        lines.push(line);
+      },
+      now: () => NIGHT,
+    });
+    expect(lines).toEqual(['source bank:fdic:57803 held reason=bank_not_confirmed']);
+    expect(bank.queued).toBe('bank_not_confirmed');
+    expect(bank.published).toBeNull();
+    expect(bank.jobs[0]).toMatchObject({
+      status: 'held',
+      errors: [{ code: 'bank_not_confirmed' }],
+    });
+  });
+
   it('does not publish when the session already stopped', async () => {
     const bank = ports();
     await runBankPage({

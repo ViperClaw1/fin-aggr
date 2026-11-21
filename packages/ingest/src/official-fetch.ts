@@ -38,6 +38,19 @@ function waitFor(status: number, response: Response, pace: FetchPace, attempt: n
   return retryAfterMs(response.headers.get('retry-after'), pace.now()) ?? scheduled;
 }
 
+/** Government hosts that answer a burst with 403. One retry after 30s. */
+const REFUSING_HOSTS = ['ecfr.gov', 'federalregister.gov', 'api.fdic.gov'] as const;
+const REFUSAL_RETRY_MS = 30_000;
+
+function refusingHost(url: string): boolean {
+  const host = new URL(url).hostname;
+  return REFUSING_HOSTS.some((name) => host === name || host.endsWith(`.${name}`));
+}
+
+function refusalDelay(url: string, attempt: number): number | null {
+  return attempt === 0 && refusingHost(url) ? REFUSAL_RETRY_MS : null;
+}
+
 function httpDelay(
   status: number,
   response: Response,
@@ -76,7 +89,10 @@ async function attemptOnce(input: {
   try {
     const response = await fetchImpl(url, init);
     if (response.ok) return response;
-    const delay = httpDelay(response.status, response, step, attempt);
+    const delay =
+      response.status === 403
+        ? refusalDelay(url, attempt)
+        : httpDelay(response.status, response, step, attempt);
     if (delay === null || attempt === attempts - 1) {
       throw new CodedError(`http_${String(response.status)}`);
     }

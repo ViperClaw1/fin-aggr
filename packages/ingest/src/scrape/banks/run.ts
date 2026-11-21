@@ -105,12 +105,17 @@ async function publishPage(input: BankRun, startedAt: string): Promise<void> {
     return;
   }
   const confirmation = await input.ports.confirmation();
+  const confirmedIds = await input.ports.confirmedIds();
+  if (!confirmation.confirmed && confirmedIds.length > 0) {
+    await holdUnconfirmedBank(input, startedAt, page.body);
+    return;
+  }
   const previous = await input.ports.previous();
   const report = reviewBankProducts({
     rows: extracted.products,
     previous,
     confirmed: confirmation.confirmed,
-    confirmedIds: await input.ports.confirmedIds(),
+    confirmedIds,
     retrievedDay: input.retrievedDay,
   });
   const extra = extracted.extra.map((row) =>
@@ -170,6 +175,35 @@ async function storeDecision(
     status,
     rowCount: decision.publish?.length ?? 0,
     errors: [],
+    bytes: body.byteLength,
+    requestCount: 1,
+  });
+}
+
+/**
+ * Products were confirmed but the bank row is missing: one `bank_not_confirmed` hold, not a
+ * `first_connection` per product. `enqueueReview` keeps one open row per source, so a
+ * nightly repeat updates that row instead of adding a review.
+ */
+async function holdUnconfirmedBank(
+  input: BankRun,
+  startedAt: string,
+  body: Uint8Array,
+): Promise<void> {
+  const reason = 'bank_not_confirmed';
+  const snapshotId = await input.ports.saveSnapshot(body);
+  await input.ports.commit({
+    institutionId: input.institutionId,
+    publish: null,
+    heldIds: [],
+    queue: { sourceId: input.request.sourceId, domain: 'bank_products', snapshotId, reason },
+  });
+  input.log(holdLine(input, reason, startedAt));
+  await writeJob(input, {
+    startedAt,
+    status: 'held',
+    rowCount: 0,
+    errors: [{ code: reason }],
     bytes: body.byteLength,
     requestCount: 1,
   });

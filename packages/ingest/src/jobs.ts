@@ -21,6 +21,7 @@ import {
   finishJob,
   sourceRequestedSince,
 } from './postgres/ports';
+import { isUnavailable } from './failure';
 import { runSource, type RunSummary } from './pipeline';
 import { markSourceManualFromEnv } from './postgres/sources';
 import { federalRegisterSource } from './register/watch';
@@ -60,6 +61,11 @@ function reportRun(id: string, summary: RunSummary, env: NodeJS.ProcessEnv): voi
     return;
   }
   recordLine(publishLine(id, summary), env);
+  if (summary.status === 'failed' && isUnavailable(summary.failure)) {
+    // The host refused us; the job stays green. The issue opens on the second such run.
+    writeStdout(`::warning::source ${id} unavailable code=${summary.failure?.code ?? ''}`);
+    return;
+  }
   assertFinished(id, summary, env);
 }
 
@@ -73,7 +79,7 @@ function publishLine(id: string, summary: RunSummary): string {
   const reason = runReason(summary);
   return formatRunLine({
     id,
-    status: summary.status,
+    status: isUnavailable(summary.failure) ? 'unavailable' : summary.status,
     rows: summary.published,
     queued: summary.queued,
     version,

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkLiveShapes } from './live';
+import { checkLiveShapes, succeeded } from './live';
 import { zipTables } from './ncua/zip';
 
 function read(path: string): string {
@@ -131,5 +131,17 @@ describe('nightly live shape', () => {
       'treasury fiscal data shape ok',
       'treasurydirect shape ok',
     ]);
+  });
+});
+
+describe('live shape exit', () => {
+  it('keeps a refused check green', () => {
+    expect(succeeded('fdic financials shape http 429')).toBe(true);
+    expect(succeeded('ecfr 330 shape http 403')).toBe(true);
+  });
+
+  it('keeps an outage and a shape failure red', () => {
+    expect(succeeded('fdic financials shape http 503')).toBe(false);
+    expect(succeeded('fdic institutions shape missing NAME')).toBe(false);
   });
 });

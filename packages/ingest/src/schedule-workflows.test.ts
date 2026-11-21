@@ -90,6 +90,16 @@ describe('schedule workflows', () => {
     expect(sql).toContain(`'5,35 ${range} * * *'`);
   });
 
+  it('runs eCFR parts one after another without skipping on a failure', () => {
+    const text = workflowText('ingest-daily-rules.yml');
+    for (const [part, after] of [
+      ['ecfr-745', 'ecfr-330'],
+      ['ecfr-328', 'ecfr-745'],
+    ] as const) {
+      expect(text).toContain(`  ${part}:\n    needs: ${after}\n    if: \${{ !cancelled() }}\n`);
+    }
+  });
+
   it('keeps the runner stdout on the fixed line', () => {
     const source = readFileSync(join(process.cwd(), 'packages/ingest/src/run.ts'), 'utf8');
     expect(source).not.toContain('console.log');
