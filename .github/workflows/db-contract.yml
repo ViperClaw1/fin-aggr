@@ -1,4 +1,4 @@
-# DataGateway contract against supabase start (ADR-019 step 3).
+# DataGateway contract against supabase start (ADR-019 step 3), and nightly against prod.
 # Pull requests run it only with the `db` label. Nightly and manual runs do not need the label.
 name: DB contract
 
@@ -38,3 +38,27 @@ jobs:
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_ANON_KEY: ${{ steps.keys.outputs.anon }}
+
+  # Same suite against the hosted prod project (there is no staging, ADR-019). Read-only: the
+  # anon key under RLS cannot write. Not on pull requests: a PR must not depend on live data.
+  contract-prod:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Contract tests (prod, read-only)
+        run: |
+          for n in SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!n}" ]; then echo "::error::Actions secret $n is not set"; exit 1; fi
+          done
+          pnpm vitest run apps/web/src/shared/api/gateway.supabase.test.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
