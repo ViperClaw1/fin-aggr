@@ -1,6 +1,6 @@
 # ADR-022: Bank offers carry a pricing scope; markets are matched in the browser
 
-- Status: proposed
+- Status: accepted (2026-11-21). The market unit (ZIP3 prefixes, per-state sampling) and RLS-based expiry are under review in ADR-023
 - Date: 2026-11-18
 - Relates to: ADR-004 (profile stays in the browser), ADR-007 (provenance), ADR-016, ADR-020
 
