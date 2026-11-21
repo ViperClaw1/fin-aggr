@@ -22,13 +22,19 @@ import { describe, expect, it } from 'vitest';
 
 const LONG_AGO = IsoDate.parse('2000-01-01');
 
-async function walk<T>(load: (cursor?: string) => Promise<PageOf<T>>, limit: number): Promise<T[]> {
+/** Follows cursors to the end, or until `max` items: a real catalog is thousands of rows. */
+async function walk<T>(
+  load: (cursor?: string) => Promise<PageOf<T>>,
+  limit: number,
+  max = Number.POSITIVE_INFINITY,
+): Promise<T[]> {
   const all: T[] = [];
   let cursor: string | undefined;
   for (let guard = 0; guard < 1000; guard += 1) {
     const page = await load(cursor);
     expect(page.items.length).toBeLessThanOrEqual(limit);
     all.push(...page.items);
+    if (all.length >= max) return all.slice(0, max);
     if (page.nextCursor === null) return all;
     cursor = page.nextCursor;
   }
@@ -65,6 +71,25 @@ function datasetContract(gw: DataGateway): void {
   });
 }
 
+function institutionsContract(gw: DataGateway): void {
+  it('pages institutions and filters by kind and name', async () => {
+    const head = (await gw.listInstitutions({ limit: 60 })).items;
+    const walked = await walk(
+      (cursor) => gw.listInstitutions({ limit: 6, ...(cursor === undefined ? {} : { cursor }) }),
+      6,
+      60,
+    );
+    expect(walked.map((i) => i.id)).toEqual(head.map((i) => i.id));
+    expect(new Set(walked.map((i) => i.id)).size).toBe(walked.length);
+    for (const i of walked) expect(Institution.parse(i)).toEqual(i);
+    const unions = await gw.listInstitutions({ kind: 'credit_union', limit: 100 });
+    expect(unions.items.every((i) => i.kind === 'credit_union')).toBe(true);
+    const first = walked[0]?.name.slice(0, 4).toUpperCase() ?? '';
+    const byName = await gw.listInstitutions({ q: first, limit: 100 });
+    expect(byName.items.every((i) => i.name.toUpperCase().includes(first))).toBe(true);
+  });
+}
+
 const rejectsWith = (p: Promise<unknown>, code: GatewayErrorCode): Promise<void> =>
   expect(p).rejects.toMatchObject({ name: 'GatewayError', code });
 
@@ -84,19 +109,7 @@ export function gatewayContract(name: string, create: () => DataGateway): void {
       for (const p of walked) expect(Product.parse(p)).toEqual(p);
     });
 
-    it('pages institutions and filters by kind and name', async () => {
-      const walked = await walk(
-        (cursor) => gw.listInstitutions({ limit: 6, ...(cursor === undefined ? {} : { cursor }) }),
-        6,
-      );
-      expect(new Set(walked.map((i) => i.id)).size).toBe(walked.length);
-      for (const i of walked) expect(Institution.parse(i)).toEqual(i);
-      const unions = await gw.listInstitutions({ kind: 'credit_union', limit: 100 });
-      expect(unions.items.every((i) => i.kind === 'credit_union')).toBe(true);
-      const first = walked[0]?.name.slice(0, 4).toUpperCase() ?? '';
-      const byName = await gw.listInstitutions({ q: first, limit: 100 });
-      expect(byName.items.every((i) => i.name.toUpperCase().includes(first))).toBe(true);
-    });
+    institutionsContract(gw);
 
     it('rejects bad queries with validation_failed', async () => {
       await rejectsWith(gw.listProducts({ category: 'cd', limit: 0 }), 'validation_failed');

@@ -58,7 +58,8 @@ jobs:
           for n in SUPABASE_URL SUPABASE_ANON_KEY; do
             if [ -z "${!n}" ]; then echo "::error::Actions secret $n is not set"; exit 1; fi
           done
-          pnpm vitest run apps/web/src/shared/api/gateway.supabase.test.ts
+          # The runner is far from us-west-1, and the asOf test reads 100 bank metrics one by one.
+          pnpm vitest run apps/web/src/shared/api/gateway.supabase.test.ts --testTimeout=60000
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
