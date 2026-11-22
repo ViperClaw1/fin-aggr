@@ -9,8 +9,8 @@ import { treasuryProductGaps, type TreasuryProductGap } from './product-gaps';
  * five confirmations nothing is built.
  */
 
-export const TREASURY_ISSUER_ID = 'ust';
-export const TREASURY_HOLD_DAYS = 45;
+const TREASURY_ISSUER_ID = 'ust';
+const TREASURY_HOLD_DAYS = 45;
 
 export interface Confirmation {
   login: string;
