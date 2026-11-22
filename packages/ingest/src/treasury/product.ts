@@ -1,3 +1,13 @@
+import { CodedError } from '../fetch-budget';
+
+/** Code `unconfirmed` reaches the run line; the message names the missing facts. */
+class UnconfirmedError extends CodedError {
+  constructor(missing: readonly string[]) {
+    super('unconfirmed');
+    this.message = `treasury facts not confirmed: ${missing.join(',')}`;
+  }
+}
+
 import { Product, type IsoDate, type IsoDateTime, type Provenance, type Rule } from '@fa/contracts';
 import { DIRECT_URL } from './auctions';
 import type { TreasuryOffer } from './offers';
@@ -53,7 +63,7 @@ function confirmed(
     if (confirmation === undefined) missing.push(gap.id);
     else out.set(gap.field, { gap, confirmation });
   }
-  if (missing.length > 0) throw new Error(`treasury facts not confirmed: ${missing.join(',')}`);
+  if (missing.length > 0) throw new UnconfirmedError(missing);
   return out;
 }
 
@@ -94,7 +104,7 @@ export function treasuryProducts(
 ): Product[] {
   const facts = confirmed(confirmations);
   const early = facts.get('early_withdrawal');
-  if (early === undefined) throw new Error('treasury facts not confirmed: early_withdrawal');
+  if (early === undefined) throw new UnconfirmedError(['treasury:early_withdrawal']);
   return offers.map((offer) =>
     Product.parse({
       id: productId(offer),

@@ -17,7 +17,15 @@ export async function ensureFdicSource(sql: Sql): Promise<void> {
 
 export async function latestSnapshotHash(sql: Sql, sourceId: string): Promise<string | null> {
   const result = await sql.query(
-    `select sha256 from raw_snapshots where source_id = $1 order by id desc limit 1`,
+    // a snapshot saved by a run that then failed was never published: the next run retries it
+    `select s.sha256 from raw_snapshots s
+     where s.source_id = $1
+       and not exists (
+         select 1 from job_runs j
+         where j.source_id = s.source_id and j.status = 'failed'
+           and s.created_at between j.started_at and j.ended_at
+       )
+     order by s.id desc limit 1`,
     [sourceId],
   );
   const hash = result.rows[0]?.['sha256'];
