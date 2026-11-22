@@ -11,6 +11,7 @@ const STYLE: Record<InstitutionKind, { box: string; icon: string }> = {
   direct_bank: { box: 'border-border', icon: '🏦' },
   credit_union: { box: 'border-border', icon: '🏦' },
   fintech_partner: { box: 'border-warn bg-warn-bg text-warn', icon: '⚠' },
+  government: { box: 'border-border', icon: '🏛' },
 };
 
 /** Kind of institution in words with an icon; the explanation opens on demand. */

@@ -83,6 +83,7 @@ function catalogStats(products: readonly CompareProduct[], index: InstitutionDet
     direct_bank: 0,
     credit_union: 0,
     fintech_partner: 0,
+    government: 0,
   };
   for (const product of products) {
     if (product.termMonths !== null) {

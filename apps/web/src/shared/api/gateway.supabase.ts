@@ -204,8 +204,11 @@ export function createSupabaseGateway(): DataGateway {
     },
     getInstitution: async (id) => {
       const registry = await maybe(institutionQuery(await currentVersionId('institutions'), id));
+      // issuers outside the registry hang on their products' version: demo banks, the Treasury
       const row =
-        registry ?? (await maybe(institutionQuery(await currentVersionId('products'), id)));
+        registry ??
+        (await maybe(institutionQuery(await currentVersionId('products'), id))) ??
+        (await maybe(institutionQuery(await currentVersionId('treasury'), id)));
       if (row === null) throw new GatewayError('not_found', `Institution ${id}`, false);
       return parsed(Institution, institutionFrom(row), 'institution');
     },

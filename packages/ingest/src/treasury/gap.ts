@@ -4,13 +4,7 @@ import { openQueuedIssue } from '../github';
 import type { DatasetDomain } from '../index';
 import type { PipelinePorts, RunSummary } from '../pipeline';
 import { missingFieldsReason } from './product-gaps';
-import {
-  DIRECT_URL,
-  FISCAL_URL,
-  directShapeProblems,
-  fetchAuctionBody,
-  fiscalShapeProblems,
-} from './auctions';
+import { FISCAL_URL, fetchAuctionBody, fiscalShapeProblems } from './auctions';
 
 interface GapSource {
   id: string;
@@ -24,13 +18,6 @@ const FISCAL: GapSource = {
   domain: 'treasury',
   url: FISCAL_URL,
   problems: fiscalShapeProblems,
-};
-
-const DIRECT: GapSource = {
-  id: 'treasurydirect',
-  domain: 'treasury',
-  url: DIRECT_URL,
-  problems: directShapeProblems,
 };
 
 function held(reason: string, published = 0): RunSummary {
@@ -160,8 +147,4 @@ async function holdMissingFields(input: {
 
 export function fiscalGap(): GapSource {
   return FISCAL;
-}
-
-export function directGap(): GapSource {
-  return DIRECT;
 }

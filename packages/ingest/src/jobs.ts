@@ -4,7 +4,7 @@ import { fdicInstitutionsSource } from './fdic/institutions';
 import { ecfrWatchSource } from './ecfr/watch';
 import { nationalRatesSource } from './fred/national';
 import { ncuaSource } from './ncua/source';
-import { auctionPorts, nationalRatesPorts, ncuaPorts } from './postgres/gov-ports';
+import { auctionPorts, nationalRatesPorts, ncuaPorts, treasuryPorts } from './postgres/gov-ports';
 import {
   prepareAuctionSources,
   prepareFdicSource,
@@ -34,7 +34,8 @@ import { overnightWindowStart, overnightWindowUtc, utcWeekStart } from './scrape
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 import { registerAfterBanks, registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
-import { directGap, fiscalGap, runAuctionGap } from './treasury/gap';
+import { fiscalGap, runAuctionGap } from './treasury/gap';
+import { treasuryDirectSource } from './treasury/source';
 import { formatWatchLine, runWatchSource } from './watch';
 
 /** Step 6 wires a connector. A second call is a mistake: registerJob refuses a duplicate. */
@@ -157,7 +158,7 @@ async function runTreasuryDirect(env: NodeJS.ProcessEnv): Promise<void> {
   await prepareAuctionSources(env);
   reportRun(
     'treasurydirect',
-    await runAuctionGap(directGap(), auctionPorts(env, now), writeStdout),
+    await runSource(treasuryDirectSource(), treasuryPorts(env, now), writeStdout),
     env,
   );
 }

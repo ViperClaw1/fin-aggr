@@ -1,6 +1,12 @@
 // Value lists that client code reads at runtime, without zod (ADR-016). The schemas in
 // entities.ts are built on them. No imports: importing a list never pulls a schema module.
-export const INSTITUTION_KINDS = ['direct_bank', 'credit_union', 'fintech_partner'] as const;
+export const INSTITUTION_KINDS = [
+  'direct_bank',
+  'credit_union',
+  'fintech_partner',
+  // the U.S. Treasury as the issuer of bills and notes: not a bank, not insured (ADR-020)
+  'government',
+] as const;
 
 /** Bank-health metrics. A missing key is shown as "n/a", never as zero. */
 export const METRIC_KEYS = [

@@ -19,6 +19,12 @@ export const SAFETY_TEXT: Record<InstitutionKind, { title: string; detail: strin
     detail:
       'This company is not a bank. Deposits are held at partner banks. Ask the company how your deposits are protected.',
   },
+  // DRAFT (2026-11-22): not approved by the owner, and not reviewed by a lawyer.
+  government: {
+    title: 'U.S. Treasury',
+    detail:
+      'Not a bank deposit and not FDIC-insured. A U.S. government security, bought through TreasuryDirect or a bank, broker, or dealer.',
+  },
 };
 
 /** The kind in words, one copy for badges and filters. */

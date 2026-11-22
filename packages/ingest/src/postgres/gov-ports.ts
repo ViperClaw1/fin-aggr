@@ -10,6 +10,8 @@ import { latestSnapshotHash, previousInstitutions } from './institutions';
 import { commitAuctionHold } from './auctions';
 import { commitNationalRates, previousNationalRates } from './national';
 import { commitNcua } from './ncua';
+import { commitTreasuryProducts } from './treasury-products';
+import type { TreasuryOffer } from '../treasury/offers';
 import {
   attachIssue,
   commentReview,
@@ -87,6 +89,21 @@ export function nationalRatesPorts(
 }
 
 /** Snapshot ports for an auction feed that does not publish products. */
+/** TreasuryDirect publishes the treasury domain (ADR-020, Treasury products). */
+export function treasuryPorts(
+  env: NodeJS.ProcessEnv,
+  now: () => string,
+): PipelinePorts<TreasuryOffer> {
+  return {
+    ...auctionPorts(env, now),
+    commit: (input) =>
+      withClient(databaseUrl(env), (sql) => commitTreasuryProducts(sql, input, now())),
+    revalidate: () => revalidateDomain(env, 'treasury'),
+    notifyFailure: (message, title = 'Ingest treasurydirect failed') =>
+      notifyFailure(env, message, title),
+  };
+}
+
 export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): PipelinePorts<never> {
   return {
     now,

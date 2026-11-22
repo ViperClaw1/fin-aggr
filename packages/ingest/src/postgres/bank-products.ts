@@ -215,7 +215,11 @@ async function copyKept(
   );
 }
 
-async function insertProduct(sql: Sql, versionId: number, product: ProductRow): Promise<void> {
+export async function insertProduct(
+  sql: Sql,
+  versionId: number,
+  product: ProductRow,
+): Promise<void> {
   await sql.query(
     `insert into products (
        version_id, id, institution_id, category, name, term_months, tier_mode, compounding,
