@@ -23,6 +23,8 @@ export function penaltyText(penalty: EarlyWithdrawal): string {
       return `${String(penalty.months)} months of interest`;
     case 'percent_of_principal':
       return `${formatRate(penalty.rate)} of the principal`;
+    case 'market_sale':
+      return `None: sold at market price after ${String(penalty.holdDays)} days`;
   }
 }
 

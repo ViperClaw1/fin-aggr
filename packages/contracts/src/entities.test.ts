@@ -101,6 +101,8 @@ describe('RateTier and EarlyWithdrawal', () => {
   it('requires the field matching the penalty kind', () => {
     expect(ok(EarlyWithdrawal, { kind: 'percent_of_principal', rate: '0.01' })).toBe(true);
     expect(ok(EarlyWithdrawal, { kind: 'months_of_interest', days: 3 })).toBe(false);
+    expect(ok(EarlyWithdrawal, { kind: 'market_sale', holdDays: 45 })).toBe(true);
+    expect(ok(EarlyWithdrawal, { kind: 'market_sale', holdDays: -1 })).toBe(false);
   });
 });
 

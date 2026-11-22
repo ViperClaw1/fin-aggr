@@ -83,6 +83,9 @@ export const EarlyWithdrawal = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('days_of_interest'), days: z.int().positive() }),
   z.strictObject({ kind: z.literal('months_of_interest'), months: z.int().positive() }),
   z.strictObject({ kind: z.literal('percent_of_principal'), rate: Rate }),
+  // A marketable security is not withdrawn: it is sold through a bank, broker or dealer at the
+  // market price, after `holdDays` in TreasuryDirect (ADR-020). The gain or loss is not known.
+  z.strictObject({ kind: z.literal('market_sale'), holdDays: z.int().nonnegative() }),
 ]);
 export type EarlyWithdrawal = z.infer<typeof EarlyWithdrawal>;
 

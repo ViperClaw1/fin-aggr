@@ -93,6 +93,8 @@ export function penaltyQuote(penalty: EarlyWithdrawal): string {
       return `Early withdrawal penalty: ${String(penalty.months)} months of interest on the amount withdrawn.`;
     case 'percent_of_principal':
       return 'Early withdrawal penalty: 1% of the principal withdrawn.';
+    case 'market_sale':
+      return `No penalty. The security is sold at the market price after ${String(penalty.holdDays)} days.`;
   }
 }
 

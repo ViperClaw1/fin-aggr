@@ -31,6 +31,30 @@ describe('assumptions, warnings and steps', () => {
   it('a days-of-interest penalty adds the day count assumption', () => {
     expect(ids(run({ product: { earlyWithdrawal: DAYS_90 } }))).toContain('day_count_365');
   });
+  describe('market sale', () => {
+    const SALE = EarlyWithdrawal.parse({ kind: 'market_sale', holdDays: 45 });
+    const sale = (holdingMonths: number): ReturnType<typeof run> =>
+      run({ product: { earlyWithdrawal: SALE }, holdingMonths });
+    it('adds the excluded-sale-price assumption', () => {
+      expect(ids(sale(12))).toContain('market_sale_price_excluded');
+    });
+    it('charges no penalty when sold early', () => {
+      expect(sale(6).earlyWithdrawalPenalty).toBe(0);
+    });
+    it('warns that the sale price depends on the market', () => {
+      expect(sale(6).warnings).toEqual([
+        'Selling before maturity: the sale price depends on the market, so you may get back more or less than you paid.',
+      ]);
+    });
+    it('also warns about the hold when one month is under 45 days', () => {
+      expect(sale(1).warnings).toContain(
+        'In TreasuryDirect the security must be held 45 days before it can be sold or transferred.',
+      );
+    });
+    it('has no sale warning when held to term', () => {
+      expect(sale(12).warnings).toEqual([]);
+    });
+  });
   it('holding past the term warns that the rate is not renewed', () => {
     expect(run({ holdingMonths: 18 }).warnings).toEqual([
       'The rate is not renewed after the term: interest stops at maturity.',

@@ -77,6 +77,9 @@ function penaltyFor(
       return interestFor(portions, new D(rule.months).div(12));
     case 'percent_of_principal':
       return decCents(principal).times(decRate(rule.rate));
+    case 'market_sale':
+      // no penalty: the sale price is unknown, and yield.ts says so (assumption and warning)
+      return new D(0);
   }
 }
 

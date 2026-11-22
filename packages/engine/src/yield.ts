@@ -74,14 +74,38 @@ const A = {
     text: `A penalty in days is simple interest on a ${String(DAYS_PER_YEAR)}-day year; months are 1/12 of a year.`,
     editable: false,
   },
+  marketSale: {
+    id: 'market_sale_price_excluded',
+    text: 'Selling before maturity happens at the market price. The gain or loss on that sale is not included: only interest earned while held is counted.',
+    editable: false,
+  },
 } as const satisfies Record<string, Assumption>;
 
 const WARN_NOT_RENEWED = 'The rate is not renewed after the term: interest stops at maturity.';
 const WARN_NEGATIVE = 'The early withdrawal penalty is larger than the interest earned.';
+const WARN_MARKET_SALE =
+  'Selling before maturity: the sale price depends on the market, so you may get back more or less than you paid.';
+const warnHold = (days: number): string =>
+  `In TreasuryDirect the security must be held ${String(days)} days before it can be sold or transferred.`;
 
 /** Every yield assumption, including ones that only some products carry. */
 export function yieldAssumptionCatalog(): readonly Assumption[] {
-  return [A.niitAmt, A.penaltyBase, A.simpleYield, A.roundingPerLine, A.treasury, A.dayCount];
+  return [
+    A.niitAmt,
+    A.penaltyBase,
+    A.simpleYield,
+    A.roundingPerLine,
+    A.treasury,
+    A.dayCount,
+    A.marketSale,
+  ];
+}
+
+function marketSaleWarnings(input: NetYieldInput, interest: Interest): string[] {
+  const rule = input.product.earlyWithdrawal;
+  if (rule.kind !== 'market_sale' || !interest.closedEarly) return [];
+  const heldDays = new D(input.holdingMonths).times(DAYS_PER_YEAR).div(12);
+  return [WARN_MARKET_SALE, ...(heldDays.lt(rule.holdDays) ? [warnHold(rule.holdDays)] : [])];
 }
 
 function assumptionsFor(product: YieldProduct): Assumption[] {
@@ -92,6 +116,7 @@ function assumptionsFor(product: YieldProduct): Assumption[] {
     A.roundingPerLine,
     ...(product.category === 'treasury' ? [A.treasury] : []),
     ...(product.earlyWithdrawal.kind === 'days_of_interest' ? [A.dayCount] : []),
+    ...(product.earlyWithdrawal.kind === 'market_sale' ? [A.marketSale] : []),
   ];
 }
 
@@ -107,6 +132,7 @@ const PENALTY: Record<YieldProduct['earlyWithdrawal']['kind'], string> = {
   days_of_interest: 'Days of interest at the account APY',
   months_of_interest: 'Months of interest at the account APY',
   percent_of_principal: 'Percent of the principal',
+  market_sale: 'No penalty: sold at the market price, gain or loss not included',
 };
 
 type Row = [
@@ -256,6 +282,7 @@ export function computeNetYield(input: NetYieldInput): NetYieldResult {
     warnings: [
       ...(interest.cappedAtTerm ? [WARN_NOT_RENEWED] : []),
       ...(netInterest < 0 ? [WARN_NEGATIVE] : []),
+      ...marketSaleWarnings(input, interest),
     ],
   };
 }
