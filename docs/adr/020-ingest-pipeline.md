@@ -322,6 +322,8 @@ The quotes in `packages/ingest/src/insurance/limit.ts` stay `unverified`. They a
 
 `publishFederalBrackets` throws. Rev. Proc. 2025-32 stays a one-checker draft. `TAX_YEAR` is unchanged. State brackets are not started.
 
+Update 2026-11-22 (owner decisions). First check: all 28 thresholds and rates of the 2026 draft equal Form 1040-ES (2026) Tax Rate Schedules X, Y-1, Y-2 and Z; the test cites that form. Second check: a person runs `pnpm ingest:confirm tax:federal-2026`, which prints all 28 bracket quotes by filing status; the row in `fact_confirmations` is the second checker. `publishFederalBrackets(confirmation)` throws without that row and returns the tables marked `verified` / `by: human` with it. It still writes no version: the database publish and the `TAX_YEAR` switch are a separate step. The drafts live in `packages/ingest/src/tax/federal-brackets.ts`. Rev. Proc. 2026-35 (released 2026-11-05, IR-2026-133) § 3.01 tables 1–4 are the 2027 draft, read from the irs-drop PDF `https://www.irs.gov/pub/irs-drop/rp-26-35.pdf`; the IRB page is `null` until the bulletin is out. Single and married-joint thresholds agree with IR-2026-133; head-of-household and married-separate have no second source yet. The 2027 draft is `unverified` and has no confirmation fact.
+
 ### Bank HTML rate tables (2026-11-15)
 
 Recorded before ACCESSbank (Omaha, NE, rates page `/for-you/accounts/interest-rates`) is connected. That bank is not in the registry and has no adapter. The rules live in `classifyTableRow`.

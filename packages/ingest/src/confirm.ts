@@ -8,6 +8,8 @@ import type { Sql } from './decisions';
 import { loadLocalEnv } from './env';
 import { insuranceLimitQuotes } from './insurance/limit';
 import { requireReviewer } from './policy';
+import { FEDERAL_2026_FACT_ID } from './tax/publish';
+import { federalBrackets2026 } from './tax/federal-brackets';
 import { treasuryProductGaps } from './treasury/product-gaps';
 
 const execFileAsync = promisify(execFile);
@@ -29,6 +31,7 @@ function confirmableIds(): Set<string> {
   return new Set([
     ...insuranceLimitQuotes().map((quote) => quote.id),
     ...treasuryProductGaps().map((gap) => gap.id),
+    FEDERAL_2026_FACT_ID,
   ]);
 }
 
@@ -52,7 +55,8 @@ export function confirmableFact(factId: string): ConfirmableFact {
       quote: gap.quote,
     };
   }
-  throw new Error(`unknown fact ${factId}`);
+  if (factId === FEDERAL_2026_FACT_ID) return federalFact();
+  throw new Error();
 }
 
 export function formatFactPreview(fact: ConfirmableFact): string {
@@ -169,4 +173,19 @@ if (isDirect()) {
       process.stderr.write(`${message}\n`);
       process.exitCode = 1;
     });
+}
+
+/** All 28 rows of Rev. Proc. 2025-32 § 4.01 tables 1-4, one quote per bracket, by filing status. */
+function federalFact(): ConfirmableFact {
+  const draft = federalBrackets2026();
+  const lines = draft.tables.flatMap((table) => [
+    `[${table.filingStatus}] § ${table.section}`,
+    ...table.brackets.map((bracket) => `  ${bracket.quote}`),
+  ]);
+  return {
+    id: FEDERAL_2026_FACT_ID,
+    citation: `Rev. Proc. 2025-32 § 4.01, IRB 2025-45, page ${String(draft.page)}`,
+    sourceUrl: draft.sourceUrl,
+    quote: `\n${lines.join('\n')}`,
+  };
 }

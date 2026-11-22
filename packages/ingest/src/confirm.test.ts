@@ -39,6 +39,15 @@ describe('fact confirmation', () => {
     expect(() => confirmCommand(['treasury:nope'])).toThrow('unknown fact treasury:nope');
   });
 
+  it('shows all 28 federal 2026 brackets before the second check', () => {
+    expect(confirmCommand(['tax:federal-2026'])).toEqual({ factId: 'tax:federal-2026' });
+    const preview = formatFactPreview(confirmableFact('tax:federal-2026'));
+    expect(preview).toContain('citation: Rev. Proc. 2025-32 § 4.01, IRB 2025-45, page 695');
+    expect(preview).toContain('[married_separate] § 1(j)(2)(D)');
+    expect(preview).toContain('Over $384,350');
+    expect(preview.match(/^ {2}(Not over|Over) /gm)).toHaveLength(28);
+  });
+
   it('keeps the calendar date and drops the time', () => {
     expect(confirmationDate('2026-11-15T13:19:00.000Z')).toBe('2026-11-15');
     expect(() => confirmationDate('15 Nov 2026')).toThrow(/date/i);
