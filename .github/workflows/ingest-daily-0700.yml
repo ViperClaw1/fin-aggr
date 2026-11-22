@@ -1,4 +1,4 @@
-# FDIC institutions, Treasury Fiscal Data, TreasuryDirect. 07:17 UTC (plan step 5).
+# FDIC institutions, TreasuryDirect (cross-checked against Fiscal Data). 07:17 UTC (plan step 5).
 name: Ingest daily 07:00
 
 on:
@@ -14,13 +14,6 @@ jobs:
     uses: ./.github/workflows/ingest-source.yml
     with:
       source: fdic-institutions
-      timeout-minutes: 15
-    secrets: inherit
-
-  treasury-fiscal-data:
-    uses: ./.github/workflows/ingest-source.yml
-    with:
-      source: treasury-fiscal-data
       timeout-minutes: 15
     secrets: inherit
 

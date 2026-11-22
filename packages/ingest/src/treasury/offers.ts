@@ -35,9 +35,9 @@ export interface TreasuryOffer {
   compounding: 'at_maturity' | 'semiannual';
 }
 
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 
-function text(row: Row, key: string): string {
+export function text(row: Row, key: string): string {
   const value = row[key];
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -56,7 +56,7 @@ function daysBetween(from: string, to: string): number {
   return days;
 }
 
-function eligible(row: Row): boolean {
+export function eligible(row: Row): boolean {
   return (
     `${text(row, 'securityType')} ${text(row, 'securityTerm')}` in TERM_MONTHS &&
     text(row, 'inflationProtected') !== 'Yes' &&
@@ -66,7 +66,7 @@ function eligible(row: Row): boolean {
 }
 
 /** An announced auction without results has no price or yield yet: not an offer. */
-function hasResult(row: Row): boolean {
+export function hasResult(row: Row): boolean {
   return text(row, 'securityType') === 'Bill'
     ? text(row, 'highPrice') !== ''
     : text(row, 'highYield') !== '';

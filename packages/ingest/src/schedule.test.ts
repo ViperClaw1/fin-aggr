@@ -76,7 +76,6 @@ describe('schedule catalog', () => {
     const ids = SCHEDULE.map((row) => row.id);
     expect(ids).toEqual([
       'fdic-institutions',
-      'treasury-fiscal-data',
       'treasurydirect',
       'treasury-par-yield',
       'bank-rates',
@@ -94,7 +93,6 @@ describe('schedule catalog', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(SCHEDULE.filter((row) => row.ready === true).map((row) => row.id)).toEqual([
       'fdic-institutions',
-      'treasury-fiscal-data',
       'treasurydirect',
       'treasury-par-yield',
       'ecfr-330',

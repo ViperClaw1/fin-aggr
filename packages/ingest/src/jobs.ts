@@ -4,7 +4,7 @@ import { fdicInstitutionsSource } from './fdic/institutions';
 import { ecfrWatchSource } from './ecfr/watch';
 import { nationalRatesSource } from './fred/national';
 import { ncuaSource } from './ncua/source';
-import { auctionPorts, nationalRatesPorts, ncuaPorts, treasuryPorts } from './postgres/gov-ports';
+import { nationalRatesPorts, ncuaPorts, treasuryPorts } from './postgres/gov-ports';
 import {
   prepareAuctionSources,
   prepareFdicSource,
@@ -34,7 +34,6 @@ import { overnightWindowStart, overnightWindowUtc, utcWeekStart } from './scrape
 import { createScrapeSession, type ScrapeClient } from './scrape/session';
 import { registerAfterBanks, registerJob } from './schedule';
 import { parYieldSource } from './treasury/par-yield';
-import { fiscalGap, runAuctionGap } from './treasury/gap';
 import { treasuryDirectSource } from './treasury/source';
 import { formatWatchLine, runWatchSource } from './watch';
 
@@ -44,7 +43,6 @@ export function registerConnectors(): void {
   registerJob('fdic-financials', (env) => runFdicFinancials(env));
   registerJob('ncua-5300', (env) => runNcua(env));
   registerJob('fdic-national-rates', (env) => runNationalRates(env));
-  registerJob('treasury-fiscal-data', (env) => runFiscal(env));
   registerJob('treasurydirect', (env) => runTreasuryDirect(env));
   registerJob('treasury-par-yield', (env) => runParYield(env));
   registerJob('ecfr-330', (env) => runEcfr(env, '330'));
@@ -141,16 +139,6 @@ async function runNationalRates(env: NodeJS.ProcessEnv): Promise<void> {
   const source = nationalRatesSource(now, env['FRED_API_KEY'] ?? '');
   await prepareNationalRatesSource(env);
   reportRun(source.id, await runSource(source, nationalRatesPorts(env, now), writeStdout), env);
-}
-
-async function runFiscal(env: NodeJS.ProcessEnv): Promise<void> {
-  const now = (): string => new Date().toISOString();
-  await prepareAuctionSources(env);
-  reportRun(
-    'treasury-fiscal-data',
-    await runAuctionGap(fiscalGap(), auctionPorts(env, now), writeStdout),
-    env,
-  );
 }
 
 async function runTreasuryDirect(env: NodeJS.ProcessEnv): Promise<void> {

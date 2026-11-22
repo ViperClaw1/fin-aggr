@@ -56,14 +56,6 @@ export const SCHEDULE: readonly ScheduleEntry[] = [
     ready: true,
   },
   {
-    id: 'treasury-fiscal-data',
-    cadence: 'daily-0700',
-    cron: '17 7 * * *',
-    workflow: 'ingest-daily-0700.yml',
-    timeoutMinutes: 15,
-    ready: true,
-  },
-  {
     id: 'treasurydirect',
     cadence: 'daily-0700',
     cron: '17 7 * * *',

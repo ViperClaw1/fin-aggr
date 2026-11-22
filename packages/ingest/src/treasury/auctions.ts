@@ -92,7 +92,6 @@ export async function fetchAuctionBody(input: {
   return { sha256: sha256Hex(bytes), bytes, body, requestCount: 1 };
 }
 
-export const FISCAL_URL = FISCAL;
 export const DIRECT_URL = DIRECT;
 
 export async function checkFiscalShape(fetchImpl: typeof fetch): Promise<string> {

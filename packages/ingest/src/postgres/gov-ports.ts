@@ -7,7 +7,6 @@ import type { NcuaRow } from '../ncua/parse';
 import type { PipelinePorts } from '../pipeline';
 import { previousFinancials } from './financials';
 import { latestSnapshotHash, previousInstitutions } from './institutions';
-import { commitAuctionHold } from './auctions';
 import { commitNationalRates, previousNationalRates } from './national';
 import { commitNcua } from './ncua';
 import { commitTreasuryProducts } from './treasury-products';
@@ -88,23 +87,11 @@ export function nationalRatesPorts(
   };
 }
 
-/** Snapshot ports for an auction feed that does not publish products. */
 /** TreasuryDirect publishes the treasury domain (ADR-020, Treasury products). */
 export function treasuryPorts(
   env: NodeJS.ProcessEnv,
   now: () => string,
 ): PipelinePorts<TreasuryOffer> {
-  return {
-    ...auctionPorts(env, now),
-    commit: (input) =>
-      withClient(databaseUrl(env), (sql) => commitTreasuryProducts(sql, input, now())),
-    revalidate: () => revalidateDomain(env, 'treasury'),
-    notifyFailure: (message, title = 'Ingest treasurydirect failed') =>
-      notifyFailure(env, message, title),
-  };
-}
-
-export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): PipelinePorts<never> {
   return {
     now,
     latestHash: (sourceId) =>
@@ -112,15 +99,16 @@ export function auctionPorts(env: NodeJS.ProcessEnv, now: () => string): Pipelin
     previousSnapshot: (sourceId) => previousSnapshotBytes(env, sourceId),
     saveSnapshot: (input) => saveInstitutionSnapshot(env, input),
     previousRows: () => Promise.resolve([]),
-    commit: (input) => withClient(databaseUrl(env), (sql) => commitAuctionHold(sql, input)),
+    commit: (input) =>
+      withClient(databaseUrl(env), (sql) => commitTreasuryProducts(sql, input, now())),
     sign: (snapshotId) => signSnapshot(env, snapshotId),
     openIssue: (input) => openReview(env, input),
     commentIssue: (input) => commentReview(env, input),
     attachIssue: (queueId, issueUrl) =>
       withClient(databaseUrl(env), (sql) => attachIssue(sql, queueId, issueUrl)),
     finishJob: (job) => withClient(databaseUrl(env), (sql) => finishJob(sql, job)),
-    revalidate: () => Promise.reject(new Error('treasury auctions do not revalidate')),
-    notifyFailure: (message, title = 'Ingest treasury auctions failed') =>
+    revalidate: () => revalidateDomain(env, 'treasury'),
+    notifyFailure: (message, title = 'Ingest treasurydirect failed') =>
       notifyFailure(env, message, title),
     failureStreak: (sourceId) =>
       withClient(databaseUrl(env), (sql) => upstreamStreak(sql, sourceId)),

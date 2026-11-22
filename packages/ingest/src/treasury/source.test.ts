@@ -26,4 +26,8 @@ describe('validateTreasuryOffers', () => {
     const wild = offers.map((o, i) => (i === 0 ? { ...o, apy: parseRate('0.9') } : o));
     expect(validateTreasuryOffers(wild).blocked).toBe('rate bounds');
   });
+
+  it('blocks the publish when Fiscal Data disagrees on a shared auction', () => {
+    expect(validateTreasuryOffers(offers, ['912797VT1']).blocked).toBe('fiscal_mismatch:912797VT1');
+  });
 });

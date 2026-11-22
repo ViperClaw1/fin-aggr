@@ -9,17 +9,12 @@
  * address sentence or the depository-account sentence. It is not a Provenance quote.
  */
 
-const MISSING_PRODUCT_FIELDS = [
-  'tier',
-  'min_opening',
-  'early_withdrawal',
-  'eligibility',
-  'tax_treatment',
-] as const;
+type MissingProductField =
+  'tier' | 'min_opening' | 'early_withdrawal' | 'eligibility' | 'tax_treatment';
 
 export interface TreasuryProductGap {
-  id: `treasury:${(typeof MISSING_PRODUCT_FIELDS)[number]}`;
-  field: (typeof MISSING_PRODUCT_FIELDS)[number];
+  id: `treasury:${MissingProductField}`;
+  field: MissingProductField;
   productField: 'tiers' | 'minOpening' | 'earlyWithdrawal' | 'eligibility' | 'taxTreatment';
   citation: string;
   sourceUrl: string;
@@ -87,15 +82,4 @@ const GAPS: readonly TreasuryProductGap[] = [
 
 export function treasuryProductGaps(): readonly TreasuryProductGap[] {
   return GAPS;
-}
-
-export function missingFieldsReason(): string {
-  return `missing_fields:${MISSING_PRODUCT_FIELDS.join(',')}`;
-}
-
-/** Auction rows are not products until a person confirms these quotes. */
-export function publishTreasuryProducts(): never {
-  throw new Error(
-    'treasury products stay unpublished until the product-field quotes are confirmed',
-  );
 }
