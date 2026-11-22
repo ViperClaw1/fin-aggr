@@ -1,7 +1,9 @@
 /**
  * Product fields the auction feeds do not carry.
  * Quotes are the eCFR versioner text read on 2026-11-16, except the
- * early-withdrawal and tax quotes, which are unchanged from 2026-11-14.
+ * tax quote, unchanged from 2026-11-14, and the early-withdrawal quote, read again on
+ * 2026-11-22 to add the 4-week bill sentence (the opening "you can hold" sentence was
+ * dropped to stay within 400 characters).
  * They stay unverified until a person confirms them. They are not a published Product.
  * 31 CFR 363.11 is stored whole: clipping it to 400 characters would drop the
  * address sentence or the depository-account sentence. It is not a Provenance quote.
@@ -56,7 +58,7 @@ const GAPS: readonly TreasuryProductGap[] = [
     sourceUrl:
       'https://www.treasurydirect.gov/marketable-securities/selling-marketable-securities/',
     quote:
-      'You can hold a Treasury marketable security until it matures or sell it before it matures. To sell a Treasury marketable security, you must work through a bank, broker, or dealer. In Treasury Direct, when you buy a Treasury marketable security, you must hold it in your TreasuryDirect account for 45 days before selling or transferring it.',
+      'To sell a Treasury marketable security, you must work through a bank, broker, or dealer. In Treasury Direct, when you buy a Treasury marketable security, you must hold it in your TreasuryDirect account for 45 days before selling or transferring it. This means you can’t sell or transfer a 4-week bill from TreasuryDirect because it matures in less than 45 days.',
     verification: 'unverified',
   },
   {
