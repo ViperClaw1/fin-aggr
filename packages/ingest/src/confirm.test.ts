@@ -30,7 +30,7 @@ const yes = () => Promise.resolve(true);
 
 describe('fact confirmation', () => {
   it('names the drafted states when a state has no draft', () => {
-    expect(() => confirmCommand(['tax:state-2026:ca'])).toThrow(/drafted states: .*\btx\b/);
+    expect(() => confirmCommand(['tax:state-2026:hi'])).toThrow(/drafted states: .*\btx\b/);
   });
 
   it('accepts a state code in capitals', () => {
