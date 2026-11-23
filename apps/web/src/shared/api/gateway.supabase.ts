@@ -260,7 +260,7 @@ async function taxTables(taxYear: number): Promise<TaxTables> {
   const table = await one(
     supabase()
       .from('tax_tables')
-      .select('version_id, tax_year, provenance')
+      .select('version_id, tax_year, provenance, states_provenance')
       .eq('tax_year', taxYear)
       .single(),
   );
@@ -281,11 +281,7 @@ async function taxTables(taxYear: number): Promise<TaxTables> {
         .eq('tax_year', taxYear),
     ),
   ]);
-  return parsed(
-    TaxTables,
-    taxFrom(table['tax_year'], table['provenance'], brackets, states),
-    'tax',
-  );
+  return parsed(TaxTables, taxFrom(table, brackets, states), 'tax');
 }
 
 async function insurance(asOf: string | undefined): Promise<InsuranceRules> {

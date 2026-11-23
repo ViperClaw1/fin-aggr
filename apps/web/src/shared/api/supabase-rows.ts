@@ -159,12 +159,7 @@ export function sponsoredFrom(row: Row): unknown {
   } satisfies Record<keyof SponsoredItem, unknown>;
 }
 
-export function taxFrom(
-  year: unknown,
-  provenance: unknown,
-  brackets: readonly Row[],
-  states: readonly Row[],
-): unknown {
+export function taxFrom(table: Row, brackets: readonly Row[], states: readonly Row[]): unknown {
   const federal: Record<string, { upTo: unknown; rate: unknown }[]> = {};
   for (const row of [...brackets].sort((a, b) => Number(a['ord']) - Number(b['ord']))) {
     const status = String(row['filing_status']);
@@ -179,10 +174,15 @@ export function taxFrom(
   for (const row of states) {
     stateRates[String(row['state_code'])] = { assumedMarginalRate: row['assumed_marginal_rate'] };
   }
-  return { taxYear: year, federal, states: stateRates, provenance } satisfies Record<
-    keyof TaxTables,
-    unknown
-  >;
+  const statesProvenance = table['states_provenance'];
+  return {
+    taxYear: table['tax_year'],
+    federal,
+    states: stateRates,
+    provenance: table['provenance'],
+    // null in the row: the states share the federal source
+    ...(statesProvenance === null || statesProvenance === undefined ? {} : { statesProvenance }),
+  } satisfies Partial<Record<keyof TaxTables, unknown>>;
 }
 
 export function insuranceFrom(row: Row, limits: readonly Row[]): unknown {

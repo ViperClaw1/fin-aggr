@@ -32,6 +32,7 @@
     "ingest:review": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts review",
     "ingest:approve": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts approve",
     "ingest:confirm": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/confirm.ts",
+    "ingest:publish-tax": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/tax/commit.ts",
     "ingest:confirm-bank": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/bank-confirm.ts",
     "ingest:publish-approved": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts publish-approved",
     "ingest:revalidate": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts revalidate",
