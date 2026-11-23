@@ -154,8 +154,10 @@ const NONE: Entry[] = [
     state: 'TX',
     kind: 'none',
     percent: '0',
-    sourceUrl: 'https://star.comptroller.texas.gov/view/9109L1132A13',
-    quote: 'Texas does not have a personal income tax.',
+    // Tex. Const. art. VIII, § 24-a: a standing ban, so no tax-year page is needed
+    sourceUrl: 'https://statutes.capitol.texas.gov/Docs/CN/htm/CN.8.htm',
+    quote:
+      "Sec. 24-a. INDIVIDUAL INCOME TAX PROHIBITED. The legislature may not impose a tax on the net incomes of individuals, including an individual's share of partnership and unincorporated association income.",
   },
 ];
 

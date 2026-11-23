@@ -82,11 +82,19 @@ export function formatFactPreview(fact: ConfirmableFact): string {
 
 /** `ingest:confirm <fact-id>`. */
 export function confirmCommand(argv: readonly string[]): ConfirmCommand {
-  const [factId, extra] = argv;
+  const [raw, extra] = argv;
+  // ids are lowercase; `tax:state-2026:TX` reads naturally, so fold case first
+  const factId = raw?.toLowerCase();
   if (extra !== undefined || factId === undefined || !FACT_ID.test(factId)) {
     throw new Error('usage: ingest:confirm <fact-id>');
   }
-  if (!confirmableIds().has(factId)) throw new Error(`unknown fact ${factId}`);
+  if (!confirmableIds().has(factId)) {
+    if (factId.startsWith('tax:state-2026:')) {
+      const drafted = stateRates2026().map((draft) => draft.state.toLowerCase());
+      throw new Error(`no 2026 draft for ${factId}; drafted states: ${drafted.join(' ')}`);
+    }
+    throw new Error(`unknown fact ${factId}`);
+  }
   return { factId };
 }
 

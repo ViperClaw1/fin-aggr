@@ -29,6 +29,14 @@ function scripted(rows: Record<string, unknown>[]): Sql & {
 const yes = () => Promise.resolve(true);
 
 describe('fact confirmation', () => {
+  it('names the drafted states when a state has no draft', () => {
+    expect(() => confirmCommand(['tax:state-2026:ca'])).toThrow(/drafted states: .*\btx\b/);
+  });
+
+  it('accepts a state code in capitals', () => {
+    expect(confirmCommand(['tax:state-2026:TX'])).toEqual({ factId: 'tax:state-2026:tx' });
+  });
+
   it('parses one known fact id', () => {
     expect(confirmCommand(['insurance:fdic'])).toEqual({ factId: 'insurance:fdic' });
     expect(confirmCommand(['treasury:tax_treatment'])).toEqual({
