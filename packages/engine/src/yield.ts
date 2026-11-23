@@ -79,6 +79,11 @@ const A = {
     text: 'Selling before maturity happens at the market price. The gain or loss on that sale is not included: only interest earned while held is counted.',
     editable: false,
   },
+  stateRate: {
+    id: 'state_single_rate',
+    text: 'State tax uses one rate for all income: exact where the state has no income tax or a flat rate; in states with graduated brackets it is the top bracket rate, so state tax may be overstated.',
+    editable: false,
+  },
 } as const satisfies Record<string, Assumption>;
 
 const WARN_NOT_RENEWED = 'The rate is not renewed after the term: interest stops at maturity.';
@@ -98,6 +103,7 @@ export function yieldAssumptionCatalog(): readonly Assumption[] {
     A.treasury,
     A.dayCount,
     A.marketSale,
+    A.stateRate,
   ];
 }
 
@@ -117,6 +123,7 @@ function assumptionsFor(product: YieldProduct): Assumption[] {
     ...(product.category === 'treasury' ? [A.treasury] : []),
     ...(product.earlyWithdrawal.kind === 'days_of_interest' ? [A.dayCount] : []),
     ...(product.earlyWithdrawal.kind === 'market_sale' ? [A.marketSale] : []),
+    ...(product.taxTreatment === 'state_local_exempt' ? [] : [A.stateRate]),
   ];
 }
 

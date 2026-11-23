@@ -2,20 +2,22 @@ import { rateFromPercent, type Rate } from '@fa/contracts';
 
 /**
  * Draft 2026 state rates on interest income (P1.4), from state revenue department pages.
- * Only states where one rate is exact: no tax on interest, or a flat rate. Progressive states
- * are not here yet. Not a fixture and not published; every entry stays unverified until a
- * person confirms it. `zeroUpTo` notes a 0% band below the flat rate (the single rate then
- * overstates tax for income under it).
+ * `none` and `flat` are exact. `top` is the top bracket rate of a graduated state, the engine's
+ * `state_single_rate` assumption. Not a fixture and not published; every entry stays unverified
+ * until a person confirms it. `zeroUpTo` notes a 0% band below the flat rate (the single rate
+ * then overstates tax for income under it). `note` is shown before confirmation: what the quote
+ * does not prove by itself.
  */
 
 export interface StateRateDraft {
   state: string;
-  kind: 'none' | 'flat';
+  kind: 'none' | 'flat' | 'top';
   /** percent as printed by the source, '0' for no tax */
   percent: string;
   sourceUrl: string;
   quote: string;
   zeroUpTo?: string;
+  note?: string;
   verification: { status: 'unverified' };
 }
 
@@ -161,11 +163,136 @@ const NONE: Entry[] = [
   },
 ];
 
-/** Single-rate states still without a 2026 quote that covers interest income. */
-export const STATE_RATES_PENDING = ['AK', 'NV', 'WA', 'WY', 'ID', 'PA', 'UT'] as const;
+const NO_YEAR = 'The page names no tax year: confirm the rate still applies to 2026.';
+
+const TOP: Entry[] = [
+  {
+    state: 'AL',
+    kind: 'top',
+    percent: '5',
+    sourceUrl: 'https://www.revenue.alabama.gov/wp-content/uploads/2026/01/26f40esblk.pdf',
+    quote: 'Over $3000 5% Over $6000 5%',
+    note: 'Form 40ES 2026 worksheet line 8c: single and joint columns.',
+  },
+  {
+    state: 'AR',
+    kind: 'top',
+    percent: '3.9',
+    sourceUrl: 'https://www.dfa.arkansas.gov/wp-content/uploads/withholdInstructions_2026.pdf',
+    quote: 'tax rate is 3.9%.',
+    note: 'Withholding instructions for 2026: confirm the sentence names the top income tax rate.',
+  },
+  {
+    state: 'CT',
+    kind: 'top',
+    percent: '6.99',
+    sourceUrl:
+      'https://portal.ct.gov/-/media/drs/publications/pubsip/2026/ip-2026-1.pdf?rev=4482a3dca0a44b28ae39381a91fb0916&hash=57C34787EE2C1D4A7F989EE1F6B8F0F8',
+    quote: 'You must begin withholding at the highest marginal rate of 6.99%',
+  },
+  {
+    state: 'DE',
+    kind: 'top',
+    percent: '6.60',
+    sourceUrl: 'https://revenue.delaware.gov/frequently-asked-questions/personal-income-tax-faqs/',
+    quote: 'The maximum income tax rate is 6.60% on income of $60,000 or over.',
+    note: NO_YEAR,
+  },
+  {
+    state: 'DC',
+    kind: 'top',
+    percent: '10.75',
+    sourceUrl: 'https://otr.cfo.dc.gov/page/dc-individual-and-fiduciary-income-tax-rates',
+    quote:
+      'The tax rates for tax years beginning after 12/31/2021 are: … Over $1,000,000 $91,525, plus 10.75% of the excess above $1,000,000.',
+  },
+  {
+    state: 'KS',
+    kind: 'top',
+    percent: '5.58',
+    sourceUrl: 'https://www.ksrevenue.gov/pdf/k-40es26.pdf',
+    quote: '2026 KANSAS ESTIMATED TAX WORKSHEET … $1,196 plus 5.58% of excess over $23,000',
+  },
+  {
+    state: 'ME',
+    kind: 'top',
+    percent: '7.15',
+    sourceUrl: 'https://www.maine.gov/revenue/taxes/income-estate-tax/individual-income-tax-1040me',
+    quote:
+      'The income tax rates are graduated, with rates ranging from 5.8% to 7.15% for tax years beginning after 2015.',
+  },
+  {
+    state: 'MN',
+    kind: 'top',
+    percent: '9.85',
+    sourceUrl:
+      'https://www.revenue.state.mn.us/press-release/2025-12-16/minnesota-income-tax-brackets-standard-deduction-and-dependent-exemption',
+    quote: '2026 Minnesota Income Tax Brackets … Tax rate 5.35% 6.80% 7.85% 9.85%',
+  },
+  {
+    state: 'NJ',
+    kind: 'top',
+    percent: '10.75',
+    sourceUrl: 'https://www.nj.gov/treasury/taxation/new2020.shtml',
+    quote: 'The New Jersey Gross Income Tax rate increased to 10.75% on income over $1 million.',
+    note: 'A 2020 change notice: confirm no later change for 2026.',
+  },
+  {
+    state: 'OR',
+    kind: 'top',
+    percent: '9.9',
+    sourceUrl:
+      'https://www.oregon.gov/dor/forms/FormsPubs/publication-or-estimate_101-026_2026.pdf',
+    quote: 'Over $250,000 $21,237 plus 9.9% of excess over $250,000',
+  },
+  {
+    state: 'SC',
+    kind: 'top',
+    percent: '5.21',
+    sourceUrl: 'https://dor.sc.gov/news/information-about-h-4216',
+    quote: 'The tax rate for income from $30,000 and above is 5.21%, minus $966.',
+    note: 'dor.sc.gov/iit says these two rates apply "For tax year 2026".',
+  },
+  {
+    state: 'VT',
+    kind: 'top',
+    percent: '8.75',
+    sourceUrl: 'https://tax.vermont.gov/sites/tax/files/documents/IN-114-Instr-2026.pdf',
+    quote: '2026 Preliminary Vermont Tax Rates … 256,300 - 16,601.00 8.75% 256,300',
+    note: 'Preliminary 2026 rates: brackets may be adjusted, the top rate is the fact.',
+  },
+  {
+    state: 'VA',
+    kind: 'top',
+    percent: '5.75',
+    sourceUrl: 'https://www.individual.tax.virginia.gov/income-tax-calculator',
+    quote:
+      'If your taxable income is $54,000, your tax is $720 + 5.75% of the amount over $17,000.',
+    note: NO_YEAR,
+  },
+  {
+    state: 'WI',
+    kind: 'top',
+    percent: '7.65',
+    sourceUrl: 'https://www.revenue.wi.gov/Pages/FAQS/pcs-taxrates.aspx',
+    quote:
+      'Wisconsin individual income tax rates vary from 3.50% to 7.65%, depending upon marital status and income.',
+    note: NO_YEAR,
+  },
+];
+
+/** States and DC still without a 2026 quote that covers interest income. */
+export const STATE_RATES_PENDING = [
+  ...['AK', 'NV', 'WA', 'WY', 'ID', 'PA', 'UT'],
+  // graduated: only a 2025 page, an undated page that may be stale, or no rate on the page
+  ...['CA', 'HI', 'MA', 'MD', 'MO', 'MT', 'ND', 'NE', 'NM', 'NY', 'OK', 'RI', 'WV'],
+] as const;
 
 export function stateRates2026(): StateRateDraft[] {
-  return [...NONE, ...FLAT].map((entry) => ({ ...entry, verification: { status: 'unverified' } }));
+  return [...NONE, ...FLAT, ...TOP].map((entry) => ({
+    ...entry,
+    verification: { status: 'unverified' },
+  }));
 }
 
 /** `ingest:confirm` id of one state's 2026 rate (ADR-025). */

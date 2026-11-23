@@ -65,7 +65,7 @@ export function confirmableFact(factId: string): ConfirmableFact {
       id: factId,
       citation: `${state.state} 2026 rate on interest: ${state.percent}% (${state.kind}${zero})`,
       sourceUrl: state.sourceUrl,
-      quote: state.quote,
+      quote: state.note === undefined ? state.quote : `${state.quote}\nnote: ${state.note}`,
     };
   }
   throw new Error();

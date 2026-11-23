@@ -9,13 +9,18 @@ const MONTHS_6 = EarlyWithdrawal.parse({ kind: 'months_of_interest', months: 6 }
 const DAYS_90 = EarlyWithdrawal.parse({ kind: 'days_of_interest', days: 90 });
 
 describe('assumptions, warnings and steps', () => {
-  it('always lists NIIT/AMT, the penalty tax base, simple yield and per-line rounding', () => {
+  it('a taxable product lists NIIT/AMT, penalty base, simple yield, rounding and the state rate', () => {
     expect(ids(run())).toEqual([
       'niit_amt_ignored',
       'penalty_reduces_taxable_interest',
       'simple_annual_yield',
       'rounding_per_line',
+      'state_single_rate',
     ]);
+  });
+  it('a state-exempt product drops the single state rate assumption', () => {
+    const r = run({ product: { taxTreatment: 'state_local_exempt' } });
+    expect(ids(r)).not.toContain('state_single_rate');
   });
   it('the penalty tax base is editable, NIIT/AMT is not', () => {
     const editable = Object.fromEntries(run().assumptions.map((a) => [a.id, a.editable]));
