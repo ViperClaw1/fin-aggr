@@ -39,7 +39,14 @@ export const TaxTables = z.strictObject({
   taxYear: z.int(),
   // zod 4: a record over an enum requires every filing status
   federal: z.record(FilingStatus, TaxBrackets),
-  states: z.record(z.string().length(2), z.strictObject({ assumedMarginalRate: Rate })),
+  states: z.record(
+    z.string().length(2),
+    z.strictObject({
+      assumedMarginalRate: Rate,
+      /** This state's own source; absent means `statesProvenance`, else `provenance` (ADR-025). */
+      provenance: Provenance.optional(),
+    }),
+  ),
   /** Source of `federal` (and the table as a whole). */
   provenance: Provenance,
   /** Source of `states` when it differs from `provenance`: checked apart (ADR-024). Additive. */

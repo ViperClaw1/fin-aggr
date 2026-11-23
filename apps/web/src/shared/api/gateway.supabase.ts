@@ -276,7 +276,7 @@ async function taxTables(taxYear: number): Promise<TaxTables> {
     many(
       supabase()
         .from('state_tax_rates_text')
-        .select('state_code, assumed_marginal_rate')
+        .select('state_code, assumed_marginal_rate, provenance')
         .eq('version_id', versionId)
         .eq('tax_year', taxYear),
     ),

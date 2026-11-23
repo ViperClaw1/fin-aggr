@@ -10,6 +10,7 @@ import { insuranceLimitQuotes } from './insurance/limit';
 import { requireReviewer } from './policy';
 import { FEDERAL_2026_FACT_ID } from './tax/publish';
 import { federalBrackets2026 } from './tax/federal-brackets';
+import { stateFactId, stateRates2026 } from './tax/state-rates';
 import { treasuryProductGaps } from './treasury/product-gaps';
 
 const execFileAsync = promisify(execFile);
@@ -32,6 +33,7 @@ function confirmableIds(): Set<string> {
     ...insuranceLimitQuotes().map((quote) => quote.id),
     ...treasuryProductGaps().map((gap) => gap.id),
     FEDERAL_2026_FACT_ID,
+    ...stateRates2026().map((draft) => stateFactId(draft.state)),
   ]);
 }
 
@@ -56,6 +58,16 @@ export function confirmableFact(factId: string): ConfirmableFact {
     };
   }
   if (factId === FEDERAL_2026_FACT_ID) return federalFact();
+  const state = stateRates2026().find((draft) => stateFactId(draft.state) === factId);
+  if (state !== undefined) {
+    const zero = state.zeroUpTo === undefined ? '' : `, 0% up to ${state.zeroUpTo}`;
+    return {
+      id: factId,
+      citation: `${state.state} 2026 rate on interest: ${state.percent}% (${state.kind}${zero})`,
+      sourceUrl: state.sourceUrl,
+      quote: state.quote,
+    };
+  }
   throw new Error();
 }
 

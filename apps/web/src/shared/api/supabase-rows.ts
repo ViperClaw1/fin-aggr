@@ -170,9 +170,14 @@ export function taxFrom(table: Row, brackets: readonly Row[], states: readonly R
     });
     federal[status] = list;
   }
-  const stateRates: Record<string, { assumedMarginalRate: unknown }> = {};
+  const stateRates: Record<string, { assumedMarginalRate: unknown; provenance?: unknown }> = {};
   for (const row of states) {
-    stateRates[String(row['state_code'])] = { assumedMarginalRate: row['assumed_marginal_rate'] };
+    const own = row['provenance'];
+    stateRates[String(row['state_code'])] = {
+      assumedMarginalRate: row['assumed_marginal_rate'],
+      // null: the state falls back to states_provenance (ADR-025)
+      ...(own === null || own === undefined ? {} : { provenance: own }),
+    };
   }
   const statesProvenance = table['states_provenance'];
   return {
