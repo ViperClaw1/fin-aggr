@@ -192,4 +192,32 @@ TOP.push(
     sourceUrl: 'https://tax.wv.gov/Individuals/Pages/PersonalIncomeTaxReductionBill.aspx',
     quote: '2026 Income Tax Rate Cut … Over $60,000 $1,950.50 plus 4.58% of excess over $60,000',
   },
+  {
+    state: 'RI',
+    kind: 'top',
+    percent: '5.99',
+    sourceUrl: 'https://tax.ri.gov/sites/g/files/xkgbur541/files/2025-10/2026%20RI-1040ES_bd.pdf',
+    quote:
+      '2026 Tax Rate Schedule - FOR ALL FILING STATUS TYPES … 186,450 8,035.88 + 5.99% 186,450',
+  },
+  {
+    state: 'NM',
+    kind: 'top',
+    percent: '5.9',
+    // official text is NMSA 1978 § 7-2-7; this is Justia's 2025 reproduction (the TRD PDF is 176 pages)
+    sourceUrl: 'https://law.justia.com/codes/new-mexico/chapter-7/article-2/section-7-2-7/',
+    quote:
+      'for any taxable year beginning on or after January 1, 2025: … B. For single individuals and for estates and trusts: … Over $210,000 $9,748 plus 5.9% of excess over $210,000.',
+    note: 'Third-party reproduction of the statute: check the same text on nmonesource.com or the TRD Income Tax Act PDF.',
+  },
+  {
+    state: 'HI',
+    kind: 'top',
+    percent: '11.00',
+    sourceUrl:
+      'https://data.capitol.hawaii.gov/sessions/sessionlaws/Years/SLH2024/SLH2024_Act46.pdf',
+    quote:
+      'In the case of any taxable year beginning after December 31, 2024: … $31,622.00 plus 11.00% of excess over $400,000.',
+    note: 'Act 46 (2024) holds several tables in a row; confirm the quoted top row is in the table that covers 2026 for single filers. Act 24 (2026, SB 3125) changes brackets only from 2027 (Announcement 2026-06) and adds a 13% bracket then.',
+  },
 );

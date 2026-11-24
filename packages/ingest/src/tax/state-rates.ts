@@ -121,6 +121,34 @@ const FLAT: Entry[] = [
       'Long term capital gains from dividends, interest, wages, and other income 5.00% Tax year 2026: For income exceeding $1,107,750, there is an additional surtax of 4%.',
     note: 'The 4% surtax on income over $1,107,750 is not included: the rate is 5% for everyone.',
   },
+  {
+    state: 'PA',
+    kind: 'flat',
+    percent: '3.07',
+    sourceUrl:
+      'https://www.pa.gov/agencies/revenue/resources/tax-types-and-information/personal-income-tax',
+    quote:
+      'Pennsylvania personal income tax is levied at the rate of 3.07 percent against taxable income of resident and nonresident individuals',
+    note: 'The page names no tax year: confirm the rate still applies to 2026. The same page lists interest as one of the eight taxable classes.',
+  },
+  {
+    state: 'UT',
+    kind: 'flat',
+    percent: '4.5',
+    sourceUrl: 'https://incometax.utah.gov/file-pay/tax-rates/',
+    quote: 'January 1, 2025 – current 4.5% or .045',
+    note: 'The page is headed "2025 Utah Income Tax"; "current" covers 2026 only if no 2026 law changed the rate. Read 2026-11-24.',
+  },
+  {
+    state: 'ID',
+    kind: 'flat',
+    percent: '5.3',
+    sourceUrl: 'https://legislature.idaho.gov/statutesrules/idstat/Title63/T63CH30/SECT63-3024/',
+    quote:
+      'The tax imposed upon individuals, trusts, and estates shall be computed at the rate of five and three-tenths percent (5.3%) of taxable income over two thousand five hundred dollars ($2,500).',
+    zeroUpTo: '$2,500',
+    note: 'Idaho Code 63-3024(2)(a) as read 2026-11-24; the section text names no tax year. The Tax Commission rate schedule shows a $4,811 single zero band for 2025: confirm which threshold applies to 2026.',
+  },
 ];
 
 const NONE: Entry[] = [
@@ -163,14 +191,47 @@ const NONE: Entry[] = [
     quote:
       "Sec. 24-a. INDIVIDUAL INCOME TAX PROHIBITED. The legislature may not impose a tax on the net incomes of individuals, including an individual's share of partnership and unincorporated association income.",
   },
+  {
+    state: 'NV',
+    kind: 'none',
+    percent: '0',
+    // Nev. Const. art. 10, § 1(9): a standing ban, like Texas
+    sourceUrl: 'https://www.leg.state.nv.us/const/nvconst.html',
+    quote: 'No income tax shall be levied upon the wages or personal income of natural persons.',
+  },
+  {
+    state: 'AK',
+    kind: 'none',
+    percent: '0',
+    // AS 43.20.012(a)(1): the Alaska Net Income Tax Act does not apply to individuals
+    sourceUrl:
+      'https://www.akleg.gov/basis/statutes.asp?media=print&secStart=43.20.012&secEnd=43.20.012',
+    quote: '(a) The tax imposed by this chapter does not apply to (1) an individual;',
+    note: 'The quote shows the state net income tax excludes individuals; it is not a constitutional ban and can change by statute.',
+  },
+  {
+    state: 'WA',
+    kind: 'none',
+    percent: '0',
+    sourceUrl:
+      'https://dor.wa.gov/taxes-rates/other-taxes/capital-gains-tax/frequently-asked-questions-about-washingtons-capital-gains-tax',
+    quote:
+      'Many mutual fund distributions are distributions of interest or dividends, which are not subject to Washington’s capital gains tax.',
+    note: 'Washington taxes long-term capital gains of individuals (RCW 82.87.040), not interest. The quote says interest is outside that tax; it does not itself state that no other tax reaches interest.',
+  },
+  {
+    state: 'WY',
+    kind: 'none',
+    percent: '0',
+    sourceUrl: 'https://wyoleg.gov/LSOResearch/2003/03sr001.pdf',
+    quote:
+      'Wyoming is one of just seven states that do not impose an individual income tax at the state level',
+    note: 'Legislative Service Office report from October 2003, not a statute: no Wyoming law imposes the tax, so there is nothing to cite directly. Confirm nothing has changed since.',
+  },
 ];
 
 /** States and DC still without a 2026 quote that covers interest income. */
-export const STATE_RATES_PENDING = [
-  ...['AK', 'NV', 'WA', 'WY', 'ID', 'PA', 'UT'],
-  // graduated: only a 2025 page, or no rate on the 2026 page
-  ...['HI', 'NM', 'RI'],
-] as const;
+export const STATE_RATES_PENDING = [] as const;
 
 export function stateRates2026(): StateRateDraft[] {
   return [...NONE, ...FLAT, ...TOP].map((entry) => ({

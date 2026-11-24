@@ -1,6 +1,6 @@
 # ADR-023: Bank markets are sets of counties, not ZIP3 prefixes
 
-- Status: proposed
+- Status: accepted (2026-11-24)
 - Date: 2026-11-21
 - Amends: ADR-022 (market unit, discovery sampling, expiry, browser matching)
 - Relates to: ADR-004 (profile stays in the browser), ADR-007 (provenance), ADR-016, ADR-019, ADR-020

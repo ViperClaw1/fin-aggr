@@ -1,6 +1,6 @@
 # ADR-022: Bank offers carry a pricing scope; markets are matched in the browser
 
-- Status: accepted (2026-11-21). The market unit (ZIP3 prefixes, per-state sampling) and RLS-based expiry are under review in ADR-023
+- Status: accepted (2026-11-21). Amended by ADR-023 (accepted 2026-11-24): market unit (counties instead of ZIP3 prefixes), discovery sampling, expiry, browser matching
 - Date: 2026-11-18
 - Relates to: ADR-004 (profile stays in the browser), ADR-007 (provenance), ADR-016, ADR-020
 
@@ -22,11 +22,11 @@ Invariant 2 forbids sending the user's ZIP anywhere. The site is built at build 
 
 **How a ZIP reaches a bank site.** Only through a mechanism the site provides in the URL: a query parameter or a public API parameter. No cookie (the `scrape/rules.ts` credential rule stays as it is), no captcha, no workaround of the site's terms. Every request goes through `createScrapeSession` (robots, 10 s per registrable domain, overnight window).
 
-**Markets.** Table `bank_markets(bank_id, market_id, zip_prefixes, zips, representative_zip, verified_at, verified_by)`. A market applies to a ZIP only through a row verified within the last 45 days. An older row is treated as unverified and is not served; discovery runs again monthly. Daily collection makes one request per verified market with its `representative_zip`.
+**Markets** (amended by ADR-023). Table `bank_markets(bank_id, market_id, zip_prefixes, zips, representative_zip, verified_at, verified_by)`. A market applies to a ZIP only through a row verified within the last 45 days. An older row is treated as unverified and is not served; discovery runs again monthly. Daily collection makes one request per verified market with its `representative_zip`.
 
-**Discovery** (`pnpm ingest:discover-markets <bank>`, built when a bank with a URL ZIP mechanism passes vetting). It samples one to three ZIPs per state and the largest metros in one session within one overnight window. A run that does not finish is marked `incomplete` and is not queued. ZIPs that return identical rate sets form one market. A three-digit prefix is proposed only when at least two sampled ZIPs under it fell into the same market; otherwise only the exact ZIPs are listed. The proposal goes to `review_queue`; approving it writes `bank_markets` with `verified_at` and revalidates the compare page tags. Nothing is published automatically.
+**Discovery** (amended by ADR-023; `pnpm ingest:discover-markets <bank>`, built when a bank with a URL ZIP mechanism passes vetting). It samples one to three ZIPs per state and the largest metros in one session within one overnight window. A run that does not finish is marked `incomplete` and is not queued. ZIPs that return identical rate sets form one market. A three-digit prefix is proposed only when at least two sampled ZIPs under it fell into the same market; otherwise only the exact ZIPs are listed. The proposal goes to `review_queue`; approving it writes `bank_markets` with `verified_at` and revalidates the compare page tags. Nothing is published automatically.
 
-**Browser matching.** The gateway returns offers with their scope and the verified `bank_markets` map. The browser matches the profile ZIP: exact ZIP first, then the three-digit prefix, otherwise no market. The page shows "Rate for ZIP {requestZip}, market {marketId}, checked {date}". With no ZIP, or no match, it shows national offers and, for banks with market pricing, the range over verified markets, excluding relationship rates, labelled "Rate varies by region". The profile ZIP never appears in a URL, a request body, a log, or analytics; a test asserts that.
+**Browser matching** (amended by ADR-023). The gateway returns offers with their scope and the verified `bank_markets` map. The browser matches the profile ZIP: exact ZIP first, then the three-digit prefix, otherwise no market. The page shows "Rate for ZIP {requestZip}, market {marketId}, checked {date}". With no ZIP, or no match, it shows national offers and, for banks with market pricing, the range over verified markets, excluding relationship rates, labelled "Rate varies by region". The profile ZIP never appears in a URL, a request body, a log, or analytics; a test asserts that.
 
 ## Alternatives considered
 - Composite key `(version_id, id, market_id)`: every foreign key, the confirmation tables, the review reason parser, and `getProduct(id)` would change. The id suffix gives the same identity with one column added.
