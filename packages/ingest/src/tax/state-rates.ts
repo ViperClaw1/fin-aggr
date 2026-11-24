@@ -207,26 +207,24 @@ const NONE: Entry[] = [
     sourceUrl:
       'https://www.akleg.gov/basis/statutes.asp?media=print&secStart=43.20.012&secEnd=43.20.012',
     quote: '(a) The tax imposed by this chapter does not apply to (1) an individual;',
-    note: 'The quote shows the state net income tax excludes individuals; it is not a constitutional ban and can change by statute.',
+    note: 'The quote excludes individuals from the Alaska Net Income Tax Act (AS 43.20). That no other Alaska tax reaches interest of individuals is a reading of the statutes, not text in the quote.',
   },
   {
     state: 'WA',
     kind: 'none',
     percent: '0',
-    sourceUrl:
-      'https://dor.wa.gov/taxes-rates/other-taxes/capital-gains-tax/frequently-asked-questions-about-washingtons-capital-gains-tax',
-    quote:
-      'Many mutual fund distributions are distributions of interest or dividends, which are not subject to Washington’s capital gains tax.',
-    note: 'Washington taxes long-term capital gains of individuals (RCW 82.87.040), not interest. The quote says interest is outside that tax; it does not itself state that no other tax reaches interest.',
+    sourceUrl: 'https://dor.wa.gov/forms-publications/forms-name-i',
+    quote: 'The state of Washington does not impose a personal income tax.',
+    note: 'Washington does tax long-term capital gains of individuals (RCW 82.87.040) as an excise tax; DOR says interest is not subject to it. Not relevant to deposit interest.',
   },
   {
     state: 'WY',
     kind: 'none',
     percent: '0',
-    sourceUrl: 'https://wyoleg.gov/LSOResearch/2003/03sr001.pdf',
+    sourceUrl: 'https://dws.wyo.gov/dws-division/business-training-support-unit/wyrelocate/',
     quote:
-      'Wyoming is one of just seven states that do not impose an individual income tax at the state level',
-    note: 'Legislative Service Office report from October 2003, not a statute: no Wyoming law imposes the tax, so there is nothing to cite directly. Confirm nothing has changed since.',
+      'With a lower cost of living, no state income tax, and easy access to outdoor recreation, Wyoming offers a quality of life that’s hard to match.',
+    note: 'Wyoming Department of Workforce Services relocation page (modified 2026-10-28), not the Department of Revenue: revenue.wyo.gov has no such statement, and no Wyoming statute imposes the tax, so there is none to cite. Older backup: LSO report 2003 (wyoleg.gov/LSOResearch/2003/03sr001.pdf).',
   },
 ];
 

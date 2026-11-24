@@ -34,6 +34,7 @@
     "ingest:confirm": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/confirm.ts",
     "ingest:publish-tax": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/tax/commit.ts",
     "ingest:publish-state-tax": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/tax/commit-states.ts",
+    "ingest:publish-insurance": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/insurance/commit.ts",
     "ingest:confirm-bank": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/bank-confirm.ts",
     "ingest:publish-approved": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts publish-approved",
     "ingest:revalidate": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/cli.ts revalidate",
