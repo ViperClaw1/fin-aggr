@@ -102,6 +102,30 @@ describe('explainEligibility', () => {
     ]);
   });
 
+  it('names the failing labelled part of a labelled and, with the profile value', () => {
+    const trace: RuleTraceNode = {
+      path: '$',
+      label: 'TreasuryDirect account holders (31 CFR 363.11)',
+      op: 'and',
+      result: false,
+      children: [
+        { path: '$.args[0]', label: 'Age 18 or older', field: 'age', op: 'gte', result: true },
+        {
+          path: '$.args[1]',
+          label: 'SSN, U.S. address of record and U.S. bank account',
+          field: 'residency',
+          op: 'in',
+          result: false,
+          actual: 'nonresident',
+          expected: ['us_citizen', 'us_resident'],
+        },
+      ],
+    };
+    expect(explainEligibility(result('ineligible', trace)).reasons).toEqual([
+      'SSN, U.S. address of record and U.S. bank account: residency status must be one of US citizen, US resident (yours: Nonresident)',
+    ]);
+  });
+
   it('asks for the one missing field by name', () => {
     const unknown: RuleTraceNode = {
       path: '$',

@@ -50,11 +50,17 @@ function leafReason(node: RuleTraceNode): string | undefined {
   return `${rule}: ${name} ${words} ${need}${yours}`;
 }
 
-/** The deepest failing rules that explain a `false`: a label stops the descent. */
+/** The deepest failing rules that explain a `false`. A label stops the descent unless every
+ * failing child of an `and` carries its own label: then the children say which part failed. */
 function failingReasons(node: RuleTraceNode): string[] {
   if (node.result !== false) return [];
   const failingChildren = (node.children ?? []).filter((c) => c.result === false);
   if (node.field !== undefined) return [leafReason(node) ?? 'A product requirement is not met'];
+  const labelledParts =
+    node.op === 'and' &&
+    failingChildren.length > 0 &&
+    failingChildren.every((c) => c.label !== undefined);
+  if (labelledParts) return failingChildren.flatMap(failingReasons);
   if (node.label !== undefined || node.op === 'not' || failingChildren.length === 0) {
     return [node.label ?? 'A product requirement is not met'];
   }
