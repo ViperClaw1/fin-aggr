@@ -39,6 +39,49 @@ function ExportButton({ draft, disabled }: { draft: ProfileDraft; disabled: bool
   );
 }
 
+interface DropZoneProps {
+  id: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  disabled: boolean;
+  onFile: (file: File) => void;
+}
+
+// The native file input covers the whole zone, so it handles both click and drop.
+function DropZone({ id, inputRef, disabled, onFile }: DropZoneProps) {
+  const [dragging, setDragging] = useState(false);
+  const stop = () => {
+    setDragging(false);
+  };
+  return (
+    <label
+      htmlFor={id}
+      className={`relative flex flex-col items-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-foreground has-[:disabled]:opacity-60 ${dragging ? 'border-foreground bg-border/30' : 'border-border hover:border-foreground'}`}
+    >
+      <span className="font-medium">Import profile</span>
+      <span className="text-muted">Drop your .json file here or click to choose</span>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept="application/json,.json"
+        disabled={disabled}
+        className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        onDragEnter={() => {
+          setDragging(true);
+        }}
+        onDragLeave={stop}
+        onDrop={stop}
+        onChange={(e) => {
+          const input = e.currentTarget;
+          const file = input.files?.[0];
+          input.value = '';
+          if (file !== undefined) onFile(file);
+        }}
+      />
+    </label>
+  );
+}
+
 const failed = (error: keyof typeof IMPORT_ERROR_MESSAGES) => ({
   error: true,
   text: `Import failed: ${IMPORT_ERROR_MESSAGES[error]}`,
@@ -79,26 +122,12 @@ export function ProfileFile({ disabled, onReplaced }: ProfileFileProps) {
       <h3 id={`${id}-heading`} className="font-medium">
         Your profile file
       </h3>
-      <div className="flex flex-wrap items-center gap-2">
-        <ExportButton draft={draft} disabled={disabled} />
-        <label htmlFor={`${id}-import`} className="sr-only">
-          Import profile
-        </label>
-        <input
-          ref={inputRef}
-          id={`${id}-import`}
-          type="file"
-          accept="application/json,.json"
-          disabled={disabled}
-          className="max-w-full min-w-0 text-sm text-muted file:mr-3 file:h-10 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-background file:px-4 file:font-medium file:text-foreground disabled:opacity-60"
-          onChange={(e) => {
-            const input = e.currentTarget;
-            const file = input.files?.[0];
-            input.value = '';
-            if (file !== undefined) void onFile(file);
-          }}
-        />
-      </div>
+      <DropZone
+        id={`${id}-import`}
+        inputRef={inputRef}
+        disabled={disabled}
+        onFile={(file) => void onFile(file)}
+      />
       {pending === null ? null : (
         <InlineConfirm
           question="Replace your current profile with the one from the file? Export it first to keep a copy."
@@ -116,13 +145,16 @@ export function ProfileFile({ disabled, onReplaced }: ProfileFileProps) {
           <p className={message.error ? 'text-sm text-danger' : 'text-sm'}>{message.text}</p>
         )}
       </div>
-      <EraseProfile
-        disabled={disabled}
-        onErased={() => {
-          setMessage({ error: false, text: 'Profile erased.' });
-          onReplaced();
-        }}
-      />
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <ExportButton draft={draft} disabled={disabled} />
+        <EraseProfile
+          disabled={disabled}
+          onErased={() => {
+            setMessage({ error: false, text: 'Profile erased.' });
+            onReplaced();
+          }}
+        />
+      </div>
     </section>
   );
 }
