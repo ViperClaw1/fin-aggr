@@ -8,10 +8,10 @@ import { expectNoA11yViolations } from './axe';
 
 const fixtures = () => generateFixtures(Number(process.env.NEXT_PUBLIC_FA_SEED ?? DEFAULT_SEED));
 
-async function fillProfile(page: Page): Promise<void> {
+async function fillProfile(page: Page, stateCode = 'NY'): Promise<void> {
   const drawer = page.getByRole('dialog', { name: 'Your profile' });
   await drawer.getByLabel('Filing status').selectOption('single');
-  await drawer.getByLabel('State of residence').selectOption('NY');
+  await drawer.getByLabel('State of residence').selectOption(stateCode);
   const income = drawer.getByLabel('Taxable income');
   await income.fill('85000');
   await income.blur();
@@ -84,6 +84,21 @@ test('Edit on the scenario opens the deposit field and the result follows it', a
   });
   await expect(net).toContainText(formatUsd(result.netInterest));
 });
+
+for (const stateCode of ['CA', 'TX']) {
+  test(`the tax sources cite the federal brackets and the ${stateCode} rate`, async ({ page }) => {
+    const f = fixtures();
+    const product = f.products.find((item) => item.category === 'cd');
+    await page.goto(`/product/${product?.id ?? ''}`);
+    await page.goto(`/product/${product?.id ?? ''}?profile=principal`);
+    await fillProfile(page, stateCode);
+    const sources = page.getByRole('region', { name: 'Tax sources' });
+    const year = String(f.taxTables.taxYear);
+    await expect(sources.getByText(`Federal brackets, ${year}`)).toBeVisible();
+    await expect(sources.getByText(`${stateCode} rate, ${year}`)).toBeVisible();
+    await expect(sources.locator('[data-citation]')).toHaveCount(2);
+  });
+}
 
 test('a citation writes doc, page and q into the URL', async ({ page }) => {
   const product = fixtures().products.find(

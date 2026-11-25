@@ -122,7 +122,7 @@ function ApyCard(props: { row: Row | null; institutions: InstitutionDetails }) {
       eyebrow="Highest APY"
       row={props.row}
       institutions={props.institutions}
-      figure={formatSignedRate(headlineApy(props.row.product))}
+      figure={roundPercentText(formatSignedRate(headlineApy(props.row.product)))}
       hint={term === null ? 'No term' : `${String(term)} mo`}
     />
   );
@@ -136,7 +136,7 @@ function OpenCard(props: { row: Row | null; institutions: InstitutionDetails }) 
       row={props.row}
       institutions={props.institutions}
       figure="No minimum"
-      hint={formatSignedRate(headlineApy(props.row.product))}
+      hint={roundPercentText(formatSignedRate(headlineApy(props.row.product)))}
     />
   );
 }

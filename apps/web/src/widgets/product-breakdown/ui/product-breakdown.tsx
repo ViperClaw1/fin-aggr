@@ -20,6 +20,7 @@ import { RateValue } from '@/shared/ui/rate-value';
 import { bankPath } from '@/shared/lib/bank-param';
 import type { ProductData } from '../api/prefetch';
 import { Conditions } from './conditions';
+import { TaxSources } from './tax-sources';
 
 interface Handlers {
   onEdit: (id: string) => void;
@@ -93,6 +94,11 @@ function View({ data, handlers }: { data: ProductData; handlers: Handlers | null
         net={net}
         assumptions={assumptions}
         onEdit={handlers === null ? undefined : handlers.onEdit}
+      />
+      <TaxSources
+        tables={taxTables}
+        stateCode={profile?.stateCode ?? null}
+        onOpen={handlers === null ? undefined : handlers.onOpen}
       />
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Can you open this</h2>

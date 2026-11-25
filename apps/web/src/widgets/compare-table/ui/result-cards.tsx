@@ -8,7 +8,7 @@ import { headlineApy } from '@/entities/product';
 import type { ProfileFormField } from '@/entities/profile';
 import type { OpenCitation } from '@/features/open-citation';
 import { position } from '@/shared/ui/charts';
-import { RateValue } from '@/shared/ui/rate-value';
+import { RoundedRate } from './rounded-rate';
 import { roundPercentText } from '../model/percent-display';
 import type { Row } from '../model/order';
 import { RowDetails, type InstitutionDetails } from './row-details';
@@ -87,7 +87,7 @@ function CardFacts(props: {
     <div className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted">
       <FactValue
         fact={{ value: headlineApy(props.row.product), provenance: props.row.product.provenance }}
-        render={(rate) => <RateValue rate={rate} />}
+        render={(rate) => <RoundedRate rate={rate} />}
         now={props.now}
         compact
         {...(props.onOpen === null ? {} : { onOpenCitation: props.onOpen })}

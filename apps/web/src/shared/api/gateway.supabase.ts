@@ -24,6 +24,7 @@ import {
 } from '@fa/contracts';
 import { SponsoredItem, SponsoredPlacement } from '@fa/contracts/ads';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { many, maybe, one, parsed, raise } from './supabase-read';
 import {
   bankMarketFrom,
   documentFrom,
@@ -39,63 +40,25 @@ import {
   taxFrom,
 } from './supabase-rows';
 
-interface DbError {
-  code?: string;
-  message: string;
-}
-interface Schema<T> {
-  safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: Error };
-}
-
-function raise(error: DbError): never {
-  if (error.code === 'PGRST116') throw new GatewayError('not_found', error.message, false);
-  throw new GatewayError('unavailable', error.message, true);
-}
-
-function parsed<T>(schema: Schema<T>, value: unknown, label = 'row'): T {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    throw new GatewayError('validation_failed', `${label}: ${result.error.message}`, false);
-  }
-  return result.data;
-}
-
 const INSTITUTION_COLUMNS =
   'id, name, regulator, kind, partner_institution_ids, hq_state, website, provenance';
 // anon may not read verified_by (column grant in the ADR-022 migration)
 const MARKET_COLUMNS = 'bank_id, market_id, zip_prefixes, zips, representative_zip, verified_at';
 
-async function many(
-  query: PromiseLike<{ data: unknown; error: DbError | null }>,
-): Promise<Record<string, unknown>[]> {
-  const { data, error } = await query;
-  if (error) raise(error);
-  if (!Array.isArray(data)) return [];
-  const rows: Record<string, unknown>[] = [];
-  for (const row of data) {
-    if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
-      rows.push(row as Record<string, unknown>);
-    }
+function db(): SupabaseClient {
+  const url = process.env['SUPABASE_URL']?.trim();
+  const key = process.env['SUPABASE_ANON_KEY']?.trim();
+  if (url === undefined || url === '' || key === undefined || key === '') {
+    throw new GatewayError('unavailable', 'SUPABASE_URL and SUPABASE_ANON_KEY are required', true);
   }
-  return rows;
+  return createClient(url, key, { auth: { persistSession: false } }) as SupabaseClient;
 }
 
-async function one(
-  query: PromiseLike<{ data: unknown; error: DbError | null }>,
-): Promise<Record<string, unknown>> {
-  const row = await maybe(query);
-  if (row === null) throw new GatewayError('not_found', 'row missing', false);
-  return row;
-}
-
-async function maybe(
-  query: PromiseLike<{ data: unknown; error: DbError | null }>,
-): Promise<Record<string, unknown> | null> {
-  const { data, error } = await query;
-  if (error) raise(error);
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
-  return data as Record<string, unknown>;
-}
+let client: SupabaseClient | undefined;
+const supabase = (): SupabaseClient => {
+  client ??= db();
+  return client;
+};
 
 /** Current version of one domain. RLS already hides versions that are not current. */
 async function currentVersionId(domain: string): Promise<unknown> {
@@ -113,21 +76,6 @@ function institutionQuery(versionId: unknown, id: string) {
     .eq('id', id)
     .maybeSingle();
 }
-
-function db(): SupabaseClient {
-  const url = process.env['SUPABASE_URL']?.trim();
-  const key = process.env['SUPABASE_ANON_KEY']?.trim();
-  if (url === undefined || url === '' || key === undefined || key === '') {
-    throw new GatewayError('unavailable', 'SUPABASE_URL and SUPABASE_ANON_KEY are required', true);
-  }
-  return createClient(url, key, { auth: { persistSession: false } }) as SupabaseClient;
-}
-
-let client: SupabaseClient | undefined;
-const supabase = (): SupabaseClient => {
-  client ??= db();
-  return client;
-};
 
 async function tiersFor(
   versionId: unknown,
@@ -148,6 +96,17 @@ async function productAt(row: Record<string, unknown>): Promise<Product> {
   return parsed(Product, productFrom(row, tiers), 'product');
 }
 
+/** Owner decision 2026-11-25: once a category has a real product, demo fixtures leave it. */
+async function hasRealProduct(category: string): Promise<boolean> {
+  const { count, error } = await supabase()
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('category', category)
+    .eq('provenance->>isMock', 'false');
+  if (error) raise(error);
+  return (count ?? 0) > 0;
+}
+
 async function listProducts(raw: unknown): Promise<PageOf<Product>> {
   const q = parsed(ProductQuery, raw, 'products');
   const start = offsetOf(q.cursor);
@@ -158,6 +117,7 @@ async function listProducts(raw: unknown): Promise<PageOf<Product>> {
     .order('id')
     .range(start, start + q.limit - 1);
   if (q.institutionId !== undefined) query = query.eq('institution_id', q.institutionId);
+  if (await hasRealProduct(q.category)) query = query.eq('provenance->>isMock', 'false');
   const rows = await many(query);
   const items = await Promise.all(rows.map((row) => productAt(row)));
   return parsed(Page(Product), page(items, start, q.limit), 'products');

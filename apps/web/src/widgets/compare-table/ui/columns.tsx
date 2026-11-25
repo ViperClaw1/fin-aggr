@@ -23,7 +23,7 @@ import type { InstitutionIndex, SortKey } from '@/features/filter-products';
 import type { OpenCitation } from '@/features/open-citation';
 import type { Column } from '@/shared/ui/data-table';
 import { position } from '@/shared/ui/charts';
-import { RateValue } from '@/shared/ui/rate-value';
+import { RoundedRate } from './rounded-rate';
 import { profileFormField } from '../model/needs-data';
 import { roundPercentText } from '../model/percent-display';
 import type { Row } from '../model/order';
@@ -125,7 +125,7 @@ export function columns(options: ColumnOptions): TableColumn[] {
       cell: ({ product }) => (
         <FactValue
           fact={{ value: headlineApy(product), provenance: product.provenance }}
-          render={(rate) => <RateValue rate={rate} />}
+          render={(rate) => <RoundedRate rate={rate} />}
           now={options.nowFor(product)}
           compact
           align="end"

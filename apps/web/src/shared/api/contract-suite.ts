@@ -90,6 +90,22 @@ function institutionsContract(gw: DataGateway): void {
   });
 }
 
+/** What the compare pages show: no demo rows beside real ones, no CD offered twice. */
+function catalogContract(gw: DataGateway): void {
+  it.each(STAGE1_CATEGORIES)('lists no demo %s product once a real one exists', async (c) => {
+    const all = (await gw.listProducts({ category: c, limit: 100 })).items;
+    const mocks = all.filter((p) => p.provenance.isMock);
+    expect(mocks.length === 0 || mocks.length === all.length).toBe(true);
+  });
+
+  it('lists one CD per bank, term, market and channel', async () => {
+    const cds = (await gw.listProducts({ category: 'cd', limit: 100 })).items;
+    const slot = (p: Product) =>
+      [p.institutionId, p.termMonths, p.scope, p.marketId, p.channel, p.relationshipRate].join();
+    expect(new Set(cds.map(slot)).size).toBe(cds.length);
+  });
+}
+
 const rejectsWith = (p: Promise<unknown>, code: GatewayErrorCode): Promise<void> =>
   expect(p).rejects.toMatchObject({ name: 'GatewayError', code });
 
@@ -108,6 +124,8 @@ export function gatewayContract(name: string, create: () => DataGateway): void {
       expect(new Set(walked.map((p) => p.id)).size).toBe(walked.length);
       for (const p of walked) expect(Product.parse(p)).toEqual(p);
     });
+
+    catalogContract(gw);
 
     institutionsContract(gw);
 
