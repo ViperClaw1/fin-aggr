@@ -224,6 +224,29 @@ describe('bank product review', () => {
     expect(report.suspicious).toEqual([{ key: added.id, reasons: ['first_connection'] }]);
   });
 
+  it('holds two CDs of one term as duplicate_term and publishes the other term', () => {
+    const cd = (id: string, termMonths: number) => ({
+      ...sample(id, '2026-11-12'),
+      category: 'cd' as const,
+      termMonths,
+    });
+    const first = cd('fdic-1-a', 6);
+    const second = cd('fdic-1-b', 6);
+    const other = cd('fdic-1-c', 12);
+    const report = reviewBankProducts({
+      rows: [first, second, other],
+      previous: [first, second, other],
+      confirmed: true,
+      confirmedIds: [],
+      retrievedDay: '2026-11-16',
+    });
+    expect(report.suspicious).toEqual([
+      { key: first.id, reasons: ['duplicate_term'] },
+      { key: second.id, reasons: ['duplicate_term'] },
+    ]);
+    expect(report.clean.map((row) => row.id)).toEqual([other.id]);
+  });
+
   it('a broken adapter is manual and returns no rows to publish', () => {
     const read = readBankPage(() => {
       throw new Error('selector missing');

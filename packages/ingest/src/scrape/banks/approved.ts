@@ -36,12 +36,13 @@ export function approvedBankRows(input: {
   snapshot: Uint8Array;
   retrievedDay: string;
   bankVerifiedAt: string;
-}): { institutionId: string; rows: Product[] } {
+}): { institutionId: string; rows: Product[]; snapshotIds: string[] } {
   const reader = bankReader(input.sourceId);
   const ids = new Set(reviewedProductIds(input.sourceId, input.reason));
   const extract = reader.read(new TextDecoder().decode(input.snapshot), input.retrievedDay);
   const rows = extract.products
     .filter((row) => ids.has(row.id))
     .map((row) => verifiedByHuman(row, input.bankVerifiedAt));
-  return { institutionId: reader.institutionId, rows };
+  const snapshotIds = extract.products.map((row) => row.id);
+  return { institutionId: reader.institutionId, rows, snapshotIds };
 }

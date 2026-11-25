@@ -285,21 +285,18 @@ async function publishRows(
   return versionId;
 }
 
-/**
- * Publishes approved rows of one bank inside the caller's transaction.
- * A row whose id is already in the current version is skipped, so a second
- * call is a no-op (null). This bank's other current rows are kept.
- */
+/** Approved rows of one bank, in the caller's transaction. A second call is a no-op (null).
+ * Other current rows of this bank stay only if the snapshot lists them (a recoded id does not). */
 export async function publishApprovedBankRows(
   tx: Sql,
   input: { sourceId: string; institutionId: string; rows: readonly ProductRow[] },
+  snapshotIds: readonly string[],
 ): Promise<number | null> {
   const current = await previousBankProducts(tx, input.institutionId);
   const currentIds = new Set(current.map((row) => row.id));
   const rows = input.rows.filter((row) => !currentIds.has(row.id));
   if (rows.length === 0) return null;
-  const replaced = new Set(rows.map((row) => row.id));
-  const kept = current.map((row) => row.id).filter((id) => !replaced.has(id));
+  const kept = [...currentIds].filter((id) => snapshotIds.includes(id));
   const versionId = await publishRows(tx, input.institutionId, rows, kept);
   await supersedeOpenReviews(tx, input.sourceId, versionId);
   await tx.query(`update sources set last_updated_at = now() where id = $1`, [input.sourceId]);

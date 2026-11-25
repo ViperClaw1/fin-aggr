@@ -5,6 +5,7 @@ import {
   commitBankProducts,
   confirmBank,
   confirmReviewedProducts,
+  publishApprovedBankRows,
   reviewedProductIds,
 } from './bank-products';
 
@@ -94,6 +95,61 @@ describe('bank product publish', () => {
       verifiedAt: '2026-11-17',
     });
     expect(state).toEqual({ created: false, login: 'ViperClaw1', verifiedAt: '2026-11-15' });
+  });
+});
+
+describe('approved bank publish', () => {
+  const found = readAlly(HTML).products[0];
+  if (found === undefined) throw new Error('fixture');
+  const product = found;
+
+  function dbRow(id: string): Record<string, unknown> {
+    return {
+      id,
+      institution_id: product.institutionId,
+      category: product.category,
+      name: product.name,
+      term_months: product.termMonths,
+      tier_mode: product.tierMode,
+      compounding: product.compounding,
+      min_opening: '0',
+      max_deposit: null,
+      early_withdrawal: product.earlyWithdrawal,
+      eligibility: product.eligibility,
+      tax_treatment: product.taxTreatment,
+      valid_from: product.validFrom,
+      valid_to: null,
+      scope_kind: product.scope,
+      market_id: null,
+      channel: product.channel,
+      relationship_rate: product.relationshipRate,
+      provenance: product.provenance,
+      tiers: [{ minBalance: '0', maxBalance: null, apy: product.tiers[0]?.apy }],
+    };
+  }
+
+  it('drops a current row the approved snapshot no longer lists', async () => {
+    let copied: unknown;
+    const sql: Sql = {
+      query: (text, params) => {
+        if (text.includes('select is_mock')) return Promise.resolve({ rows: [{ is_mock: false }] });
+        if (text.includes('json_agg')) {
+          return Promise.resolve({ rows: [dbRow('fdic-57803-old'), dbRow('fdic-57803-kept')] });
+        }
+        if (text.includes('insert into dataset_versions')) {
+          return Promise.resolve({ rows: [{ id: '17' }] });
+        }
+        if (text.includes('insert into products') && text.includes('any($3')) copied = params?.[2];
+        return Promise.resolve({ rows: [] });
+      },
+    };
+    const versionId = await publishApprovedBankRows(
+      sql,
+      { sourceId: 'bank:fdic:57803', institutionId: 'fdic:57803', rows: [product] },
+      [product.id, 'fdic-57803-kept'],
+    );
+    expect(versionId).toBe(17);
+    expect(copied).toEqual(['fdic-57803-kept']);
   });
 });
 

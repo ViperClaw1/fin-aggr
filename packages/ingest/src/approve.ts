@@ -95,6 +95,7 @@ export async function rowWithStatus(
 interface BankPublish {
   institutionId: string;
   rows: Product[];
+  snapshotIds: string[];
 }
 
 async function snapshotOf(sql: Sql, snapshotId: number): Promise<{ path: string; day: string }> {
@@ -148,7 +149,7 @@ export async function publishApproved(id: number, io: CliIo, deps: CliDeps): Pro
     const plan = await bankPublishFor(sql, deps, row, io.warn);
     if (plan === null) throw new Error(`${row.source_id} is not confirmed`);
     return withTransaction(sql, (tx) =>
-      publishApprovedBankRows(tx, { sourceId: row.source_id, ...plan }),
+      publishApprovedBankRows(tx, { sourceId: row.source_id, ...plan }, plan.snapshotIds),
     );
   });
   io.log(publishedLine(id, versionId));
@@ -191,7 +192,11 @@ export async function approveRow(input: {
         verifiedAt: io.now().slice(0, 10),
       });
       if (plan !== null) {
-        result.versionId = await publishApprovedBankRows(tx, { sourceId: row.source_id, ...plan });
+        result.versionId = await publishApprovedBankRows(
+          tx,
+          { sourceId: row.source_id, ...plan },
+          plan.snapshotIds,
+        );
       }
     },
   });

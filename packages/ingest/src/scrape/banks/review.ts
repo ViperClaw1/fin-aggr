@@ -25,7 +25,32 @@ export function readBankPage<T>(
   }
 }
 
+function offerKey(row: Product): string {
+  return [
+    row.category,
+    row.termMonths,
+    row.scope,
+    row.marketId,
+    row.channel,
+    row.relationshipRate,
+  ].join('|');
+}
+
 /**
+ * Ids of termed rows that share one offer slot (category, term, market, channel) with another.
+ * Rows without a term are skipped: a bank may sell several savings accounts.
+ */
+function duplicateIds(rows: readonly Product[]): Set<string> {
+  const byKey = new Map<string, string[]>();
+  for (const row of rows) {
+    if (row.termMonths === null) continue;
+    byKey.set(offerKey(row), [...(byKey.get(offerKey(row)) ?? []), row.id]);
+  }
+  return new Set([...byKey.values()].filter((ids) => ids.length > 1).flat());
+}
+
+/**
+ * Two rows for one offer slot are held as `duplicate_term`, before any other check.
  * First connection holds every row. After a person confirms the bank, a product
  * id is known when a person confirmed it or it is in the previous published version.
  * Any other id is still first connection.
@@ -47,10 +72,13 @@ export function reviewBankProducts(input: {
     };
   }
   const knownIds = new Set([...input.confirmedIds, ...input.previous.map((row) => row.id)]);
+  const duplicates = duplicateIds(input.rows);
   const fresh: Product[] = [];
   const held: { key: string; reasons: string[] }[] = [];
   for (const row of input.rows) {
-    if (!knownIds.has(row.id)) {
+    if (duplicates.has(row.id)) {
+      held.push({ key: row.id, reasons: ['duplicate_term'] });
+    } else if (!knownIds.has(row.id)) {
       held.push({ key: row.id, reasons: ['first_connection'] });
     } else if (rateIsStale(row.validFrom, input.retrievedDay)) {
       held.push({ key: row.id, reasons: ['stale'] });
