@@ -27,6 +27,22 @@ test('significant numbers on the data pages carry a citation or an assumption', 
   }
 });
 
+// AC-4 on a `supabase` build too: data is loaded on the server, so the browser never talks to
+// Supabase or a data source, whatever host they live on (ADR-019).
+test('the browser requests only its own origin on the data pages', async ({ page, baseURL }) => {
+  const origin = new URL(baseURL ?? '').origin;
+  const foreign: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.protocol.startsWith('http') && url.origin !== origin) foreign.push(url.href);
+  });
+  for (const path of DATA_ROUTES) {
+    await page.goto(path);
+    await expect(page.locator('[data-citation], [data-assumption]').first()).toBeVisible();
+  }
+  expect(foreign).toEqual([]);
+});
+
 test('sponsored offers sit outside tables, lists and the product article', async ({ page }) => {
   const inside =
     'table [data-sponsored], ul [data-sponsored], ol [data-sponsored], article [data-sponsored]';

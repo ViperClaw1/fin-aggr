@@ -55,7 +55,7 @@ function DropZone({ id, inputRef, disabled, onFile }: DropZoneProps) {
   return (
     <label
       htmlFor={id}
-      className={`relative flex flex-col items-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-foreground has-[:disabled]:opacity-60 ${dragging ? 'border-foreground bg-border/30' : 'border-border hover:border-foreground'}`}
+      className={`relative flex flex-col items-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-foreground has-disabled:opacity-60 ${dragging ? 'border-foreground bg-border/30' : 'border-border hover:border-foreground'}`}
     >
       <span className="font-medium">Import profile</span>
       <span className="text-muted">Drop your .json file here or click to choose</span>

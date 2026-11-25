@@ -39,8 +39,76 @@ jobs:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_ANON_KEY: ${{ steps.keys.outputs.anon }}
 
-  # Same suite against the hosted prod project (there is no staging, ADR-019). Read-only: the
-  # anon key under RLS cannot write. Not on pull requests: a PR must not depend on live data.
+  # Plan B.7: the production e2e suite and Lighthouse with a profile on a `supabase` build, read
+  # from `supabase start` with the fixture seed, so expectations from generateFixtures still hold.
+  e2e-supabase:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'db')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_DATA_SOURCE: supabase
+      NEXT_TELEMETRY_DISABLED: '1'
+      SUPABASE_URL: http://127.0.0.1:54321
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase start -x studio,imgproxy,logflare,vector,edge-runtime,supavisor
+      - run: pnpm db:seed --target local
+        env:
+          SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Anon key
+        run: |
+          pnpm exec supabase status -o env > status.env
+          echo "SUPABASE_ANON_KEY=$(sed -n 's/^ANON_KEY=//p' status.env | tr -d '"')" >> "$GITHUB_ENV"
+      - run: pnpm build
+      - run: pnpm --filter @fa/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @fa/web exec playwright test --project=chromium
+      - run: pnpm lhci:profile
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-supabase-profile
+          path: .lighthouseci
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  # The same contract suite read-only against staging (ADR-019, 2026-11-25). Its secrets live in
+  # the `staging` environment. Fails until the owner creates that environment.
+  contract-staging:
+    if: github.event_name != 'pull_request'
+    environment: staging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Contract tests (staging, read-only)
+        run: |
+          # A missing environment falls back to the repository (prod) secrets: refuse that.
+          if [ "$DATA_ENV" != staging ]; then
+            echo "::error::environment variable DATA_ENV=staging is not set in the staging environment"; exit 1
+          fi
+          for n in SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!n}" ]; then echo "::error::staging secret $n is not set"; exit 1; fi
+          done
+          pnpm vitest run apps/web/src/shared/api/gateway.supabase.test.ts --testTimeout=60000
+        env:
+          DATA_ENV: ${{ vars.DATA_ENV }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  # Same suite against the hosted prod project. Read-only: the anon key under RLS cannot write.
+  # Not on pull requests: a PR must not depend on live data.
   contract-prod:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
