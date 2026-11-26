@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   centsFromInteger,
@@ -11,7 +11,9 @@ import { extractAllyRates } from './57803';
 import { amexAdapter, readAmex } from './27471';
 import { PILOT_IDS } from './pilot';
 import { rateIsStale, readBankPage, reviewBankProducts } from './review';
-import { extractSallieRates } from './58177';
+import { extractTableOffers, readTableConfig } from './config';
+import { SALLIE_CONFIG } from './configs';
+import { UNSTATED_ELIGIBILITY } from './normalize';
 
 const ALLY = `
 <section>
@@ -27,6 +29,8 @@ const ALLY = `
   <p>2.9% correct as of 11/12/26</p>
   <p>Early withdrawal penalty will apply</p>
 </section>`;
+
+const sallie = (html: string) => extractTableOffers(SALLIE_CONFIG, html);
 
 const SALLIE_FACTS = `
 <p>The minimum deposit and balance is $2,500, and your returns are guaranteed.</p>
@@ -76,7 +80,7 @@ describe('pilot bank pages', () => {
   });
 
   it('reads each Sallie Mae table row, the shared minimum, and the penalty sentence for that term', () => {
-    const rows = extractSallieRates(SALLIE);
+    const rows = sallie(SALLIE);
     expect(rows.map((row) => [row.termMonths, row.apyPercent, row.penaltyDays])).toEqual([
       [6, '3.20', 90],
       [12, '4.60', 90],
@@ -95,13 +99,21 @@ describe('pilot bank pages', () => {
     expect(rateFromPercent('3.20')).toBe('0.032');
   });
 
+  it('labels Sallie Mae CDs personal only when the page says so', () => {
+    const label = (html: string) => readTableConfig(SALLIE_CONFIG, html).products[0]?.eligibility;
+    expect(label(SALLIE)).toMatchObject({ label: 'Personal accounts only' });
+    expect(label(SALLIE.replace('personal accounts only', 'all accounts'))).toEqual(
+      UNSTATED_ELIGIBILITY,
+    );
+  });
+
   it('does not read Sallie Mae flip cards when the rate table is absent', () => {
-    expect(extractSallieRates(SALLIE_CARDS)).toEqual([]);
+    expect(sallie(SALLIE_CARDS)).toEqual([]);
   });
 
   it('does not invent a Sallie Mae penalty when the page has no day count', () => {
     const html = SALLIE.replace(/ninety \(90\) days’ simple interest/g, 'a penalty');
-    expect(extractSallieRates(html)).toEqual([]);
+    expect(sallie(html)).toEqual([]);
   });
 
   it('reads Amex CD penalties from the page quotes and the APY from the JSON', () => {

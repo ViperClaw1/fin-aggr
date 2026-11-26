@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SCHEDULE, cronLines, scheduleById } from './schedule';
 import { amexAdapter } from './scrape/banks/27471';
 import { allyAdapter } from './scrape/banks/57803';
-import { sallieAdapter } from './scrape/banks/58177';
+import { SALLIE_CONFIG } from './scrape/banks/configs';
 import { overnightUtcHours } from './scrape/rules';
 
 const WORKFLOWS = join(process.cwd(), '.github/workflows');
@@ -75,7 +75,7 @@ describe('schedule workflows', () => {
   });
 
   it('derives bank-rates hours from the pilot banks windows across DST', () => {
-    const zones = [allyAdapter.timeZone, sallieAdapter.timeZone, amexAdapter.timeZone];
+    const zones = [allyAdapter.timeZone, SALLIE_CONFIG.timeZone, amexAdapter.timeZone];
     const hours = overnightUtcHours(zones, 2026);
     const range = `${String(hours[0])}-${String(hours.at(-1))}`;
     expect(hours.length).toBe((hours.at(-1) ?? 0) - (hours[0] ?? 0) + 1);

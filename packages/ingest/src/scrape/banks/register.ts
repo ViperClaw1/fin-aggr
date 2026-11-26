@@ -15,7 +15,8 @@ import { AMEX_ORIGIN, AMEX_REFERER } from '../../banks/amex-fetch';
 import { runBankPage, type BankPorts } from './run';
 import { allyAdapter, readAlly } from './57803';
 import { readAmex, amexAdapter } from './27471';
-import { readSallie, sallieAdapter } from './58177';
+import { readTableConfig } from './config';
+import { CONFIG_BANKS } from './configs';
 
 interface BankSpec {
   sourceId: string;
@@ -114,20 +115,23 @@ export function registerPilotBanks(): void {
       readAlly,
     ),
   );
-  registerBank(sallieAdapter.sourceId, (env, client) =>
-    runHtmlBank(
-      env,
-      client,
-      {
-        sourceId: sallieAdapter.sourceId,
-        institutionId: sallieAdapter.institutionId,
-        name: 'Sallie Mae Bank',
-        url: sallieAdapter.url,
-        timeZone: sallieAdapter.timeZone,
-      },
-      readSallie,
-    ),
-  );
+  for (const config of CONFIG_BANKS) {
+    const sourceId = `bank:${config.institutionId}`;
+    registerBank(sourceId, (env, client) =>
+      runHtmlBank(
+        env,
+        client,
+        {
+          sourceId,
+          institutionId: config.institutionId,
+          name: config.bankName,
+          url: config.url,
+          timeZone: config.timeZone,
+        },
+        (html) => readTableConfig(config, html),
+      ),
+    );
+  }
   registerBank(amexAdapter.sourceId, async (env, client) => {
     const spec: BankSpec = {
       sourceId: amexAdapter.sourceId,

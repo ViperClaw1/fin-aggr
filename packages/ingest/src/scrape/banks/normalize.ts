@@ -24,13 +24,6 @@ export const UNSTATED_ELIGIBILITY: Rule = {
   label: 'No eligibility rule on the rates page',
 };
 
-/** Hand-typed from the Sallie Mae CD page: the rate applies to personal accounts only. */
-export const PERSONAL_ELIGIBILITY: Rule = {
-  op: 'and',
-  args: [],
-  label: 'Personal accounts only',
-};
-
 /**
  * Savings-page facts for American Express type 3200.
  * The rates JSON has no minimum, compounding, or penalty. These lines were typed from the

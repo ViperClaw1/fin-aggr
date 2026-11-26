@@ -2,7 +2,8 @@ import type { Product } from '@fa/contracts';
 import { reviewedProductIds } from '../../postgres/bank-products';
 import { allyAdapter, readAlly } from './57803';
 import { amexAdapter, readAmex } from './27471';
-import { readSallie, sallieAdapter } from './58177';
+import { readTableConfig } from './config';
+import { CONFIG_BANKS } from './configs';
 import { verifiedByHuman, type BankExtract } from './normalize';
 
 interface BankReader {
@@ -12,11 +13,11 @@ interface BankReader {
 
 const READERS = new Map<string, BankReader>([
   [allyAdapter.sourceId, { institutionId: allyAdapter.institutionId, read: (t) => readAlly(t) }],
-  [
-    sallieAdapter.sourceId,
-    { institutionId: sallieAdapter.institutionId, read: (t) => readSallie(t) },
-  ],
   [amexAdapter.sourceId, { institutionId: amexAdapter.institutionId, read: readAmex }],
+  ...CONFIG_BANKS.map((config): [string, BankReader] => [
+    `bank:${config.institutionId}`,
+    { institutionId: config.institutionId, read: (t) => readTableConfig(config, t) },
+  ]),
 ]);
 
 function bankReader(sourceId: string): BankReader {
