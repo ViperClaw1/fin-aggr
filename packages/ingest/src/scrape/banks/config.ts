@@ -39,6 +39,70 @@ export interface HtmlTableConfig {
   };
 }
 
+const isText = (value: unknown): value is string => typeof value === 'string';
+const isIndex = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 50;
+
+function compiles(source: unknown): boolean {
+  if (!isText(source) || source === '' || source.length > 2000) return false;
+  try {
+    new RegExp(source, 'i');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type Loose = Record<string, unknown>;
+const field = (value: unknown, key: string): unknown =>
+  typeof value === 'object' && value !== null ? (value as Loose)[key] : undefined;
+const oneOf = (value: unknown, options: readonly string[]): boolean =>
+  isText(value) && options.includes(value);
+const isMonths = (value: unknown): boolean =>
+  value === null ||
+  (typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 600);
+
+/** Each check is one field, so a failing config names nothing and runs nothing. */
+const CONFIG_CHECKS: readonly ((c: unknown) => boolean)[] = [
+  (c) => field(c, 'kind') === 'html_table',
+  (c) =>
+    isText(field(c, 'institutionId')) &&
+    /^(fdic|ncua):\d+$/.test(String(field(c, 'institutionId'))),
+  (c) => isText(field(c, 'bankName')) && isText(field(c, 'timeZone')) && isText(field(c, 'name')),
+  (c) => isText(field(c, 'url')) && String(field(c, 'url')).startsWith('https://'),
+  (c) => oneOf(field(c, 'category'), ['cd', 'savings']),
+  (c) => isText(field(c, 'caption')) && field(c, 'caption') !== '',
+  (c) => isIndex(field(field(c, 'columns'), 'term')) && isIndex(field(field(c, 'columns'), 'apy')),
+  (c) => compiles(field(c, 'apy')),
+  (c) =>
+    compiles(field(field(c, 'page'), 'asOf')) && compiles(field(field(c, 'page'), 'minDollars')),
+  (c) => compiles(field(field(field(c, 'page'), 'compounding'), 'pattern')),
+  (c) => oneOf(field(field(field(c, 'page'), 'compounding'), 'value'), ['daily', 'monthly']),
+  (c) => {
+    const bands = field(field(c, 'page'), 'penalties');
+    return (
+      Array.isArray(bands) &&
+      bands.length > 0 &&
+      bands.every(
+        (band) => compiles(field(band, 'pattern')) && isMonths(field(band, 'maxTermMonths')),
+      )
+    );
+  },
+  (c) => {
+    const rule = field(field(c, 'page'), 'eligibility');
+    return rule === undefined || (compiles(field(rule, 'pattern')) && isText(field(rule, 'label')));
+  },
+];
+
+/**
+ * A config read from `adapter_configs` was written by a model: check its shape before it runs.
+ * Throws `adapter_config_invalid`; the bank is then skipped, not read with a guess.
+ */
+export function asHtmlTableConfig(value: unknown): HtmlTableConfig {
+  if (!CONFIG_CHECKS.every((check) => check(value))) throw new Error('adapter_config_invalid');
+  return value as HtmlTableConfig;
+}
+
 function flat(value: string): string {
   return value.replaceAll(' ', ' ').replace(/\s+/g, ' ').trim();
 }

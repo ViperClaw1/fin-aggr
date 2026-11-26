@@ -1,6 +1,9 @@
 import { pathToFileURL } from 'node:url';
+import { databaseUrl, withClient } from './db';
 import { loadLocalEnv } from './env';
 import { registerConnectors } from './jobs';
+import { activeConfigs } from './postgres/adapter-configs';
+import { registerConfigBanks } from './scrape/banks/register';
 import { runScheduled } from './schedule';
 
 export async function main(
@@ -11,6 +14,10 @@ export async function main(
   const id = argv[0];
   if (id === undefined || argv.length !== 1) throw new Error('usage: ingest:run <source-id>');
   registerConnectors();
+  // Model-proposed configs a person approved (plan 8.6). Without a database there are none.
+  if (id === 'bank-rates' && (env['SUPABASE_DB_URL']?.trim() ?? '') !== '') {
+    registerConfigBanks(await withClient(databaseUrl(env), (sql) => activeConfigs(sql, log)));
+  }
   await runScheduled(id, env, log);
 }
 

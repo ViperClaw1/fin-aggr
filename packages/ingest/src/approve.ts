@@ -7,6 +7,7 @@ import {
   publishApprovedBankRows,
   reviewedProductIds,
 } from './postgres/bank-products';
+import { activateProposal, activeConfigs, proposalIdOf } from './postgres/adapter-configs';
 import { downloadRawSnapshot } from './postgres/ports';
 import { revalidateDomain } from './revalidate';
 import { approvedBankRows } from './scrape/banks/approved';
@@ -132,6 +133,7 @@ async function bankPublishFor(
     snapshot: await deps.snapshot(snapshot.path),
     retrievedDay: snapshot.day,
     bankVerifiedAt: confirmation.verifiedAt,
+    activeConfigs: await activeConfigs(sql, warn),
   });
   if (approved.rows.length !== reviewedProductIds(row.source_id, row.reason).length) {
     throw new Error(`snapshot of review ${String(row.id)} does not hold every listed product`);
@@ -163,8 +165,24 @@ export async function approveRow(input: {
   login: string;
   io: CliIo;
   deps: CliDeps;
+  minutes?: number | null;
 }): Promise<{ planned: boolean; versionId: number | null }> {
   const { sql, row, login, io, deps } = input;
+  const minutes = input.minutes ?? null;
+  const proposalId = proposalIdOf(row.reason);
+  if (proposalId !== null) {
+    // An adapter proposal publishes no product: the next bank-rates run reads with it.
+    await approveReview(sql, {
+      id: row.id,
+      login,
+      minutes,
+      decidedAt: io.now(),
+      publish: async (tx) => {
+        await activateProposal(tx, { id: proposalId, login, decidedAt: io.now() });
+      },
+    });
+    return { planned: false, versionId: null };
+  }
   const bank = row.source_id.startsWith('bank:');
   const plan = bank ? await bankPublishFor(sql, deps, row, io.warn) : null;
   const publish = bank ? undefined : publishers.get(row.source_id);
@@ -178,6 +196,7 @@ export async function approveRow(input: {
   await approveReview(sql, {
     id: row.id,
     login,
+    minutes,
     decidedAt: io.now(),
     publish: async (tx) => {
       if (publish !== undefined) {

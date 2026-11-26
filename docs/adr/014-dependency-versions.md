@@ -65,6 +65,7 @@ Installed on 2026-11-06 with step 2: `pg` 8.23.1 and `@types/pg` 8.23.1 as root 
 | robots-parser | 3.0.1 | 2023-02-21 | `packages/ingest`, step 8. Latest release; ships its own types |
 | cheerio | 1.2.0 | 2026-01-23 | `packages/ingest`, step 8, and only if static HTML is enough |
 | fflate | 0.8.3 | 2026-05-16 | `packages/ingest`. NCUA quarters are PKZIP. `node:zlib` inflates gzip, not PKZIP. `npm view` on 2026-11-13: 0.8.3 is the current release and is older than two weeks. |
+| @anthropic-ai/sdk | 1.8.0 | 2026-11-10 | `packages/ingest` only, plan 8.6 ([ADR-027](027-onboarding-model.md)). `npm view` on 2026-11-26: 1.9.0–1.14.0 (2026-11-16 — 2026-11-24) are inside two weeks. |
 | undici | 8.12.3 | 2026-10-19 | `packages/ingest`. American Express rate fetch sets `maxHeaderSize` 65536 (ADR-020). Node 24 has no `node:undici` export. `npm view` on 2026-11-15: 8.12.4 was published 2026-11-05, inside two weeks, so 8.12.3 is the pin. |
 
 Not pinned:

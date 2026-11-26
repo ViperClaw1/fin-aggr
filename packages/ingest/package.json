@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0",
     "@fa/contracts": "workspace:*",
     "@supabase/supabase-js": "2.118.0",
     "cheerio": "1.2.0",

@@ -15,7 +15,7 @@ import { AMEX_ORIGIN, AMEX_REFERER } from '../../banks/amex-fetch';
 import { runBankPage, type BankPorts } from './run';
 import { allyAdapter, readAlly } from './57803';
 import { readAmex, amexAdapter } from './27471';
-import { readTableConfig } from './config';
+import { readTableConfig, type HtmlTableConfig } from './config';
 import { CONFIG_BANKS } from './configs';
 
 interface BankSpec {
@@ -115,23 +115,6 @@ export function registerPilotBanks(): void {
       readAlly,
     ),
   );
-  for (const config of CONFIG_BANKS) {
-    const sourceId = `bank:${config.institutionId}`;
-    registerBank(sourceId, (env, client) =>
-      runHtmlBank(
-        env,
-        client,
-        {
-          sourceId,
-          institutionId: config.institutionId,
-          name: config.bankName,
-          url: config.url,
-          timeZone: config.timeZone,
-        },
-        (html) => readTableConfig(config, html),
-      ),
-    );
-  }
   registerBank(amexAdapter.sourceId, async (env, client) => {
     const spec: BankSpec = {
       sourceId: amexAdapter.sourceId,
@@ -160,4 +143,31 @@ export function registerPilotBanks(): void {
       now,
     });
   });
+  registerConfigBanks(CONFIG_BANKS);
+}
+
+/**
+ * Banks read by configuration: the repository list and, before a bank-rates run, the active
+ * `adapter_configs` rows. A bank the repository already reads keeps its repository config.
+ */
+export function registerConfigBanks(configs: readonly HtmlTableConfig[]): void {
+  const repository = new Set(CONFIG_BANKS.map((config) => config.institutionId));
+  for (const config of configs) {
+    if (configs !== CONFIG_BANKS && repository.has(config.institutionId)) continue;
+    const sourceId = `bank:${config.institutionId}`;
+    registerBank(sourceId, (env, client) =>
+      runHtmlBank(
+        env,
+        client,
+        {
+          sourceId,
+          institutionId: config.institutionId,
+          name: config.bankName,
+          url: config.url,
+          timeZone: config.timeZone,
+        },
+        (html) => readTableConfig(config, html),
+      ),
+    );
+  }
 }

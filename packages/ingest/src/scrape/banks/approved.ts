@@ -2,7 +2,7 @@ import type { Product } from '@fa/contracts';
 import { reviewedProductIds } from '../../postgres/bank-products';
 import { allyAdapter, readAlly } from './57803';
 import { amexAdapter, readAmex } from './27471';
-import { readTableConfig } from './config';
+import { readTableConfig, type HtmlTableConfig } from './config';
 import { CONFIG_BANKS } from './configs';
 import { verifiedByHuman, type BankExtract } from './normalize';
 
@@ -20,10 +20,13 @@ const READERS = new Map<string, BankReader>([
   ]),
 ]);
 
-function bankReader(sourceId: string): BankReader {
+/** Code and repository configs first, then an active `adapter_configs` row (plan 8.6). */
+function bankReader(sourceId: string, active: readonly HtmlTableConfig[]): BankReader {
   const reader = READERS.get(sourceId);
-  if (reader === undefined) throw new Error(`no bank adapter for ${sourceId}`);
-  return reader;
+  if (reader !== undefined) return reader;
+  const config = active.find((row) => `bank:${row.institutionId}` === sourceId);
+  if (config === undefined) throw new Error(`no bank adapter for ${sourceId}`);
+  return { institutionId: config.institutionId, read: (t) => readTableConfig(config, t) };
 }
 
 /**
@@ -37,8 +40,9 @@ export function approvedBankRows(input: {
   snapshot: Uint8Array;
   retrievedDay: string;
   bankVerifiedAt: string;
+  activeConfigs: readonly HtmlTableConfig[];
 }): { institutionId: string; rows: Product[]; snapshotIds: string[] } {
-  const reader = bankReader(input.sourceId);
+  const reader = bankReader(input.sourceId, input.activeConfigs);
   const ids = new Set(reviewedProductIds(input.sourceId, input.reason));
   const extract = reader.read(new TextDecoder().decode(input.snapshot), input.retrievedDay);
   const rows = extract.products

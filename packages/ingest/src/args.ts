@@ -1,6 +1,6 @@
 export type ReviewCommand =
   | { kind: 'review'; id: number | null }
-  | { kind: 'approve'; id: number }
+  | { kind: 'approve'; id: number; minutes: number | null }
   | { kind: 'publish-approved'; id: number }
   | { kind: 'revalidate'; domain: string }
   | { kind: 'reject'; id: number; reason: string | undefined }
@@ -17,6 +17,17 @@ function reviewId(text: string | undefined, required: boolean): number | null {
   return id;
 }
 
+/** `--minutes N`: whole person-minutes, 0–600. Absent: not recorded. */
+function minutesOf(argv: readonly string[]): number | null {
+  const index = argv.indexOf('--minutes');
+  if (index === -1) return null;
+  const text = argv[index + 1] ?? '';
+  if (!/^\d{1,3}$/.test(text) || Number(text) > 600) {
+    throw new Error('--minutes is a whole number from 0 to 600');
+  }
+  return Number(text);
+}
+
 function reasonOf(argv: readonly string[]): string | undefined {
   const index = argv.indexOf('--reason');
   if (index === -1) return undefined;
@@ -27,9 +38,10 @@ function reasonOf(argv: readonly string[]): string | undefined {
 export function commandOf(argv: readonly string[]): ReviewCommand {
   const [kind, idText, ...rest] = argv;
   if (kind === 'review') return { kind, id: reviewId(idText, false) };
-  if (kind === 'approve' || kind === 'publish-approved') {
-    return { kind, id: reviewId(idText, true) ?? 0 };
+  if (kind === 'approve') {
+    return { kind, id: reviewId(idText, true) ?? 0, minutes: minutesOf(rest) };
   }
+  if (kind === 'publish-approved') return { kind, id: reviewId(idText, true) ?? 0 };
   if (kind === 'revalidate' && idText !== undefined && /^[a-z_]+$/.test(idText)) {
     return { kind, domain: idText };
   }

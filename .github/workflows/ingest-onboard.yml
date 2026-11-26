@@ -1,0 +1,56 @@
+# Plan step 8.6 (ADR-026, ADR-027): onboard one bank. One page through the scrape session (the
+# bank's overnight window applies), its snapshot in `raw`, one model call, one adapter_configs
+# row and one review row. Nothing is published. Approve with `pnpm ingest:approve <review id>`.
+name: Ingest onboard
+
+on:
+  workflow_dispatch:
+    inputs:
+      institution:
+        description: Institution id, fdic:N or ncua:N
+        required: true
+        type: string
+      url:
+        description: Rates page URL (empty = the survey's rates_url)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  onboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: ingest-onboard-${{ inputs.institution }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check secrets
+        run: |
+          for n in SUPABASE_DB_URL SUPABASE_URL SUPABASE_SECRET_KEY ANTHROPIC_API_KEY FA_SCRAPE_MAILBOX; do
+            if [ -z "${!n}" ]; then echo "::error::Actions secret $n is not set"; exit 1; fi
+          done
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FA_SCRAPE_MAILBOX: ${{ secrets.FA_SCRAPE_MAILBOX }}
+      # Inputs go through env, never into the script text.
+      - run: pnpm ingest:onboard "$INSTITUTION" ${URL:+"$URL"}
+        env:
+          INSTITUTION: ${{ inputs.institution }}
+          URL: ${{ inputs.url }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FA_SCRAPE_MAILBOX: ${{ secrets.FA_SCRAPE_MAILBOX }}

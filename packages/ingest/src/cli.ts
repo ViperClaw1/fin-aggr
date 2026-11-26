@@ -131,7 +131,14 @@ export async function runCommand(
       );
       return;
     }
-    const { planned, versionId } = await approveRow({ sql, row, login, io, deps });
+    const { planned, versionId } = await approveRow({
+      sql,
+      row,
+      login,
+      io,
+      deps,
+      minutes: command.minutes,
+    });
     io.log(formatDecision(command.id, 'approved', login));
     if (planned) io.log(publishedLine(command.id, versionId));
     await revalidateOrWarn(deps, row.domain, io.warn);

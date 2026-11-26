@@ -109,16 +109,23 @@ export async function listOpen(sql: Sql): Promise<OpenReview[]> {
 
 export async function approveReview(
   sql: Sql,
-  input: { id: number; login: string; decidedAt: string; publish: (sql: Sql) => Promise<void> },
+  input: {
+    id: number;
+    login: string;
+    decidedAt: string;
+    publish: (sql: Sql) => Promise<void>;
+    /** Person-minutes spent on this review (ADR-026 metric). */
+    minutes?: number | null;
+  },
 ): Promise<void> {
   const login = requireReviewer(input.login);
   await withTransaction(sql, async (tx) => {
     const updated = await tx.query(
       `update review_queue
-         set status = 'approved', decided_by = $2, decided_at = $3
+         set status = 'approved', decided_by = $2, decided_at = $3, review_minutes = $4
        where id = $1 and status = 'open'
        returning id`,
-      [input.id, login, input.decidedAt],
+      [input.id, login, input.decidedAt, input.minutes ?? null],
     );
     if (updated.rows[0] === undefined) throw new Error(`review ${String(input.id)} is not open`);
     await input.publish(tx);
