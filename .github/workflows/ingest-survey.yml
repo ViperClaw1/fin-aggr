@@ -1,0 +1,45 @@
+# Plan step 8.4 (ADR-026): read-only survey of the 500 largest institutions by deposits.
+# Same scrape session as the bank rates (robots, 10 s per domain, overnight window, stop on a
+# block). A bank outside its window is held and the next run resumes; a surveyed bank is skipped.
+# 06:37 UTC is inside the window from Eastern to Pacific; 09:37 picks up Alaska and Hawaii.
+# Once every target has a row the run logs targets=0. Disable the workflow after the report.
+name: Ingest survey
+
+on:
+  schedule:
+    - cron: '37 6,9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  survey:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    concurrency:
+      group: ingest-survey
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check secrets
+        run: |
+          for n in SUPABASE_DB_URL FA_SCRAPE_MAILBOX; do
+            if [ -z "${!n}" ]; then echo "::error::Actions secret $n is not set"; exit 1; fi
+          done
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          FA_SCRAPE_MAILBOX: ${{ secrets.FA_SCRAPE_MAILBOX }}
+      - run: pnpm ingest:survey run
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          FA_SCRAPE_MAILBOX: ${{ secrets.FA_SCRAPE_MAILBOX }}
+      - run: pnpm ingest:survey report
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
