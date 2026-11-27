@@ -192,39 +192,39 @@ describe('bank page run', () => {
     expect(lines[0]).toBe('source bank:fdic:57803 manual adapter');
   });
 
-  it('publishes a confirmed clean row as verified by a person', async () => {
-    const bank = ports();
-    bank.confirmation = () => Promise.resolve({ confirmed: true, verifiedAt: '2026-11-15' });
-    bank.previous = () => Promise.resolve(readAlly(HTML).products);
-    await runBankPage({
-      client: client('ok'),
-      request: {
-        sourceId: 'bank:fdic:57803',
-        url: 'https://www.ally.com/bank/view-rates/',
-        timeZone: 'America/Denver',
-        excluded: false,
-      },
-      institutionId: 'fdic:57803',
-      retrievedDay: '2026-11-16',
-      read: readAlly,
-      ports: bank,
-      log: () => undefined,
-      now: () => NIGHT,
-    });
-    const published = bank.published as {
-      provenance: { verification: { status: string; by: string } };
-      tiers: { apy: string }[];
-    }[];
-    expect(published).toHaveLength(1);
-    expect(published[0]?.tiers[0]?.apy).toBe('0.032');
-    expect(published[0]?.provenance.verification).toEqual({
-      status: 'verified',
-      verifiedAt: '2026-11-15',
-      by: 'human',
-    });
-    expect(bank.queued).toBeNull();
-    expect(bank.jobs[0]).toMatchObject({ status: 'published', requestCount: 1, rowCount: 1 });
-  });
+  it.each(['human', 'automated_check'] as const)(
+    'publishes a confirmed clean row as verified by %s',
+    async (by) => {
+      const bank = ports();
+      bank.confirmation = () => Promise.resolve({ confirmed: true, verifiedAt: '2026-11-15', by });
+      bank.previous = () => Promise.resolve(readAlly(HTML).products);
+      await runBankPage({
+        client: client('ok'),
+        request: {
+          sourceId: 'bank:fdic:57803',
+          url: 'https://www.ally.com/bank/view-rates/',
+          timeZone: 'America/Denver',
+          excluded: false,
+        },
+        institutionId: 'fdic:57803',
+        retrievedDay: '2026-11-16',
+        read: readAlly,
+        ports: bank,
+        log: () => undefined,
+        now: () => NIGHT,
+      });
+      const published = bank.published as {
+        provenance: { verification: { status: string; by: string } };
+        tiers: { apy: string }[];
+      }[];
+      expect(published).toHaveLength(1);
+      expect(published[0]?.tiers[0]?.apy).toBe('0.032');
+      const verification = { status: 'verified', verifiedAt: '2026-11-15', by };
+      expect(published[0]?.provenance.verification).toEqual(verification);
+      expect(bank.queued).toBeNull();
+      expect(bank.jobs[0]).toMatchObject({ status: 'published', requestCount: 1, rowCount: 1 });
+    },
+  );
 
   it('logs outside_window and writes a job row without requesting the bank', async () => {
     const bank = ports();

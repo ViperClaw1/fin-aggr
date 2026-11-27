@@ -73,14 +73,34 @@ describe('proposeAdapter', () => {
     const proposal = await proposeAdapter({ create, bank, html: PAGE });
     expect(proposal.failures).toEqual([]);
     expect(proposal.config).toMatchObject({ kind: 'html_table', institutionId: 'fdic:58177' });
-    expect(proposal.usage).toEqual({ inputTokens: 1200, outputTokens: 300 });
+    expect(proposal.usage).toEqual({ inputTokens: 2400, outputTokens: 600 });
+    expect(sent).toHaveLength(2);
     expect(sent[0]?.model).toBe('claude-opus-5-5');
+  });
+
+  it('holds a proposal whose second extraction lists other products', async () => {
+    const [first, second] = PRODUCTS;
+    if (first === undefined || second === undefined) throw new Error('fixture');
+    const one = reply(answer(PRODUCTS)).create;
+    const other = reply(answer([first])).create;
+    let calls = 0;
+    const create: typeof one = (params) => (calls++ === 0 ? one(params) : other(params));
+    const proposal = await proposeAdapter({ create, bank, html: PAGE });
+    expect(proposal.failures).toEqual(['second_extraction_differs']);
+  });
+
+  it('holds a value its own quote does not contain', async () => {
+    const [first, second] = PRODUCTS;
+    if (first === undefined || second === undefined) throw new Error('fixture');
+    const { create } = reply(answer([first, { ...second, penaltyQuote: 'ninety (90) days' }]));
+    const proposal = await proposeAdapter({ create, bank, html: PAGE });
+    expect(proposal.failures).toEqual(['value_not_in_quote:13']);
   });
 
   it('holds a product whose quote is not on the page', async () => {
     const [first, second] = PRODUCTS;
     if (first === undefined || second === undefined) throw new Error('fixture');
-    const { create } = reply(answer([first, { ...second, apyQuote: '4.75% APY' }]));
+    const { create } = reply(answer([first, { ...second, apyQuote: '4.50% APY*' }]));
     const proposal = await proposeAdapter({ create, bank, html: PAGE });
     expect(proposal.failures).toEqual(['quote_not_in_snapshot:13']);
   });
@@ -90,7 +110,7 @@ describe('proposeAdapter', () => {
     if (first === undefined || second === undefined) throw new Error('fixture');
     const { create } = reply(answer([first, { ...second, apyPercent: '4.55' }]));
     const proposal = await proposeAdapter({ create, bank, html: PAGE });
-    expect(proposal.failures).toEqual(['config_differs_from_model']);
+    expect(proposal.failures).toEqual(['value_not_in_quote:13', 'config_differs_from_model']);
   });
 
   it('keeps no config when the model says the page is not supported', async () => {

@@ -1,17 +1,27 @@
 import { pathToFileURL } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { databaseUrl, withClient } from '../../db';
-import { enqueueReview } from '../../decisions';
+import { enqueueReview, withTransaction, type Sql } from '../../decisions';
 import { loadLocalEnv } from '../../env';
 import { sha256Hex } from '../../pipeline';
-import { insertProposal, proposalReason } from '../../postgres/adapter-configs';
+import {
+  activateProposal,
+  AUTOMATED,
+  confirmAutomatically,
+  insertProposal,
+  institutionTemplate,
+  proposalReason,
+  templateState,
+} from '../../postgres/adapter-configs';
 import { upsertBankSources } from '../../postgres/banks';
+import { readTableConfig } from '../banks/config';
 import { saveInstitutionSnapshot } from '../../postgres/ports';
 import { scrapeFetch } from '../http';
 import { stateTimeZone } from '../registry';
 import { assertPublicPage } from '../rules';
 import { createScrapeSession } from '../session';
-import { proposeAdapter, type Bank } from './propose';
+import { publicationHolds } from './policy';
+import { proposeAdapter, type Bank, type Proposal } from './propose';
 
 /**
  * `pnpm ingest:onboard <institution-id> [rates-url]` (plan 8.6). One page through the scrape
@@ -99,19 +109,62 @@ async function main(argv: readonly string[], env: NodeJS.ProcessEnv): Promise<vo
     bank,
     html: new TextDecoder().decode(page.body),
   });
-  const queueId = await withClient(databaseUrl(env), async (sql) => {
-    const id = await insertProposal(sql, { institutionId, snapshotId, proposal });
+  const html = new TextDecoder().decode(page.body);
+  const outcome = await withClient(databaseUrl(env), (sql) =>
+    storeProposal(sql, { institutionId, sourceId, snapshotId, proposal, html }),
+  );
+  out(
+    `onboard ${institutionId} ${outcome} products=${String(proposal.products.length)} failures=${proposal.failures.length === 0 ? 'none' : proposal.failures.join(',')} tokens_in=${String(proposal.usage.inputTokens)} tokens_out=${String(proposal.usage.outputTokens)}`,
+  );
+}
+
+/**
+ * ADR-026 policy: no hold → the config is active and the bank and its products are confirmed
+ * by `automated_check` in one transaction; the next bank-rates run publishes. Otherwise a review.
+ */
+export async function storeProposal(
+  sql: Sql,
+  input: {
+    institutionId: string;
+    sourceId: string;
+    snapshotId: number;
+    proposal: Proposal;
+    html: string;
+    now?: () => string;
+    /** Tests only: the checks still to land (default `PENDING_CHECKS`). */
+    pending?: readonly string[];
+  },
+): Promise<string> {
+  const { institutionId, sourceId, snapshotId, proposal } = input;
+  const now = input.now ?? (() => new Date().toISOString());
+  const template = await institutionTemplate(sql, institutionId);
+  const holds = publicationHolds({
+    failures: proposal.failures,
+    ...(await templateState(sql, template)),
+    ...(input.pending === undefined ? {} : { pending: input.pending }),
+  });
+  const id = await insertProposal(sql, { institutionId, snapshotId, proposal, template });
+  if (holds.length > 0 || proposal.config === null) {
     const queued = await enqueueReview(sql, {
       sourceId,
       domain: 'bank_products',
       snapshotId,
-      reason: proposalReason(id, proposal.failures),
+      reason: proposalReason(id, holds),
     });
-    return queued.queueId;
+    return `review=${String(queued.queueId)} template=${template}`;
+  }
+  const productIds = readTableConfig(proposal.config, input.html).products.map((p) => p.id);
+  const decidedAt = now();
+  await withTransaction(sql, async (tx) => {
+    await activateProposal(tx, { id, login: AUTOMATED, decidedAt });
+    await confirmAutomatically(tx, {
+      sourceId,
+      productIds,
+      verifiedAt: decidedAt.slice(0, 10),
+      snapshotId,
+    });
   });
-  out(
-    `onboard ${institutionId} review=${String(queueId)} products=${String(proposal.products.length)} failures=${proposal.failures.length === 0 ? 'none' : proposal.failures.join(',')} tokens_in=${String(proposal.usage.inputTokens)} tokens_out=${String(proposal.usage.outputTokens)}`,
-  );
+  return `automated config=${String(id)} template=${template}`;
 }
 
 function isDirect(): boolean {

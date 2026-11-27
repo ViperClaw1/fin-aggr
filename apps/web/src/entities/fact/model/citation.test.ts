@@ -34,5 +34,8 @@ describe('verificationText', () => {
     expect(verificationText({ status: 'verified', verifiedAt: at, by: 'official_api' })).toBe(
       'Verified 2026-10-20 (official API)',
     );
+    expect(verificationText({ status: 'verified', verifiedAt: at, by: 'automated_check' })).toBe(
+      "Verified 2026-10-20 (checked automatically against the bank's page)",
+    );
   });
 });

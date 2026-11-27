@@ -1,5 +1,6 @@
 import { centsFromInteger, Product, type Product as ProductRow } from '@fa/contracts';
 import { enqueueReview, supersedeOpenReviews, withTransaction, type Sql } from '../decisions';
+import type { BankConfirmation } from '../scrape/banks/normalize';
 import { integerId } from './id';
 import { previousUnlessMock } from './previous';
 
@@ -87,17 +88,15 @@ export function previousBankProducts(sql: Sql, institutionId: string): Promise<P
   return previousUnlessMock(sql, DOMAIN, (tx) => readBankProducts(tx, institutionId));
 }
 
-export async function bankConfirmation(
-  sql: Sql,
-  sourceId: string,
-): Promise<{ confirmed: false } | { confirmed: true; verifiedAt: string }> {
+export async function bankConfirmation(sql: Sql, sourceId: string): Promise<BankConfirmation> {
   const result = await sql.query(
-    `select verified_at::text as verified_at from bank_confirmations where source_id = $1`,
+    `select verified_at::text as verified_at, verified_by from bank_confirmations where source_id = $1`,
     [sourceId],
   );
   const verifiedAt = result.rows[0]?.['verified_at'];
   if (typeof verifiedAt !== 'string') return { confirmed: false };
-  return { confirmed: true, verifiedAt };
+  const auto = result.rows[0]?.['verified_by'] === 'automated_check';
+  return { confirmed: true, verifiedAt, by: auto ? 'automated_check' : 'human' };
 }
 
 /**
@@ -122,7 +121,8 @@ export async function confirmBank(
     [input.sourceId],
   );
   const row = found.rows[0] ?? {};
-  return { created: false, login: String(row['login']), verifiedAt: String(row['verified_at']) };
+  const login = typeof row['login'] === 'string' ? row['login'] : 'automated_check';
+  return { created: false, login, verifiedAt: String(row['verified_at']) };
 }
 
 /** Product ids a person confirmed for this bank. */

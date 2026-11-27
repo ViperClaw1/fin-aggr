@@ -7,7 +7,12 @@ import {
   publishApprovedBankRows,
   reviewedProductIds,
 } from './postgres/bank-products';
-import { activateProposal, activeConfigs, proposalIdOf } from './postgres/adapter-configs';
+import {
+  activateProposal,
+  activeConfigs,
+  proposalIdOf,
+  sampleTemplateOf,
+} from './postgres/adapter-configs';
 import { downloadRawSnapshot } from './postgres/ports';
 import { revalidateDomain } from './revalidate';
 import { approvedBankRows } from './scrape/banks/approved';
@@ -180,6 +185,17 @@ export async function approveRow(input: {
       publish: async (tx) => {
         await activateProposal(tx, { id: proposalId, login, decidedAt: io.now() });
       },
+    });
+    return { planned: false, versionId: null };
+  }
+  if (sampleTemplateOf(row.reason) !== null) {
+    // A sample a person accepts changes nothing: the products are already published.
+    await approveReview(sql, {
+      id: row.id,
+      login,
+      minutes,
+      decidedAt: io.now(),
+      publish: () => Promise.resolve(),
     });
     return { planned: false, versionId: null };
   }

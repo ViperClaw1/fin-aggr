@@ -4,7 +4,7 @@ import { allyAdapter, readAlly } from './57803';
 import { amexAdapter, readAmex } from './27471';
 import { readTableConfig, type HtmlTableConfig } from './config';
 import { CONFIG_BANKS } from './configs';
-import { verifiedByHuman, type BankExtract } from './normalize';
+import { verifiedBy, type BankExtract } from './normalize';
 
 interface BankReader {
   institutionId: string;
@@ -47,7 +47,7 @@ export function approvedBankRows(input: {
   const extract = reader.read(new TextDecoder().decode(input.snapshot), input.retrievedDay);
   const rows = extract.products
     .filter((row) => ids.has(row.id))
-    .map((row) => verifiedByHuman(row, input.bankVerifiedAt));
+    .map((row) => verifiedBy(row, input.bankVerifiedAt));
   const snapshotIds = extract.products.map((row) => row.id);
   return { institutionId: reader.institutionId, rows, snapshotIds };
 }

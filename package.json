@@ -44,6 +44,7 @@
     "ingest:resume": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/resume.ts",
     "ingest:exclude": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/exclude.ts",
     "ingest:onboard": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/scrape/onboard/cli.ts",
+    "ingest:sample": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/scrape/onboard/sample.ts",
     "ingest:survey": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/survey/cli.ts",
     "ingest:live": "node --experimental-strip-types --import ./tools/register-resolve-ts.mjs packages/ingest/src/live.ts"
   },

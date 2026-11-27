@@ -239,13 +239,17 @@ export function amexCdProduct(offer: AmexOffer): ProductRow | null {
   });
 }
 
-/** A confirmed bank publishes rows a person has accepted. */
-export function verifiedByHuman(product: ProductRow, verifiedAt: string): ProductRow {
-  const verification = {
-    status: 'verified' as const,
-    verifiedAt: IsoDate.parse(verifiedAt),
-    by: 'human' as const,
-  };
+/** `by` absent: a person confirmed the bank (rows written before ADR-026 automation). */
+export type BankConfirmation =
+  { confirmed: false } | { confirmed: true; verifiedAt: string; by?: 'human' | 'automated_check' };
+
+/** A confirmed bank publishes rows accepted by a person or by the ADR-026 checks. */
+export function verifiedBy(
+  product: ProductRow,
+  verifiedAt: string,
+  by: 'human' | 'automated_check' = 'human',
+): ProductRow {
+  const verification = { status: 'verified' as const, verifiedAt: IsoDate.parse(verifiedAt), by };
   return Product.parse({
     ...product,
     provenance: { ...product.provenance, verification },

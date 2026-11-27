@@ -1,0 +1,35 @@
+# Plan step 8.7 (ADR-026): weekly 10% sample of banks published by automated checks goes to the
+# review queue as `sample_check:<template>`. Rejecting one stops that template's automation.
+name: Ingest sample
+
+on:
+  schedule:
+    - cron: '17 14 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: ingest-sample
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check secrets
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::Actions secret SUPABASE_DB_URL is not set"; exit 1; fi
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - run: pnpm ingest:sample
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

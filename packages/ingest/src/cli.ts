@@ -17,6 +17,7 @@ import {
 } from './approve';
 import { listOpen, rejectReview, reopenReview, type OpenReview, type Sql } from './decisions';
 import { loadLocalEnv } from './env';
+import { sampleTemplateOf, stopTemplate } from './postgres/adapter-configs';
 import { requireReviewer, SIGNED_URL_SECONDS } from './policy';
 import { RAW_BUCKET } from './scrape/rules';
 
@@ -120,6 +121,11 @@ export async function runCommand(
         reason,
       });
       io.log(formatDecision(command.id, 'rejected', login));
+      const sampled = sampleTemplateOf(row.reason);
+      if (sampled !== null) {
+        await stopTemplate(sql, sampled, command.id);
+        io.warn(`template ${sampled} stopped: automated publishing is off until cleared`);
+      }
       await syncPrivateIssue(
         env,
         {

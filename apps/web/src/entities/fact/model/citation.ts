@@ -9,8 +9,15 @@ export function sourceLabel(source: Pick<Provenance, 'sourceId' | 'sourceUrl'>):
   return sourceDomain(source.sourceUrl);
 }
 
+// DRAFT wording (ADR-026): owner and lawyer approve before launch.
+const BY: Record<Extract<Provenance['verification'], { status: 'verified' }>['by'], string> = {
+  human: 'by a person',
+  official_api: 'official API',
+  automated_check: "checked automatically against the bank's page",
+};
+
 /** Verification status in words: colour is never the only signal. */
 export function verificationText(v: Provenance['verification']): string {
   if (v.status === 'unverified') return 'Unverified';
-  return `Verified ${v.verifiedAt} (${v.by === 'human' ? 'by a person' : 'official API'})`;
+  return `Verified ${v.verifiedAt} (${BY[v.by]})`;
 }

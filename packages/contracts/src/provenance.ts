@@ -22,7 +22,8 @@ export const Provenance = z.strictObject({
     z.strictObject({
       status: z.literal('verified'),
       verifiedAt: IsoDate,
-      by: z.enum(['human', 'official_api']),
+      /** `automated_check`: every ADR-026 check passed and no person looked (additive). */
+      by: z.enum(['human', 'official_api', 'automated_check']),
     }),
     z.strictObject({ status: z.literal('unverified') }),
   ]),

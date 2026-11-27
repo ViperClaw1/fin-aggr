@@ -1,6 +1,7 @@
 # Plan step 8.6 (ADR-026, ADR-027): onboard one bank. One page through the scrape session (the
 # bank's overnight window applies), its snapshot in `raw`, one model call, one adapter_configs
-# row and one review row. Nothing is published. Approve with `pnpm ingest:approve <review id>`.
+# row. Under the ADR-026 policy (plan 8.7) a proposal with no hold is confirmed by
+# automated_check and the next bank-rates run publishes it; otherwise one review row.
 name: Ingest onboard
 
 on:

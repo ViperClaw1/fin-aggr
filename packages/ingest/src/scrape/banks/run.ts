@@ -9,10 +9,10 @@ import {
   type ManualReason,
 } from '../rules';
 import { reviewBankProducts } from './review';
-import { verifiedByHuman, type BankExtract } from './normalize';
+import { verifiedBy, type BankConfirmation, type BankExtract } from './normalize';
 
 export interface BankPorts {
-  confirmation(): Promise<{ confirmed: false } | { confirmed: true; verifiedAt: string }>;
+  confirmation(): Promise<BankConfirmation>;
   previous(): Promise<readonly Product[]>;
   /** Product ids a person approved from the review queue. */
   confirmedIds(): Promise<readonly string[]>;
@@ -123,7 +123,7 @@ async function publishPage(input: BankRun, startedAt: string): Promise<void> {
   );
   const suspicious = [...report.suspicious, ...extra];
   const clean = confirmation.confirmed
-    ? report.clean.map((row) => verifiedByHuman(row, confirmation.verifiedAt))
+    ? report.clean.map((row) => verifiedBy(row, confirmation.verifiedAt, confirmation.by))
     : report.clean;
   const blocked = report.blocked ?? countGate(extracted.products.length, previous.length);
   const decision = decidePublish({
