@@ -33,7 +33,7 @@ async function missing(check: string, roles: readonly string[], kinds: string): 
 describe.skipIf(url === '')('staging API role grants', () => {
   it('keeps RLS on every public table', async () => {
     const rows = await withClient(url, async (sql) => (await sql.query(RELATIONS)).rows);
-    const open = (rows as Relation[]).filter((row) => row.kind !== 'v' && !row.rls);
+    const open = (rows as unknown as Relation[]).filter((row) => row.kind !== 'v' && !row.rls);
     expect(open.map((row) => row.name)).toEqual([]);
   });
 
