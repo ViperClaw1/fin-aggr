@@ -106,6 +106,14 @@ jobs:
           DATA_ENV: ${{ vars.DATA_ENV }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      - name: API role grants (staging, read-only)
+        run: |
+          if [ "$DATA_ENV" != staging ]; then echo "::error::DATA_ENV=staging is not set"; exit 1; fi
+          if [ -z "$SUPABASE_DB_URL_STAGING" ]; then echo "::error::staging secret SUPABASE_DB_URL is not set"; exit 1; fi
+          pnpm vitest run packages/ingest/src/postgres/grants.test.ts --testTimeout=60000
+        env:
+          DATA_ENV: ${{ vars.DATA_ENV }}
+          SUPABASE_DB_URL_STAGING: ${{ secrets.SUPABASE_DB_URL }}
 
   # Same suite against the hosted prod project. Read-only: the anon key under RLS cannot write.
   # Not on pull requests: a PR must not depend on live data.
