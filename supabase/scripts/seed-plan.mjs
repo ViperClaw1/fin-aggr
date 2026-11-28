@@ -10,7 +10,7 @@ const DOMAINS = [
   'par_yields',
   'national_rates',
   'documents',
-  // Empty demo version. Fixture products stay on `products`; scraped rows publish later.
+  // Pilot bank rates from fixtures (isMock). Scraped rows replace them on publish.
   'bank_products',
 ];
 
@@ -20,6 +20,7 @@ function counts(set) {
   return {
     institutions: set.institutions.length,
     products: set.products.length,
+    bankProducts: set.bankProducts.products.length,
     documents: set.documents.length,
     facts: set.facts.length,
     bankMetrics: set.bankMetrics.length,
@@ -99,9 +100,9 @@ async function insertMetrics(client, versionId, metrics) {
   }
 }
 
-async function insertProducts(client, ids, products) {
+async function insertProducts(client, ids, products, depositVersion = ids.products) {
   for (const row of products) {
-    const versionId = row.category === 'treasury' ? ids.treasury : ids.products;
+    const versionId = row.category === 'treasury' ? ids.treasury : depositVersion;
     await client.query(
       `insert into products (
          version_id, id, institution_id, category, name, term_months, tier_mode, compounding,
@@ -270,6 +271,10 @@ export async function loadFixtures(client, set) {
   await insertInstitutions(client, ids.products, set.institutions);
   await insertMetrics(client, ids.bank_metrics, set.bankMetrics);
   await insertProducts(client, ids, set.products);
+  // Pilot bank rates, as the mock gateway shows them: issuers in the directory, products on
+  // their own domain. Their sources are already in set.sources.
+  await insertInstitutions(client, ids.institutions, set.bankProducts.institutions);
+  await insertProducts(client, ids, set.bankProducts.products, ids.bank_products);
   await insertDocuments(client, ids.documents, set.documents);
   await insertFacts(client, ids.documents, set.facts);
   await insertTax(client, ids.reference, set.taxTables);
