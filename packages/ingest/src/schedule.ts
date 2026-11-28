@@ -183,7 +183,7 @@ export function registerAfterBanks(job: BankJob): void {
   afterBanks = job;
 }
 
-/** Step 8 registers one bank. `runScheduled('bank-rates')` runs them in registration order. */
+/** Step 8 registers one bank. `runScheduled('bank-rates')` starts them in registration order, 8 at a time. */
 export function registerBank(id: string, job: BankJob): void {
   if (!isBankSourceId(id)) throw new Error(`unknown source ${id}`);
   if (banks.has(id)) throw new Error(`source ${id} is already registered`);
@@ -241,7 +241,7 @@ async function runBankRates(env: NodeJS.ProcessEnv, log: (line: string) => void)
   let failure: Error | undefined;
   try {
     if (banks.size === 0) log('source bank-rates pending');
-    else await runOneAtATime([...banks.values()].map((job) => () => job(env, session)));
+    else await runPool([...banks.values()].map((job) => () => job(env, session)));
   } catch (error) {
     failure = asError(error);
   }
@@ -275,21 +275,34 @@ function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error('ingest failed');
 }
 
+/** Banks in flight at once (ADR-026, 8.8). The session keeps 10 s per domain across them. */
+export const BANK_QUEUES = 8;
+
 /**
- * Bank rates run one after another. The next starts only after the previous settles.
- * One failure does not skip the rest. The first error is raised after the last bank.
+ * Bank rates run `limit` at a time, in registration order. One failure does not skip the rest.
+ * The first error is raised after the last bank.
  */
-export async function runOneAtATime(runs: readonly (() => Promise<void>)[]): Promise<void> {
+export async function runPool(
+  runs: readonly (() => Promise<void>)[],
+  limit = BANK_QUEUES,
+): Promise<void> {
   let failures = 0;
   let first: unknown;
-  for (const run of runs) {
-    try {
-      await onceOnNetworkError(run);
-    } catch (error) {
-      failures += 1;
-      first ??= error;
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < runs.length) {
+      const run = runs[next];
+      next += 1;
+      if (run === undefined) continue;
+      try {
+        await onceOnNetworkError(run);
+      } catch (error) {
+        failures += 1;
+        first ??= error;
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, runs.length) }, worker));
   if (failures === 0) return;
   const message = first instanceof Error ? first.message : 'ingest failed';
   throw new Error(`bank-rates failed ${String(failures)}: ${message}`);

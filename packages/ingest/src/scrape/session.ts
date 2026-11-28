@@ -74,8 +74,10 @@ interface Session {
   userAgent: string;
   deps: ScrapeDeps;
   lastSent: Map<string, string>;
+  /** Tail of the send queue per registrable domain. */
+  turns: Map<string, Promise<void>>;
   loads: Map<string, Load>;
-  robots: Map<string, RobotsState>;
+  robots: Map<string, Promise<RobotsState>>;
   validators: Map<string, Validators>;
 }
 
@@ -92,6 +94,7 @@ export function createScrapeSession(mailbox: string | undefined, deps: ScrapeDep
     userAgent: scrapeUserAgent(mailbox),
     deps,
     lastSent: new Map(),
+    turns: new Map(),
     loads: new Map(),
     robots: new Map(),
     validators: new Map(),
@@ -141,7 +144,29 @@ async function stop(session: Session, sourceId: string, reason: ManualReason): P
   return { kind: 'manual', reason };
 }
 
+/**
+ * Banks run in parallel (ADR-026, 8.8), so two of them may reach one domain at once. Sends to a
+ * domain queue on a promise chain: each waits for the previous send to that domain, then the gap.
+ */
 async function pause(session: Session, domain: string): Promise<void> {
+  const previous = session.turns.get(domain) ?? Promise.resolve();
+  let release = (): void => undefined;
+  const mine = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  session.turns.set(
+    domain,
+    previous.then(() => mine),
+  );
+  await previous;
+  try {
+    await gap(session, domain);
+  } finally {
+    release();
+  }
+}
+
+async function gap(session: Session, domain: string): Promise<void> {
   const last = session.lastSent.get(domain);
   if (last !== undefined) {
     const wait = Date.parse(last) + SCRAPE_GAP_MS - Date.parse(session.deps.now());
@@ -202,13 +227,21 @@ class HeadersOverflow extends Error {
   }
 }
 
-async function robotsFor(
+/** One robots.txt read per host, shared by banks in flight at once; a failed read is retried. */
+function robotsFor(session: Session, sourceId: string, page: PublicPage): Promise<RobotsState> {
+  const cached = session.robots.get(page.originHost);
+  if (cached !== undefined) return cached;
+  const loading = loadRobots(session, sourceId, page);
+  session.robots.set(page.originHost, loading);
+  loading.catch(() => session.robots.delete(page.originHost));
+  return loading;
+}
+
+async function loadRobots(
   session: Session,
   sourceId: string,
   page: PublicPage,
 ): Promise<RobotsState> {
-  const cached = session.robots.get(page.originHost);
-  if (cached !== undefined) return cached;
   const robotsUrl = `https://${page.originHost}/robots.txt`;
   const fetched = await send(session, {
     domain: page.domain,
@@ -219,9 +252,7 @@ async function robotsFor(
   });
   const reason = blockReason(fetched.status, headerText(fetched.headers), sampleOf(fetched.body));
   if (reason !== null) {
-    const state: RobotsState = { kind: 'manual', result: await stop(session, sourceId, reason) };
-    session.robots.set(page.originHost, state);
-    return state;
+    return { kind: 'manual', result: await stop(session, sourceId, reason) };
   }
   if (
     fetched.status !== 200 &&
@@ -234,12 +265,7 @@ async function robotsFor(
   const text =
     fetched.status === 200 || fetched.status === 400 ? new TextDecoder().decode(fetched.body) : '';
   const parsed = robotsParser(robotsUrl, text);
-  const state: RobotsState = {
-    kind: 'rules',
-    allows: (url) => parsed.isAllowed(url, session.userAgent) !== false,
-  };
-  session.robots.set(page.originHost, state);
-  return state;
+  return { kind: 'rules', allows: (url) => parsed.isAllowed(url, session.userAgent) !== false };
 }
 
 function conditional(session: Session, url: string): Record<string, string> {

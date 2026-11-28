@@ -10,7 +10,7 @@ import {
   registerBank,
   registerJob,
   resetJobs,
-  runOneAtATime,
+  runPool,
   runScheduled,
   scheduleById,
 } from './schedule';
@@ -170,7 +170,7 @@ describe('scheduled run', () => {
     }).toThrow('register banks with registerBank');
   });
 
-  it('runs registered banks one at a time', async () => {
+  it('starts the next bank while another one waits', async () => {
     const gate: { resolve: () => void } = { resolve: () => undefined };
     const pending = new Promise<void>((resolve) => {
       gate.resolve = () => {
@@ -191,10 +191,25 @@ describe('scheduled run', () => {
       { FA_SCRAPE_MAILBOX: 'ops@fin-aggr.example' },
       () => undefined,
     );
-    expect(started).toBe(1);
+    expect(started).toBe(2);
     gate.resolve();
     await running;
-    expect(started).toBe(2);
+  });
+
+  it('keeps at most the pool size in flight and runs every bank', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const done: number[] = [];
+    const runs = Array.from({ length: 20 }, (_, i) => async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      done.push(i);
+    });
+    await runPool(runs, 8);
+    expect(peak).toBe(8);
+    expect([...done].sort((a, b) => a - b)).toEqual(Array.from({ length: 20 }, (_, i) => i));
   });
 
   it('runs the follow-up after a bank failure, on the same session', async () => {
@@ -252,7 +267,7 @@ describe('scheduled run', () => {
 
   it('runs banks one at a time and continues after a failure', async () => {
     const order: string[] = [];
-    await runOneAtATime([
+    await runPool([
       () => {
         order.push('first');
         return Promise.resolve();
@@ -265,7 +280,7 @@ describe('scheduled run', () => {
     expect(order).toEqual(['first', 'second']);
 
     const seen: string[] = [];
-    const failure = runOneAtATime([
+    const failure = runPool([
       () => {
         seen.push('first');
         return Promise.reject(new Error('validation'));

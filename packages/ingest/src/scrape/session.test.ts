@@ -129,6 +129,25 @@ describe('scrape session', () => {
     expect(time.waits).toEqual([10_000, 10_000]);
   });
 
+  it('keeps ten seconds per domain and one robots.txt for banks in flight at once', async () => {
+    const time = clock(NIGHT);
+    const sent: { url: string; at: number }[] = [];
+    const script = scripted((call) => {
+      sent.push({ url: call.url, at: Date.parse(time.now()) });
+      if (call.url.endsWith('/robots.txt')) return new Response(ALLOW, { status: 200 });
+      return new Response('APY 4%', { status: 200 });
+    });
+    const { client } = session(script.fetch, time);
+    await Promise.all([
+      client.get(page({ sourceId: 'bank:a', url: 'https://www.example.com/cd' })),
+      client.get(page({ sourceId: 'bank:b', url: 'https://www.example.com/savings' })),
+    ]);
+    expect(sent.filter((s) => s.url.endsWith('/robots.txt'))).toHaveLength(1);
+    expect(sent).toHaveLength(3);
+    const gaps = sent.slice(1).map((s, i) => s.at - (sent[i]?.at ?? 0));
+    expect(gaps.every((g) => g >= 10_000)).toBe(true);
+  });
+
   it('does not fetch outside the overnight window', async () => {
     const script = scripted(() => {
       throw new Error('fetched');
