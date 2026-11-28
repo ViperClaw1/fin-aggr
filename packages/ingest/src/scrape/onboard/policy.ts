@@ -6,25 +6,16 @@
 
 const HUMAN_FIRST_PER_TEMPLATE = 10;
 
-/**
- * Checks of ADR-026 not run yet: 5 (APY against the stated rate: the proposal carries no rate)
- * and 7 (outlier against `national_rates`: the band is the owner's number). Until both run,
- * nothing publishes automatically. Remove a name here when its check lands.
- */
-const PENDING_CHECKS: readonly string[] = ['apy_rate', 'national_outlier'];
-
+/** All seven checks run (5 and 7 since 2026-11-28); a failure of any of them is a hold. */
 export function publicationHolds(input: {
   failures: readonly string[];
   humanApproved: number;
   stopped: boolean;
-  pending?: readonly string[];
 }): string[] {
   const holds: string[] = [];
   if (input.failures.length > 0) holds.push(...input.failures);
   if (input.stopped) holds.push('template_stopped');
   if (input.humanApproved < HUMAN_FIRST_PER_TEMPLATE) holds.push('first_10_of_template');
-  const pending = input.pending ?? PENDING_CHECKS;
-  if (pending.length > 0) holds.push(`checks_pending:${pending.join(',')}`);
   return holds;
 }
 

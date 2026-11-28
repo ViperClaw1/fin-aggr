@@ -12,7 +12,8 @@ where jobname like 'dispatch-%'
 order by jobname;
 ```
 
-Expect 8 `dispatch-*`, plus the harvest and watchdog jobs, all `active = true`.
+Expect 9 `dispatch-*` (`dispatch-survey` until the 8.4 survey is final, then
+`select cron.unschedule('dispatch-survey')`), plus the harvest and watchdog jobs, all `active = true`.
 
 ## 2. Did they run?
 

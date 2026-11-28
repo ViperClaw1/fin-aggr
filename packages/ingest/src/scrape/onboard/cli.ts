@@ -14,12 +14,14 @@ import {
   templateState,
 } from '../../postgres/adapter-configs';
 import { upsertBankSources } from '../../postgres/banks';
+import { previousNationalRates } from '../../postgres/national';
 import { readTableConfig } from '../banks/config';
 import { saveInstitutionSnapshot } from '../../postgres/ports';
 import { scrapeFetch } from '../http';
 import { stateTimeZone } from '../registry';
 import { assertPublicPage } from '../rules';
 import { createScrapeSession } from '../session';
+import { nationalOutliers } from './checks';
 import { publicationHolds } from './policy';
 import { proposeAdapter, type Bank, type Proposal } from './propose';
 
@@ -131,17 +133,24 @@ export async function storeProposal(
     proposal: Proposal;
     html: string;
     now?: () => string;
-    /** Tests only: the checks still to land (default `PENDING_CHECKS`). */
-    pending?: readonly string[];
   },
 ): Promise<string> {
-  const { institutionId, sourceId, snapshotId, proposal } = input;
+  const { institutionId, sourceId, snapshotId } = input;
   const now = input.now ?? (() => new Date().toISOString());
+  // ADR-026 check 7 needs the current national rates, so it runs here, next to the database.
+  const outliers =
+    input.proposal.config === null
+      ? []
+      : nationalOutliers(
+          input.proposal.products,
+          input.proposal.config.category,
+          await previousNationalRates(sql),
+        );
+  const proposal = { ...input.proposal, failures: [...input.proposal.failures, ...outliers] };
   const template = await institutionTemplate(sql, institutionId);
   const holds = publicationHolds({
     failures: proposal.failures,
     ...(await templateState(sql, template)),
-    ...(input.pending === undefined ? {} : { pending: input.pending }),
   });
   const id = await insertProposal(sql, { institutionId, snapshotId, proposal, template });
   if (holds.length > 0 || proposal.config === null) {

@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { rateFromPercent } from '@fa/contracts';
 import * as cheerio from 'cheerio';
 import { readTableConfig, type HtmlTableConfig } from '../banks/config';
+import { apyRateFailures } from './checks';
 
 /**
  * Plan 8.6 (ADR-026, ADR-027): the model reads one stored snapshot and proposes an `html_table`
@@ -11,12 +12,15 @@ import { readTableConfig, type HtmlTableConfig } from '../banks/config';
 
 export const ONBOARD_MODEL = 'claude-opus-5-5';
 /** Bump when the prompt or the schema changes; it is stored on every proposal. */
-const PROMPT_VERSION = 'onboard-html-table-1+recheck-1';
+const PROMPT_VERSION = 'onboard-html-table-2+recheck-2';
 
 export interface ProposedProduct {
   termMonths: number;
   apyPercent: string;
   apyQuote: string;
+  /** Interest rate as written, or empty when the page states none for the term (check 5). */
+  ratePercent: string;
+  rateQuote: string;
   penaltyDays: number;
   penaltyQuote: string;
   minDollars: string;
@@ -83,6 +87,8 @@ const SCHEMA = obj({
       termMonths: int,
       apyPercent: str,
       apyQuote: str,
+      ratePercent: str,
+      rateQuote: str,
       penaltyDays: int,
       penaltyQuote: str,
       minDollars: str,
@@ -102,6 +108,7 @@ The reader works like this:
 
 Rules:
 - Every value must come from the page. Each quote must be copied exactly, character for character, from the page text with whitespace collapsed. Never estimate, round or infer a number.
+- ratePercent is the interest rate (not the APY) the page states for that term, as written ("4.50"), with its quote in rateQuote. If the page states no interest rate for the term, both are empty strings.
 - If the page has no rate table with a caption, no stated rate date, no minimum deposit, no compounding sentence, or no day-count penalty per term, set supported to false and say which in reason. Still fill the other fields with empty strings, zeros and empty arrays.
 - List products in table order.`;
 
@@ -148,8 +155,15 @@ function valueInQuote(p: ProposedProduct): boolean {
   return (
     p.apyQuote.includes(p.apyPercent) &&
     days.test(p.penaltyQuote) &&
-    p.minQuote.includes(p.minDollars)
+    p.minQuote.includes(p.minDollars) &&
+    (p.ratePercent === '' || p.rateQuote.includes(p.ratePercent))
   );
+}
+
+/** Quotes the product claims; the rate quote only when the page states a rate. */
+function quotesOf(p: ProposedProduct): string[] {
+  const quotes = [p.apyQuote, p.penaltyQuote, p.minQuote];
+  return p.ratePercent === '' ? quotes : [...quotes, p.rateQuote];
 }
 
 /** Checks 1–3 of ADR-026. Reasons follow the review-queue style `<check>:<detail>`. */
@@ -161,7 +175,7 @@ function checkProposal(
   const text = pageText(html);
   const failures: string[] = [];
   for (const p of products) {
-    const quotes = [p.apyQuote, p.penaltyQuote, p.minQuote];
+    const quotes = quotesOf(p);
     if (quotes.some((quote) => quote === '' || !text.includes(quote))) {
       failures.push(`quote_not_in_snapshot:${String(p.termMonths)}`);
     }
@@ -187,7 +201,7 @@ function checkProposal(
 
 /** ADR-026 check 4 asks for a different prompt: products only, no reader to configure. */
 const RECHECK_SYSTEM = `You read a US bank's public CD rate page for a rate comparison site.
-List every CD product the page states, in the order the page lists them: term in months, APY percent as written ("4.60"), early withdrawal penalty in days of interest for that term, minimum opening deposit in whole dollars as written ("2,500"). Each quote is copied exactly, character for character, from the page text with whitespace collapsed. Never estimate, round or infer a number.
+List every CD product the page states, in the order the page lists them: term in months, APY percent as written ("4.60"), the interest rate (not the APY) as written ("4.50") or an empty string with an empty quote when the page states none for the term, early withdrawal penalty in days of interest for that term, minimum opening deposit in whole dollars as written ("2,500"). Each quote is copied exactly, character for character, from the page text with whitespace collapsed. Never estimate, round or infer a number.
 If the page states no CD rates with a minimum deposit and a day-count penalty, set supported to false, say why in reason, and return no products.`;
 
 const RECHECK_SCHEMA = obj({
@@ -219,9 +233,9 @@ function ask(
 
 /** ADR-026 check 4: a second, separate extraction must list the same products. */
 function sameProducts(a: ModelAnswer, b: ModelAnswer): boolean {
+  const key = (p: ProposedProduct): string => `${modelKey(p)}|${p.ratePercent}`;
   return (
-    a.supported === b.supported &&
-    a.products.map(modelKey).join(';') === b.products.map(modelKey).join(';')
+    a.supported === b.supported && a.products.map(key).join(';') === b.products.map(key).join(';')
   );
 }
 
@@ -250,6 +264,10 @@ export async function proposeAdapter(input: {
   return {
     ...base,
     config,
-    failures: [...checkProposal(config, answer.products, input.html), ...twin],
+    failures: [
+      ...checkProposal(config, answer.products, input.html),
+      ...twin,
+      ...apyRateFailures(answer.products, config.page.compounding.value),
+    ],
   };
 }

@@ -30,6 +30,8 @@ const PRODUCTS: ProposedProduct[] = [
     termMonths: 6,
     apyPercent: '3.20',
     apyQuote: '3.20% APY',
+    ratePercent: '',
+    rateQuote: '',
     penaltyDays: 90,
     penaltyQuote: 'ninety (90) days',
     minDollars: '2,500',
@@ -39,6 +41,8 @@ const PRODUCTS: ProposedProduct[] = [
     termMonths: 13,
     apyPercent: '4.50',
     apyQuote: '4.50% APY',
+    ratePercent: '',
+    rateQuote: '',
     penaltyDays: 180,
     penaltyQuote: 'one hundred eighty (180) days',
     minDollars: '2,500',
@@ -111,6 +115,16 @@ describe('proposeAdapter', () => {
     const { create } = reply(answer([first, { ...second, apyPercent: '4.55' }]));
     const proposal = await proposeAdapter({ create, bank, html: PAGE });
     expect(proposal.failures).toEqual(['value_not_in_quote:13', 'config_differs_from_model']);
+  });
+
+  it('holds an APY that the stated rate and compounding do not produce', async () => {
+    const [first, second] = PRODUCTS;
+    if (first === undefined || second === undefined) throw new Error('fixture');
+    // independent calc: 4.50% compounded monthly is (1 + 0.045/12)^12 − 1 = 4.594%, not 4.50%
+    const rated = { ...second, ratePercent: '4.50', rateQuote: '4.50% APY' };
+    const { create } = reply(answer([first, rated]));
+    const proposal = await proposeAdapter({ create, bank, html: PAGE });
+    expect(proposal.failures).toEqual(['apy_rate_mismatch:13']);
   });
 
   it('keeps no config when the model says the page is not supported', async () => {

@@ -18,7 +18,7 @@ const PAGE = `<html><body>
 </body></html>`;
 
 describe('publicationHolds', () => {
-  const clean = { failures: [], humanApproved: 10, stopped: false, pending: [] };
+  const clean = { failures: [], humanApproved: 10, stopped: false };
 
   it('publishes automatically only when nothing holds', () => {
     expect(publicationHolds(clean)).toEqual([]);
@@ -30,12 +30,6 @@ describe('publicationHolds', () => {
     ]);
     expect(publicationHolds({ ...clean, stopped: true })).toEqual(['template_stopped']);
     expect(publicationHolds({ ...clean, humanApproved: 9 })).toEqual(['first_10_of_template']);
-  });
-
-  it('holds everything while checks 5 and 7 are not run', () => {
-    expect(publicationHolds({ failures: [], humanApproved: 10, stopped: false })).toEqual([
-      'checks_pending:apy_rate,national_outlier',
-    ]);
   });
 });
 
@@ -60,12 +54,21 @@ describe('templates and the weekly sample', () => {
   });
 });
 
-function fakeSql(approved: number): { sql: Sql; texts: string[] } {
+const NATIONAL_12 = {
+  series_id: 'NDR12MCD',
+  label: 'National Rate: 12 Month CD <100M',
+  observation_date: '2026-11-16',
+  rate: '0.0185',
+  quote: '1.85',
+};
+
+function fakeSql(approved: number, national = [NATIONAL_12]): { sql: Sql; texts: string[] } {
   const texts: string[] = [];
   const sql: Sql = {
     query: (text) => {
       const t = text.replace(/\s+/g, ' ').trim();
       texts.push(t);
+      if (t.includes('from national_deposit_rates')) return Promise.resolve({ rows: national });
       if (t.includes('from survey_results'))
         return Promise.resolve({ rows: [{ generator: null }] });
       if (t.includes('template_stops where'))
@@ -105,15 +108,13 @@ const input = {
 describe('storeProposal', () => {
   it('queues a clean proposal of a template with fewer than 10 approved institutions', async () => {
     const { sql, texts } = fakeSql(3);
-    expect(await storeProposal(sql, { ...input, pending: [] })).toBe(
-      'review=9 template=html_table:unknown',
-    );
+    expect(await storeProposal(sql, { ...input })).toBe('review=9 template=html_table:unknown');
     expect(texts.some((t) => t.includes('automated_check'))).toBe(false);
   });
 
   it('confirms the bank and its products by automated_check when nothing holds', async () => {
     const { sql, texts } = fakeSql(10);
-    expect(await storeProposal(sql, { ...input, pending: [] })).toBe(
+    expect(await storeProposal(sql, { ...input })).toBe(
       'automated config=5 template=html_table:unknown',
     );
     expect(texts.some((t) => t.startsWith('insert into review_queue'))).toBe(false);
@@ -123,11 +124,21 @@ describe('storeProposal', () => {
     expect(texts.at(-1)).toBe('commit');
   });
 
+  it('holds an outlier against the national rate and a missing national rate', async () => {
+    const rated = {
+      ...proposal,
+      products: [{ termMonths: 12, apyPercent: '4.86', ratePercent: '' }],
+    };
+    const outlier = { ...input, proposal: rated as unknown as Proposal };
+    expect(await storeProposal(fakeSql(10).sql, outlier)).toMatch(/^review=9/);
+    const { sql, texts } = fakeSql(10, []);
+    expect(await storeProposal(sql, input)).toMatch(/^review=9/);
+    expect(texts.find((t) => t.startsWith('insert into review_queue'))).toBeDefined();
+  });
+
   it('never automates a proposal whose quote is not in the snapshot', async () => {
     const { sql } = fakeSql(10);
     const failed = { ...proposal, failures: ['quote_not_in_snapshot:6'] };
-    expect(await storeProposal(sql, { ...input, proposal: failed, pending: [] })).toMatch(
-      /^review=9/,
-    );
+    expect(await storeProposal(sql, { ...input, proposal: failed })).toMatch(/^review=9/);
   });
 });
