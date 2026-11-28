@@ -276,7 +276,7 @@ function asError(error: unknown): Error {
 }
 
 /** Banks in flight at once (ADR-026, 8.8). The session keeps 10 s per domain across them. */
-export const BANK_QUEUES = 8;
+const BANK_QUEUES = 8;
 
 /**
  * Bank rates run `limit` at a time, in registration order. One failure does not skip the rest.
