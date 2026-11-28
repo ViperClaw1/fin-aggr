@@ -152,8 +152,16 @@ export function gatewayContract(name: string, create: () => DataGateway): void {
     });
 
     it('honours asOf for bank metrics and insurance rules', async () => {
-      const banks = await gw.listInstitutions({ kind: 'direct_bank', limit: 1 });
-      const bankId = banks.items[0]?.id ?? '';
+      // A bank fresh from the FDIC directory may have no call report yet: take one that has.
+      const banks = await gw.listInstitutions({ kind: 'direct_bank', limit: 100 });
+      let bankId = '';
+      for (const bank of banks.items) {
+        const metrics = await gw.getBankMetrics(bank.id).catch(() => null);
+        if (metrics !== null) {
+          bankId = bank.id;
+          break;
+        }
+      }
       expect(BankMetrics.parse(await gw.getBankMetrics(bankId)).institutionId).toBe(bankId);
       await rejectsWith(gw.getBankMetrics(bankId, LONG_AGO), 'not_found');
       expect(InsuranceRules.safeParse(await gw.getInsuranceRules()).success).toBe(true);

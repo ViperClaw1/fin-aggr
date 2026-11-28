@@ -29,13 +29,13 @@ function counts(set) {
   };
 }
 
-async function insertVersions(client, asOf) {
+async function insertVersions(client, asOf, own = {}) {
   const ids = {};
   for (const domain of DOMAINS) {
     const row = await client.query(
       `insert into dataset_versions (domain, as_of, is_mock, is_current)
        values ($1, $2, true, false) returning id`,
-      [domain, asOf],
+      [domain, own[domain] ?? asOf],
     );
     ids[domain] = row.rows[0].id;
   }
@@ -263,7 +263,9 @@ restart identity cascade`;
 /** Replaces the dataset with this fixture set and publishes every domain. */
 export async function loadFixtures(client, set) {
   await client.query(TRUNCATE);
-  const ids = await insertVersions(client, set.asOf);
+  // Pilot rates were retrieved after the generated catalog: their domain keeps its own date,
+  // as in the mock gateway, so the data set asOf covers them.
+  const ids = await insertVersions(client, set.asOf, { bank_products: set.bankProducts.asOf });
   await insertSources(client, set.sources);
   await insertInstitutions(client, ids.institutions, set.institutions);
   // Same fixture issuers, on the products version. An FDIC publish replaces only the
